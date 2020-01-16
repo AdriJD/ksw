@@ -17,15 +17,17 @@ compile_opts = {
     'extra_link_args': ['-fopenmp',
                         '-g']}
 
+ext_modules = [Extension('ksw.radial_functional',
+                        [opj(path, 'cython', 'radial_functional.pyx')],
+                         libraries=['radial_functional'],
+                         library_dirs=[opj(path, 'lib')],
+                         include_dirs=[opj(path, 'include'),
+                                       np.get_include()],
+                         language_level=3,
+                         **compile_opts)]
 
-setup(
-    ext_modules=cythonize([
-        Extension('radial_functional',
-                      [opj(path, 'cython', 'radial_functional.pyx')],
-                  libraries=['radial_functional'],
-                  library_dirs=[opj(path, 'lib')],
-                  include_dirs=[opj(path, 'include'),
-                                np.get_include()],
-                  **compile_opts)
-        ]),
-    zip_safe=False)
+setup(package_dir={"ksw": "ksw"},
+      ext_modules=cythonize(ext_modules))
+
+
+

@@ -13,7 +13,7 @@ ODIR = $(DIR)/obj
 IDIR = $(DIR)/include
 TDIR = $(DIR)/tests
 CDIR = $(DIR)/cython
-PDIR = $(DIR)/python
+PDIR = $(DIR)/ksw
 
 HS_SDIR = $(DIR)/hyperspherical/src
 HS_IDIR = $(DIR)/hyperspherical/include
@@ -59,7 +59,7 @@ $(TDIR)/obj/seatest.o: $(TDIR)/src/seatest.c $(TDIR)/include/seatest.h
 $(TDIR)/obj/test_radial_functional.o: $(TDIR)/src/test_radial_functional.c $(IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
 
-python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $(CDIR)/radial_functional.pxd
+python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $(PDIR)/radial_functional.pxd
 	python setup.py build_ext --inplace
 
 clean:

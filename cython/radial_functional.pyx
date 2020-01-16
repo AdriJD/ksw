@@ -74,11 +74,11 @@ def radial_func(f_k, tr_ell_k, k, radii, ells):
     ells = np.asarray_chkfinite(ells, dtype=int, order='C')
 
     # Check for input shapes.
-    nk, = check_and_return_shape(k, (None))
-    nr, = check_and_return_shape(radii, (None))
-    nell, = check_and_return_shape(ells, (None))
-    nk, ncomp = check_and_return_shape(f_k, (nk, None))
-    nell, nk, npol = check_and_return_shape(tr_ell_k, (nell, nk, None))
+    nk, = check_and_return_shape(k, [None])
+    nr, = check_and_return_shape(radii, [None])
+    nell, = check_and_return_shape(ells, [None])
+    nk, ncomp = check_and_return_shape(f_k, [nk, None])
+    nell, nk, npol = check_and_return_shape(tr_ell_k, [nell, nk, None])
 
     # Create output array.
     f_ell_r = np.empty((nr, nell, npol, ncomp), dtype=float)
