@@ -26,7 +26,8 @@ ext_modules = [Extension('ksw.radial_functional',
                          language_level=3,
                          **compile_opts)]
 
-setup(package_dir={"ksw": "ksw"},
+setup(name='ksw',
+      packages=['ksw'], 
       ext_modules=cythonize(ext_modules))
 
 

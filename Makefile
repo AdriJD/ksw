@@ -1,7 +1,7 @@
 # Idea is to complile hyperspherical c files to .o files, then compile
 # new c code that contains functions for beta, then combine them into
 # a library, and finally, import that library into python using cython.
-.PHONY: clean all check python cython
+.PHONY: clean all check python
 
 CC = gcc
 
@@ -30,7 +30,10 @@ TEST_OBJECTS = $(TDIR)/obj/seatest.o \
                $(TDIR)/obj/test_radial_functional.o \
                $(TDIR)/obj/run_tests.o
 
-all: $(LDIR)/libradial_functional.so
+all: $(LDIR)/libradial_functional.so python
+
+python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $(PDIR)/radial_functional.pxd
+	python setup.py build_ext --inplace
 
 $(LDIR)/libradial_functional.so: $(OBJECTS)
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $(LDIR)/libradial_functional.so $(OBJECTS)
@@ -46,6 +49,7 @@ $(ODIR)/hyperspherical.o: $(HS_SDIR)/hyperspherical.c $(HS_IDIR)/*.h
 
 check: $(TDIR)/bin/run_tests
 	$(TDIR)/bin/run_tests
+	python -m pytest tests
 
 $(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(OBJECTS) $(LDIR)/libradial_functional.so
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -Wl,-rpath,$(LDIR)
@@ -59,9 +63,6 @@ $(TDIR)/obj/seatest.o: $(TDIR)/src/seatest.c $(TDIR)/include/seatest.h
 $(TDIR)/obj/test_radial_functional.o: $(TDIR)/src/test_radial_functional.c $(IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
 
-python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $(PDIR)/radial_functional.pxd
-	python setup.py build_ext --inplace
-
 clean:
 	rm -f $(ODIR)/*.o
 	rm -f $(LDIR)/*.so
@@ -70,3 +71,5 @@ clean:
 	rm -f $(CDIR)/*.c
 	rm -f $(PDIR)/*.so
 	rm -rf $(DIR)/build
+	rm -rf $(PDIR)/__pycache__
+	rm -rf $(TDIR)/python/__pycache__
