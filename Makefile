@@ -32,7 +32,7 @@ TEST_OBJECTS = $(TDIR)/obj/seatest.o \
 
 all: $(LDIR)/libradial_functional.so python
 
-python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $(PDIR)/radial_functional.pxd
+python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $(CDIR)/radial_functional.pxd
 	python setup.py build_ext --inplace
 
 $(LDIR)/libradial_functional.so: $(OBJECTS)

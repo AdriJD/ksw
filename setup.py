@@ -16,6 +16,7 @@ compile_opts = {
                            '-g'],
     'extra_link_args': ['-fopenmp',
                         '-g']}
+compiler_directives = {'language_level' : 3}
 
 ext_modules = [Extension('ksw.radial_functional',
                         [opj(path, 'cython', 'radial_functional.pyx')],
@@ -23,12 +24,13 @@ ext_modules = [Extension('ksw.radial_functional',
                          library_dirs=[opj(path, 'lib')],
                          include_dirs=[opj(path, 'include'),
                                        np.get_include()],
-                         language_level=3,
                          **compile_opts)]
 
 setup(name='ksw',
       packages=['ksw'], 
-      ext_modules=cythonize(ext_modules))
+      ext_modules=cythonize(ext_modules,
+                            compiler_directives=compiler_directives))
+
 
 
 
