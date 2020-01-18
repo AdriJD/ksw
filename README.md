@@ -6,16 +6,23 @@
 make
 ```
 
+```
+pip install .
+```
+
 Run tests:
 
 ```
 make check
 ```
 
-Installing (assuming you are using pip and virtuelenv):
-
-```
-pip install .
-```
 Consider adding the `-e` flag to the `pip install` command to enable automatic 
 updating of code changes when developing.
+
+As an alternative to the `pip install .` command, you can run:
+
+```
+make python
+```
+
+to simply build the python package inside this directory.

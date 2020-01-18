@@ -30,7 +30,7 @@ TEST_OBJECTS = $(TDIR)/obj/seatest.o \
                $(TDIR)/obj/test_radial_functional.o \
                $(TDIR)/obj/run_tests.o
 
-all: $(LDIR)/libradial_functional.so python
+all: $(LDIR)/libradial_functional.so 
 
 python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $(CDIR)/radial_functional.pxd
 	python setup.py build_ext --inplace
@@ -47,9 +47,14 @@ $(ODIR)/common.o: $(HS_SDIR)/common.c $(HS_IDIR)/common.h $(HS_IDIR)/svnversion.
 $(ODIR)/hyperspherical.o: $(HS_SDIR)/hyperspherical.c $(HS_IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(HS_IDIR)
 
-check: $(TDIR)/bin/run_tests
+check: check_c check_python
+
+check_c: $(TDIR)/bin/run_tests
 	$(TDIR)/bin/run_tests
+
+check_python:
 	python -m pytest tests
+
 
 $(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(OBJECTS) $(LDIR)/libradial_functional.so
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -Wl,-rpath,$(LDIR)
@@ -73,3 +78,4 @@ clean:
 	rm -rf $(DIR)/build
 	rm -rf $(PDIR)/__pycache__
 	rm -rf $(TDIR)/python/__pycache__
+	rm -rf $(DIR)/*.egg-info
