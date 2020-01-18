@@ -53,8 +53,7 @@ check_c: $(TDIR)/bin/run_tests
 	$(TDIR)/bin/run_tests
 
 check_python:
-	python -m pytest tests
-
+	cd $(TDIR); python -m pytest python/
 
 $(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(OBJECTS) $(LDIR)/libradial_functional.so
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -Wl,-rpath,$(LDIR)
