@@ -22,9 +22,9 @@ def check_and_return_shape(arr, exp_shape):
     Raises
     ------
     ValueError
-        Raises ValueError if array shape is incorrect.    
-
+        If array shape is incorrect.    
     '''
+    
     if arr.ndim != len(exp_shape):
         raise ValueError(
             "Array dimensions incorrect (expected {}, got {})".format(
@@ -62,8 +62,14 @@ def radial_func(f_k, tr_ell_k, k, radii, ells):
     Returns
     -------
     f_ell_r : (nr, nell, npol, ncomp) array
-        Evaluted integral for arr radii, multipoles, polarizations
+        Evaluted integral for all radii, multipoles, polarizations
         and input function components.
+
+    Raises
+    ------
+    ValueError
+        If input array shapes are incorrect.    
+        If the input arrays contain nans or infs.
     '''
 
     # Check input for nans and infs.
@@ -71,14 +77,14 @@ def radial_func(f_k, tr_ell_k, k, radii, ells):
     tr_ell_k = np.asarray_chkfinite(tr_ell_k, dtype=float, order='C')
     k = np.asarray_chkfinite(k, dtype=float, order='C')
     radii = np.asarray_chkfinite(radii, dtype=float, order='C')
-    ells = np.asarray_chkfinite(ells, dtype=int, order='C')
+    ells = np.asarray_chkfinite(ells, dtype=np.int32, order='C')
 
     # Check for input shapes.
-    nk, = check_and_return_shape(k, [None])
-    nr, = check_and_return_shape(radii, [None])
-    nell, = check_and_return_shape(ells, [None])
-    nk, ncomp = check_and_return_shape(f_k, [nk, None])
-    nell, nk, npol = check_and_return_shape(tr_ell_k, [nell, nk, None])
+    nk, = check_and_return_shape(k, (None,))
+    nr, = check_and_return_shape(radii, (None,))
+    nell, = check_and_return_shape(ells, (None,))
+    nk, ncomp = check_and_return_shape(f_k, (nk, None))
+    nell, nk, npol = check_and_return_shape(tr_ell_k, (nell, nk, None))
 
     # Create output array.
     f_ell_r = np.empty((nr, nell, npol, ncomp), dtype=float)
