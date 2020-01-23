@@ -1,7 +1,7 @@
 
 
 /*
- * Compute f_ell^X(r) = int k^2 dk f(k) transfer^X_ell(k) j_ell(k r), 
+ * Compute f_ell^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_ell(k r), 
  * where f(k) is an arbitrary function of wavenumber k.
  *
  * Arguments
@@ -32,7 +32,7 @@ void compute_radial_func(double const *f_k,
 			 int ncomp);
 
 /*
- * Compute f_ell^X(r) = int k^2 dk f(k) transfer^X_ell(k) j_ell(k r), 
+ * Compute f_ell^X(r) = int w_k f(k) transfer^X_ell(k) j_ell(k r), 
  * for fixed ell and r.
  *
  * Arguments

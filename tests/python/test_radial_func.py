@@ -1,5 +1,5 @@
 '''
-test ksw
+Test the cython wrapper of the radial_functional c code.
 '''
 import unittest
 from ksw import radial_functional as rf
@@ -139,7 +139,8 @@ class TestTools(unittest.TestCase):
         
         for ridx, rp in enumerate(radii_prime):            
             f_k[:,ridx] = spherical_jn(ell, k * rp)
-        
+        f_k *= (np.pi / 2.)
+
         radii = np.asarray([radius], dtype=float)        
         tr_ell_k = np.ones((nell, nk, npol), dtype=float)
         ells = np.asarray([ell], dtype=int)
@@ -153,7 +154,7 @@ class TestTools(unittest.TestCase):
         
         exp_f_ell_r = np.zeros((nr, nell, npol, ncomp), dtype=float)
         for ridx, rp in enumerate(radii_prime):            
-            exp_f_ell_r[0,0,0,ridx] = np.trapz(
+            exp_f_ell_r[0,0,0,ridx] = (2. / np.pi) * np.trapz(
              f_k[:,ridx] * spherical_jn(ell, k * radius) * k ** 2, k)
         
         f_ell_r = rf.radial_func(f_k, tr_ell_k, k, radii, ells)

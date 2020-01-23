@@ -41,9 +41,9 @@ void compute_radial_func(double const *f_k,
   w_k = _malloc_checked(sizeof(double) * nk);
   _trapezoidal_weights(k, w_k, nk);
 
-  // Multiply weights by k^2.
+  // Multiply weights by k^2 * (2 / pi).
   for (kidx=0; kidx<nk; kidx++){
-    w_k[kidx] *= pow(k[kidx], 2);
+    w_k[kidx] *= 2. * pow(k[kidx], 2) / _PI_ ;
   }
 
   // Loop over radii.

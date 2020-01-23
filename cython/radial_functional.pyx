@@ -3,50 +3,12 @@ import numpy as np
 cimport numpy as np
 import sys
 
-def check_and_return_shape(arr, exp_shape):
-    '''
-    Return shape of input array if it matches expections.
-
-    Arguments
-    ---------
-    arr : array
-        Array to be checked.
-    exp_shape : array_like
-        Expected shape of array, use `None` for unknown dimension
-        sizes.
-
-    Returns
-    -------
-    shape : tuple
-
-    Raises
-    ------
-    ValueError
-        If array shape is incorrect.    
-    '''
-    
-    if arr.ndim != len(exp_shape):
-        raise ValueError(
-            "Array dimensions incorrect (expected {}, got {})".format(
-                len(exp_shape), arr.ndim))
-    
-    for idx, (n, n_exp) in enumerate(zip(arr.shape, exp_shape)):
-        
-        if n_exp is None:
-            continue
-        
-        if n != n_exp:
-            raise ValueError(
-                "Incorrect size of dim {} (expected {}, got {})".format(
-                    idx, n_exp, n))            
-    return arr.shape
-
 def radial_func(f_k, tr_ell_k, k, radii, ells):
     '''
-    Compute f_ell^X(r) = int k^2 dk f(k) transfer^X_ell(k) j_ell(k r),
+    Compute f_ell^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_ell(k r),
     where f(k) is an arbitrary function of wavenumber k.
 
-    Arguments
+    Parameters
     ---------
     f_k : (nk, ncomp) array
         Input functions.
@@ -109,3 +71,41 @@ def radial_func(f_k, tr_ell_k, k, radii, ells):
                          ncomp)
     return f_ell_r
     
+def check_and_return_shape(arr, exp_shape):
+    '''
+    Return shape of input array if it matches expections.
+
+    Parameters
+    ---------
+    arr : array
+        Array to be checked.
+    exp_shape : array_like
+        Expected shape of array, use `None` for unknown dimension
+        sizes.
+
+    Returns
+    -------
+    shape : tuple
+
+    Raises
+    ------
+    ValueError
+        If array shape is incorrect.    
+    '''
+    
+    if arr.ndim != len(exp_shape):
+        raise ValueError(
+            "Array dimensions incorrect (expected {}, got {})".format(
+                len(exp_shape), arr.ndim))
+    
+    for idx, (n, n_exp) in enumerate(zip(arr.shape, exp_shape)):
+        
+        if n_exp is None:
+            continue
+        
+        if n != n_exp:
+            raise ValueError(
+                "Incorrect size of dim {} (expected {}, got {})".format(
+                    idx, n_exp, n))            
+    return arr.shape
+

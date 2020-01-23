@@ -64,9 +64,9 @@ void test_compute_radial_func(void){
   for (kidx=0; kidx<nk; kidx++){
 
     for(cidx=0; cidx<ncomp; cidx++){
-      // Use k^-2 input function to cancel k^2 weighting in
-      // the integral.
-      f_k[kidx*ncomp+cidx] = pow(k[kidx], -2);
+      // Use k^-2 (pi/2) input function to cancel k^2 (2/pi)
+      // weighting in the integral.
+      f_k[kidx*ncomp+cidx] = 0.5 * pow(k[kidx], -2) * _PI_;
     }    
   }
 
