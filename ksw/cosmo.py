@@ -48,7 +48,21 @@ class Cosmology:
         self._setattr_camb('DoLateRadTruncation', False,
                           verbose=verbose)
         self._setattr_camb('DoLensing', True, verbose=verbose)
-        self._setattr_camb('AccuracyBoost', 3, subclass='Accuracy',
+        self._setattr_camb('AccuracyBoost', 2, subclass='Accuracy',
+                          verbose=verbose)
+        self._setattr_camb('BessIntBoost', 30, subclass='Accuracy',
+                          verbose=verbose)
+        self._setattr_camb('KmaxBoost', 3, subclass='Accuracy',
+                          verbose=verbose)
+        self._setattr_camb('IntTolBoost', 4, subclass='Accuracy',
+                          verbose=verbose)
+        self._setattr_camb('TimeStepBoost', 4, subclass='Accuracy',
+                          verbose=verbose)
+        self._setattr_camb('SourcekAccuracyBoost', 5, subclass='Accuracy',
+                          verbose=verbose)
+        self._setattr_camb('BesselBoost', 5, subclass='Accuracy',
+                          verbose=verbose)
+        self._setattr_camb('IntkAccuracyBoost', 5, subclass='Accuracy',
                           verbose=verbose)
         self._setattr_camb('lSampleBoost', 2, subclass='Accuracy',
                           verbose=verbose)
@@ -139,7 +153,7 @@ class Cosmology:
             # CAMB crashes for too low lmax.
             raise ValueError('Pick lmax >= 300.')
 
-        k_eta_fac = 5
+        k_eta_fac = 2.5 # Default used by CAMB.
         max_eta_k = k_eta_fac * lmax
         max_eta_k = max(max_eta_k, 1000)
 
@@ -279,3 +293,7 @@ class Cosmology:
 
         return b_ell_r_full
         
+
+    # some functions to read and write transfer functions and b_ell_rs
+    # When reading, should automatically get correct state of class instance
+    # so also read/write camb params with transfer (and poss also with b_ell_r)

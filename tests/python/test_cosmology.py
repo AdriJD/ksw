@@ -11,7 +11,7 @@ class TestTools(unittest.TestCase):
 
     def setUp(self):
         # Is called before each test.
-        
+
         self.cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
     def tearDown(self):
@@ -29,19 +29,27 @@ class TestTools(unittest.TestCase):
         self.assertIs(cosmo.camb_params.WantCls, True)
         self.assertIs(cosmo.camb_params.WantTransfer, False)
         self.assertIs(cosmo.camb_params.DoLensing, True)
-        self.assertEqual(cosmo.camb_params.Accuracy.AccuracyBoost, 3)
+        self.assertEqual(cosmo.camb_params.Accuracy.AccuracyBoost, 2)
         self.assertEqual(cosmo.camb_params.Accuracy.lSampleBoost, 2)
         self.assertEqual(cosmo.camb_params.Accuracy.lAccuracyBoost, 2)
         self.assertIs(cosmo.camb_params.Accuracy.AccurateBB, True)
         self.assertIs(cosmo.camb_params.Accuracy.AccurateReionization, True)
-        self.assertIs(cosmo.camb_params.Accuracy.AccuratePolarization, True)
-    
+        self.assertEqual(cosmo.camb_params.Accuracy.BessIntBoost, 30)
+        self.assertEqual(cosmo.camb_params.Accuracy.KmaxBoost, 3)
+        self.assertEqual(cosmo.camb_params.Accuracy.IntTolBoost, 4)
+        self.assertEqual(cosmo.camb_params.Accuracy.TimeStepBoost, 4)
+        self.assertEqual(cosmo.camb_params.Accuracy.SourcekAccuracyBoost, 5)
+        self.assertEqual(cosmo.camb_params.Accuracy.BesselBoost, 5)
+        self.assertEqual(cosmo.camb_params.Accuracy.IntkAccuracyBoost, 5)
+        self.assertEqual(cosmo.camb_params.Accuracy.lSampleBoost, 2)
+        self.assertEqual(cosmo.camb_params.Accuracy.IntkAccuracyBoost, 5)
+
     def test_cosmology_setattr_camb(self):
 
         pars = camb.CAMBparams(**self.cosmo_opts)
         self.assertTrue(pars.validate())
         self.assertEqual(pars.WantTensors, False)
-        
+
         cosmo = Cosmology(pars)
 
         self.assertEqual(cosmo.camb_params.WantTensors, False)
@@ -52,7 +60,7 @@ class TestTools(unittest.TestCase):
 
         pars = camb.CAMBparams(**self.cosmo_opts)
         self.assertTrue(pars.validate())
-        
+
         cosmo = Cosmology(pars)
 
         self.assertEqual(cosmo.camb_params.Accuracy.lSampleBoost, 2)
@@ -119,10 +127,10 @@ class TestTools(unittest.TestCase):
         cls_unlensed = cosmo.cls['unlensed_scalar']['cls']
         self.assertEqual(cls_unlensed.shape, (lmax+1, 4))
         self.assertEqual(cls_unlensed.dtype, float)
-        
+
         cls_lensed = cosmo.cls['lensed_scalar']['cls']
         self.assertEqual(cls_unlensed.shape, (lmax+1, 4))
-        self.assertEqual(cls_lensed.dtype, float)        
+        self.assertEqual(cls_lensed.dtype, float)
 
         # EE amplitude at ell=300 is approximately 50e-5 uK^2.
         self.assertTrue(40e-5 < cls_unlensed[300,1] < 60e-5)
@@ -148,35 +156,35 @@ class TestTools(unittest.TestCase):
         nell = ells_sparse.size
         npol = 2
         ncomp = 1
-        
+
         b_ell_r = np.ones((nr, nell, npol, ncomp), dtype=float)
         b_ell_r *= (
             np.sin(0.1 * ells_sparse)[np.newaxis,:,np.newaxis,np.newaxis])
-        
+
         b_ell_r_full = Cosmology._interp_reduced_bispec_over_ell(
             b_ell_r, ells_sparse, ells_full)
 
         nell_full = ells_full.size
 
         self.assertEqual(b_ell_r_full.shape, (nr, nell_full, npol, ncomp))
-        
+
         b_ell_r_full_expec = np.ones((nr, nell_full, npol, ncomp))
         b_ell_r_full_expec *= (
             np.sin(0.1 * ells_full)[np.newaxis,:,np.newaxis,np.newaxis])
 
         np.testing.assert_almost_equal(b_ell_r_full, b_ell_r_full_expec,
                                        decimal=2)
-                        
+
     def test_cosmology_calc_reduced_bispectrum(self):
-        
-        lmax = 450
+
+        lmax = 300
         radii = np.asarray([11000., 14000.])
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
         cosmo.calc_transfer(lmax)
-        
-        funcs, rule, amps = Shape.prim_local(ns=1)        
+
+        funcs, rule, amps = Shape.prim_local(ns=1)
         local = Shape(funcs, rule, amps)
 
         cosmo.calc_reduced_bispectrum(local, radii)
@@ -189,7 +197,7 @@ class TestTools(unittest.TestCase):
         npol = 2
         self.assertEqual(cosmo.b_ell_r.shape, (nr, nell, npol, ncomp))
         self.assertEqual(cosmo.b_ell_r.dtype, float)
-        
+
         # Manually compute reduced bispec factors for given r, ell.
 
         k = cosmo.transfer['k']
@@ -203,7 +211,7 @@ class TestTools(unittest.TestCase):
         radius = radii[ridx]
         func = k ** -3 # Look at second shape function.
         cidx = 1
-        
+
         integrand = k ** 2 * spherical_jn(ell, radius * k)
         integrand *= tr_ell_k[lidx,:,pidx] * func
         ans_expec = (2 / np.pi) * np.trapz(integrand, k)
@@ -212,4 +220,3 @@ class TestTools(unittest.TestCase):
 
         ans = cosmo.b_ell_r[ridx,lidx_full,pidx, cidx]
         self.assertAlmostEqual(ans, ans_expec, places=6)
-
