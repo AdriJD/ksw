@@ -2,13 +2,14 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 
 import camb
+import h5py
 
 from ksw import radial_functional as rf
 
 class Cosmology:
     '''
     A cosmology instance represent a specific cosmology and
-    can be used to calculate its observables.
+    can calculate power spectra and bispectra.
 
     Parameters
     ---------
@@ -20,21 +21,31 @@ class Cosmology:
     Raises
     ------
     ValueError
-        If input CAMB parameters are invalid.
+        If CAMB parameters are invalid.
+        If Omega_K parameter is nonzero.
 
     Attributes
     ----------
     camb_params : camb.model.CAMBparams instance
         Possibly modified copy of input CAMB parameters.
     transfer : dict of arrays
+        Radiation transfer functions and metadata.
     cls : dict of arrays
-    b_ell_r : (nr, nell, npol, ncomp) array
+        Angular power spectra and metadata.
+    red_bisp : dict of arrays
+        Factors of the reduced bispectrum and metadata.
     '''
 
     def __init__(self, camb_params, verbose=True):
 
+        # In future, allow for several bispectra, i.e.
+        # Several primordial, ISW-lensing, etc.
+
         if camb_params.validate() is False:
-            raise ValueError('Input CAMB params file invalid')
+            raise ValueError('Input CAMB params file invalid.')
+
+        if camb_params.omk != 0:
+            raise ValueError('Nonzero Omega_K not supported.')
 
         self.camb_params = camb_params.copy()
 
@@ -125,10 +136,10 @@ class Cosmology:
 
         if self.camb_params.validate() is False:
             raise ValueError(
-                'new value {} for param {} makes params invalid'.format(
+                'New value {} for param {} makes params invalid.'.format(
                     value, name))
 
-    def calc_transfer(self, lmax, verbose=True):
+    def calculate_transfer(self, lmax, verbose=True):
         '''
         Call CAMB to calculate radiation transfer functions.
 
@@ -154,14 +165,14 @@ class Cosmology:
             raise ValueError('Pick lmax >= 300.')
 
         k_eta_fac = 2.5 # Default used by CAMB.
-        max_eta_k = k_eta_fac * lmax
-        max_eta_k = max(max_eta_k, 1000)
 
-        self._setattr_camb('max_l', lmax, verbose=verbose)
-        self._setattr_camb('max_eta_k', max_eta_k, verbose=verbose)
+        self.camb_params.set_for_lmax(lmax, lens_margin=0,
+                                      k_eta_fac=k_eta_fac)
 
         if self.camb_params.validate() is False:
-            raise ValueError('Invalid CAMB input')
+            raise ValueError(
+                'Value {} for lmax makes params invalid'.format(
+                    lmax))
 
         # Make CAMB do the actual calculations (slow).
         data = camb.get_transfer_functions(self.camb_params)
@@ -192,15 +203,15 @@ class Cosmology:
         tr_ell_k = np.empty((nell, nk, npol), dtype=float)
 
         tr_view = tr.delta_p_l_k[:2,...]
-        tr_view = np.swapaxes(tr_view, 0, 2) # (nk, nell, npol)
-        tr_view = np.swapaxes(tr_view, 0, 1) # (nell, nk, npol)
+        tr_view = np.swapaxes(tr_view, 0, 2) # (nk, nell, npol).
+        tr_view = np.swapaxes(tr_view, 0, 1) # (nell, nk, npol).
         tr_ell_k[:] = np.ascontiguousarray(tr_view)
 
         self.transfer['tr_ell_k'] = tr_ell_k
         self.transfer['k'] = tr.q
         self.transfer['ells'] = ells # Probably sparse.
 
-    def calc_cls(self):
+    def calculate_cls(self):
         '''
         Calculate angular power spectra using precomputed
         transfer functions.
@@ -232,15 +243,15 @@ class Cosmology:
         self.cls['lensed_scalar']['ells'] = ells_lensed
         self.cls['lensed_scalar']['cls'] = cls_lensed_scalar
 
-    def calc_reduced_bispectrum(self, shape, radii):
+    def calculate_prim_reduced_bispectrum(self, prim_shape, radii):
         '''
         Compute the factors of the reduced bispectrum of
         a given primordial shape.
 
         Parameters
         ----------
-        shape : ksw.Shape instance
-            Primordial shape function
+        prim_shape : ksw.Shape instance
+            Primordial shape function.
         radii : array-like
             Radii in Mpc.
         '''
@@ -249,29 +260,33 @@ class Cosmology:
         k = self.transfer['k']
         ells_sparse = self.transfer['ells']
 
-        f_k = shape.get_f_k(k)
+        f_k = prim_shape.get_f_k(k)
 
         # Call cython code.
-        b_ell_r = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
+        red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
 
         lmin = ells_sparse[0]
         lmax = ells_sparse[-1]
         ells_full = np.arange(lmin, lmax+1, dtype=int)
-        
+
+        self.red_bisp = {}
+        self.red_bisp['ells'] = ells_full
+        self.red_bisp['radii'] = radii
+
         # Interpolate over ells.
-        self.b_ell_r = self._interp_reduced_bispec_over_ell(
-            b_ell_r, ells_sparse, ells_full)
+        self.red_bisp['red_bisp'] = self._interp_reduced_bispec_over_ell(
+            red_bisp, ells_sparse, ells_full)
 
     @staticmethod
-    def _interp_reduced_bispec_over_ell(b_ell_r, ells_sparse,
+    def _interp_reduced_bispec_over_ell(red_bisp, ells_sparse,
                                         ells_full):
         '''
-        Interpolate factors of reduced bispectrum over all 
+        Interpolate factors of reduced bispectrum over all
         multipoles.
 
         Parameters
         ----------
-        b_ell_r : (nr, nell, npol, ncomp) array
+        red_bisp : (nr, nell, npol, ncomp) array
             Factors of reduced bispectrum that are sparsly sampled
             over multipoles.
         ells_sparse : (nell) array
@@ -281,19 +296,117 @@ class Cosmology:
 
         Returns
         -------
-        b_ell_r_full : (nr, nell_full, npol, ncomp) array
+        red_bisp_full : (nr, nell_full, npol, ncomp) array
             Fully sampled factors of reduced bispectrum.
         '''
-        
+
         # Scipy does internal transpose of input array,
         # transposing beforehand is less efficient.
-        cs = CubicSpline(ells_sparse, b_ell_r, axis=1)        
+        cs = CubicSpline(ells_sparse, red_bisp, axis=1)
 
-        b_ell_r_full = cs(ells_full)
+        red_bisp_full = cs(ells_full)
 
-        return b_ell_r_full
+        return red_bisp_full
+
+    def write_transfer(self, filename):
+        '''
+        Write the transfer function to disk.
+
+        Parameters
+        ----------
+        filename : str
+            Filename
+        '''
+
+        with h5py.File(filename + '.hdf5', 'w') as f:
+            f.create_dataset('tr_ell_k', data=self.transfer['tr_ell_k'])
+            f.create_dataset('k', data=self.transfer['k'])
+            f.create_dataset('ells', data=self.transfer['ells'])
+
+    def write_camb_params(self, filename):
+        '''
+        Write the CAMB parameters to disk.
+
+        Parameters
+        ----------
+        filename : str
+            Filename
+        '''
+
+        # Use python built-in JSON
+        pass
+
+    def write_red_bisp(self, filename):
+        '''
+        Write the reduced bispectrum to disk.
+
+        Parameters
+        ----------
+        filename : str
+            Filename
+        '''
+        # Use h5py.
+
+        pass
+
+    def write_cls(self, filename):
+        '''
+        Write the angular power spectra to disk.
+
+        Parameters
+        ----------
+        filename : str
+            Filename
+        '''
+        pass
+        #with h5py.File(filename + '.hdf5', 'w') as f:
+        #    f.create_dataset('tr_ell_k', data=self.transfer['tr_ell_k'])
+        #    f.create_dataset('k', data=self.transfer['k'])
+        #    f.create_dataset('ells', data=self.transfer['ells'])
+        # Here you need groups.
         
+    def read_transfer(self, filename):
 
-    # some functions to read and write transfer functions and b_ell_rs
+        self.transfer = {}
+
+        with h5py.File(filename + '.hdf5', 'r') as f:
+            self.transfer['tr_ell_k'] = f['tr_ell_k'][()]
+            self.transfer['k'] = f['k'][()]
+            self.transfer['ells'] = f['ells'][()]
+
+    def read_camb_params(self, filename):
+        pass
+
+    def read_red_bisp(self, filename):
+        pass
+
+    def read_cls(self, filename):
+        pass
+
+        # write entire transfer func dict to disk
+        # also write camb_params? How to do that, save it as class?
+
+        # perhaps only save red bispectrum and cls
+        # saving camb is a bit painful, and you don't really need the
+        # transfer functions... I think you would almost always remake
+        # those when you remake the red bispectrum.
+
+        # or also save transfer func dict. Problem is that you
+        # cannot retrace what settings for camb were used...
+        # you can store all you values, but those are dependent
+        # on the defaults of CAMB.
+
+        # Update, I can create a dictionary with all camb options
+        # so then at least, you can restart camb with the same
+        # values.
+        # or more importantly, look at options you used for specific
+        # run.
+
+        # you could do a check where you warn the user that
+        # options in current camb_param file are not equal to the
+        # ones used for the transfer function or red bispec.
+        # use the pars.diff method.
+
+    # some functions to read and write transfer functions and red_bisps
     # When reading, should automatically get correct state of class instance
-    # so also read/write camb params with transfer (and poss also with b_ell_r)
+    # so also read/write camb params with transfer (and poss also with red_bisp)

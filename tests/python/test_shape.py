@@ -7,7 +7,7 @@ import os
 
 from ksw import Shape
 
-class TestTools(unittest.TestCase):
+class TestShape(unittest.TestCase):
 
     def setUp(self):
         # Is called before each test.

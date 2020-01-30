@@ -2,12 +2,14 @@ import unittest
 import numpy as np
 from scipy.special import spherical_jn
 import os
+import tempfile
+import pathlib
 
 import camb
 
 from ksw import Cosmology, Shape
 
-class TestTools(unittest.TestCase):
+class TestCosmo(unittest.TestCase):
 
     def setUp(self):
         # Is called before each test.
@@ -44,6 +46,13 @@ class TestTools(unittest.TestCase):
         self.assertEqual(cosmo.camb_params.Accuracy.lSampleBoost, 2)
         self.assertEqual(cosmo.camb_params.Accuracy.IntkAccuracyBoost, 5)
 
+    def test_cosmology_init_omk(self):
+
+        self.cosmo_opts['omk'] = 1.
+        pars = camb.CAMBparams(**self.cosmo_opts)
+
+        self.assertRaises(ValueError, Cosmology, pars)
+
     def test_cosmology_setattr_camb(self):
 
         pars = camb.CAMBparams(**self.cosmo_opts)
@@ -77,14 +86,14 @@ class TestTools(unittest.TestCase):
         self.assertRaises(AttributeError, cosmo._setattr_camb,
                           'NonExistingParam', 100)
 
-    def test_cosmology_calc_transfer(self):
+    def test_cosmology_calculate_transfer(self):
 
         lmax = 300
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
 
-        cosmo.calc_transfer(lmax)
+        cosmo.calculate_transfer(lmax)
 
         ells = cosmo.transfer['ells']
         k = cosmo.transfer['k']
@@ -100,24 +109,24 @@ class TestTools(unittest.TestCase):
         self.assertEqual(ells[0], 2)
         self.assertEqual(ells[-1], lmax)
 
-    def test_cosmology_calc_transfer_err_value(self):
+    def test_cosmology_calculate_transfer_err_value(self):
 
         lmax = 299 # Too low value.
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
 
-        self.assertRaises(ValueError, cosmo.calc_transfer, lmax)
+        self.assertRaises(ValueError, cosmo.calculate_transfer, lmax)
 
-    def test_cosmology_calc_cls(self):
+    def test_cosmology_calculate_cls(self):
 
         lmax = 450
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
 
-        cosmo.calc_transfer(lmax)
-        cosmo.calc_cls()
+        cosmo.calculate_transfer(lmax)
+        cosmo.calculate_cls()
 
         ells_unlensed = cosmo.cls['unlensed_scalar']['ells']
         np.testing.assert_equal(ells_unlensed, np.arange(lmax+1,dtype=int))
@@ -157,49 +166,53 @@ class TestTools(unittest.TestCase):
         npol = 2
         ncomp = 1
 
-        b_ell_r = np.ones((nr, nell, npol, ncomp), dtype=float)
-        b_ell_r *= (
+        red_bisp = np.ones((nr, nell, npol, ncomp), dtype=float)
+        red_bisp *= (
             np.sin(0.1 * ells_sparse)[np.newaxis,:,np.newaxis,np.newaxis])
 
-        b_ell_r_full = Cosmology._interp_reduced_bispec_over_ell(
-            b_ell_r, ells_sparse, ells_full)
+        red_bisp_full = Cosmology._interp_reduced_bispec_over_ell(
+            red_bisp, ells_sparse, ells_full)
 
         nell_full = ells_full.size
 
-        self.assertEqual(b_ell_r_full.shape, (nr, nell_full, npol, ncomp))
+        self.assertEqual(red_bisp_full.shape, (nr, nell_full, npol, ncomp))
 
-        b_ell_r_full_expec = np.ones((nr, nell_full, npol, ncomp))
-        b_ell_r_full_expec *= (
+        red_bisp_full_expec = np.ones((nr, nell_full, npol, ncomp))
+        red_bisp_full_expec *= (
             np.sin(0.1 * ells_full)[np.newaxis,:,np.newaxis,np.newaxis])
 
-        np.testing.assert_almost_equal(b_ell_r_full, b_ell_r_full_expec,
+        np.testing.assert_almost_equal(red_bisp_full, red_bisp_full_expec,
                                        decimal=2)
 
-    def test_cosmology_calc_reduced_bispectrum(self):
+    def test_cosmology_calculate_prim_reduced_bispectrum(self):
 
         lmax = 300
         radii = np.asarray([11000., 14000.])
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
-        cosmo.calc_transfer(lmax)
+        cosmo.calculate_transfer(lmax)
 
         funcs, rule, amps = Shape.prim_local(ns=1)
         local = Shape(funcs, rule, amps)
 
-        cosmo.calc_reduced_bispectrum(local, radii)
+        cosmo.calculate_prim_reduced_bispectrum(local, radii)
 
         # check cshape of attribute
         # check dtype of attribute
-        nell = lmax - 1 # b_ell_r starts from ell=2.
+        nell = lmax - 1 # red_bisp starts from ell=2.
         nr = len(radii)
         ncomp = len(funcs)
         npol = 2
-        self.assertEqual(cosmo.b_ell_r.shape, (nr, nell, npol, ncomp))
-        self.assertEqual(cosmo.b_ell_r.dtype, float)
+        self.assertEqual(cosmo.red_bisp['red_bisp'].shape,
+                         (nr, nell, npol, ncomp))
+        self.assertEqual(cosmo.red_bisp['red_bisp'].dtype, float)
+
+        ells = np.arange(2, lmax+1)
+        np.testing.assert_equal(cosmo.red_bisp['ells'], ells)
+        np.testing.assert_almost_equal(cosmo.red_bisp['radii'], radii)
 
         # Manually compute reduced bispec factors for given r, ell.
-
         k = cosmo.transfer['k']
         tr_ell_k = cosmo.transfer['tr_ell_k'] # (nell, nk, npol).
         ells_sparse = cosmo.transfer['ells']
@@ -218,5 +231,93 @@ class TestTools(unittest.TestCase):
 
         lidx_full = ell - 2
 
-        ans = cosmo.b_ell_r[ridx,lidx_full,pidx, cidx]
+        ans = cosmo.red_bisp['red_bisp'][ridx,lidx_full,pidx, cidx]
         self.assertAlmostEqual(ans, ans_expec, places=6)
+
+class TestCosmoIO(unittest.TestCase):
+
+    def setUp(self):
+
+        # Get location of this script.
+        self.path = pathlib.Path(__file__).parent.absolute()
+
+        # Cosmo instance with transfer, cls and camb params.
+        self.cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
+                               mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
+
+        pars = camb.CAMBparams(**self.cosmo_opts)
+        cosmo = Cosmology(pars)
+
+        nell = 4
+        nk = 3
+        npol = 2
+        tr_ell_k = np.ones((nell, nk, npol), dtype=float)
+        k = np.arange(nk, dtype=float)
+        ells = np.arange(nell, dtype=int)
+
+        cosmo.transfer = {'tr_ell_k' : tr_ell_k,
+                          'k' : k, 'ells' : ells}
+
+        cls_lensed = np.ones((nell, 4), dtype=float)
+        cls_unlensed = np.ones((nell, 4), dtype=float) * 2.
+        cosmo.cls = {'lensed_scalar' : {'ells' : ells,
+                                        'cls' : cls_lensed},
+                     'unlensed_scalar' : {'ells' : ells,
+                                          'cls' : cls_unlensed}}
+        self.cosmo = cosmo
+
+    def tearDown(self):
+        # Is called after each test.
+        pass
+
+    def test_read_write_transfer(self):
+
+        pars = camb.CAMBparams(**self.cosmo_opts)
+        cosmo_new = Cosmology(pars)
+
+        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
+
+            filename = os.path.join(tmpdirname, 'transfer')
+            self.cosmo.write_transfer(filename)
+
+            cosmo_new.read_transfer(filename)
+
+            np.testing.assert_almost_equal(
+                cosmo_new.transfer['tr_ell_k'],
+                self.cosmo.transfer['tr_ell_k'])
+            
+            np.testing.assert_almost_equal(
+                cosmo_new.transfer['k'],
+                self.cosmo.transfer['k'])
+            
+            np.testing.assert_equal(
+                cosmo_new.transfer['ells'],
+                self.cosmo.transfer['ells'])
+
+    def test_read_write_cls(self):
+
+        pars = camb.CAMBparams(**self.cosmo_opts)
+        cosmo_new = Cosmology(pars)
+
+        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
+
+            filename = os.path.join(tmpdirname, 'cls')
+            self.cosmo.write_cls(filename)
+
+            cosmo_new.read_cls(filename)
+
+            # Do some tests.
+
+    def test_read_write_camb_params(self):
+
+        pars = camb.CAMBparams(**self.cosmo_opts)
+        cosmo_new = Cosmology(pars)
+
+        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
+
+            filename = os.path.join(tmpdirname, 'camb_params')
+            self.cosmo.write_camb_params(filename)
+
+            cosmo_new.read_camb_params(filename)
+
+            # Do some tests.

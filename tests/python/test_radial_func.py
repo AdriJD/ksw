@@ -6,7 +6,7 @@ from ksw import radial_functional as rf
 import numpy as np
 from scipy.special import spherical_jn
 
-class TestTools(unittest.TestCase):
+class TestRadialFunc(unittest.TestCase):
     
     def test_check_and_return_shape_2d(self):
 

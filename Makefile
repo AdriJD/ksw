@@ -1,6 +1,3 @@
-# Idea is to complile hyperspherical c files to .o files, then compile
-# new c code that contains functions for beta, then combine them into
-# a library, and finally, import that library into python using cython.
 .PHONY: clean all check python
 
 CC = gcc
