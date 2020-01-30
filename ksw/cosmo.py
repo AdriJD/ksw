@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.interpolate import CubicSpline
+import inspect
+import json
 
 import camb
 import h5py
@@ -325,7 +327,7 @@ class Cosmology:
 
     def write_camb_params(self, filename):
         '''
-        Write the CAMB parameters to disk.
+        Dump the CAMB parameters to human readable file.
 
         Parameters
         ----------
@@ -333,8 +335,31 @@ class Cosmology:
             Filename
         '''
 
-        # Use python built-in JSON
-        pass
+        # Put parameters in dict of dicts.
+        params = {}
+
+        for idx in inspect.getmembers(self.camb_params):
+            if idx[0].startswith('_'):
+                continue
+            elif inspect.ismethod(idx[1]):
+                continue
+            elif isinstance(idx[1], (int, float, bool, list)):
+                params[idx[0]] = idx[1]
+            elif isinstance(idx[1], camb.model.CAMB_Structure):
+                params[idx[0]] = {}
+                
+                for jdx in inspect.getmembers(idx[1]):
+
+                    if jdx[0].startswith('_'):
+                        continue
+                    elif inspect.ismethod(jdx[1]):
+                        continue
+                    elif isinstance(jdx[1], (int, float, bool, list)):
+                        params[idx[0]][jdx[0]] = jdx[1]
+                                                       
+        # Store dict.
+        with open(filename + '.json', 'w') as f:
+            json.dump(params, f, sort_keys=True, indent=4)
 
     def write_red_bisp(self, filename):
         '''
@@ -345,10 +370,12 @@ class Cosmology:
         filename : str
             Filename
         '''
-        # Use h5py.
 
-        pass
-
+        with h5py.File(filename + '.hdf5', 'w') as f:
+            f.create_dataset('red_bisp', data=self.red_bisp['red_bisp'])
+            f.create_dataset('radii', data=self.red_bisp['radii'])
+            f.create_dataset('ells', data=self.red_bisp['ells'])
+    
     def write_cls(self, filename):
         '''
         Write the angular power spectra to disk.
@@ -358,15 +385,29 @@ class Cosmology:
         filename : str
             Filename
         '''
-        pass
-        #with h5py.File(filename + '.hdf5', 'w') as f:
-        #    f.create_dataset('tr_ell_k', data=self.transfer['tr_ell_k'])
-        #    f.create_dataset('k', data=self.transfer['k'])
-        #    f.create_dataset('ells', data=self.transfer['ells'])
-        # Here you need groups.
-        
-    def read_transfer(self, filename):
+        with h5py.File(filename + '.hdf5', 'w') as f:
+            lens_scal = f.create_group('lensed_scalar')
+            lens_scal.create_dataset('ells',
+                    data=self.cls['lensed_scalar']['ells'])
+            lens_scal.create_dataset('cls',
+                    data=self.cls['lensed_scalar']['cls'])
 
+            unlens_scal = f.create_group('unlensed_scalar')
+            unlens_scal.create_dataset('ells',
+                    data=self.cls['unlensed_scalar']['ells'])
+            unlens_scal.create_dataset('cls',
+                    data=self.cls['unlensed_scalar']['cls'])
+            
+    def read_transfer(self, filename):
+        '''
+        Read in tranfer file and populate transfer attribute.
+
+        Parameters
+        ----------
+        filename : str
+            Filename
+        '''
+        
         self.transfer = {}
 
         with h5py.File(filename + '.hdf5', 'r') as f:
@@ -374,39 +415,45 @@ class Cosmology:
             self.transfer['k'] = f['k'][()]
             self.transfer['ells'] = f['ells'][()]
 
-    def read_camb_params(self, filename):
-        pass
-
     def read_red_bisp(self, filename):
-        pass
+        '''
+        Read in reduced bispectrum file and populate red_bisp attribute.
 
+        Parameters
+        ----------
+        filename : str
+            Filename
+        '''
+
+        self.red_bisp = {}
+
+        with h5py.File(filename + '.hdf5', 'r') as f:
+            self.red_bisp['red_bisp'] = f['red_bisp'][()]
+            self.red_bisp['radii'] = f['radii'][()]
+            self.red_bisp['ells'] = f['ells'][()]
+    
     def read_cls(self, filename):
-        pass
+        '''
+        Read in cls file and populate cls attribute.
 
-        # write entire transfer func dict to disk
-        # also write camb_params? How to do that, save it as class?
+        Parameters
+        ----------
+        filename : str
+            Filename
+        '''
 
-        # perhaps only save red bispectrum and cls
-        # saving camb is a bit painful, and you don't really need the
-        # transfer functions... I think you would almost always remake
-        # those when you remake the red bispectrum.
+        self.cls = {}
 
-        # or also save transfer func dict. Problem is that you
-        # cannot retrace what settings for camb were used...
-        # you can store all you values, but those are dependent
-        # on the defaults of CAMB.
+        with h5py.File(filename + '.hdf5', 'r') as f:
+            ells = f['lensed_scalar/ells'][()]
+            cls = f['lensed_scalar/cls'][()]
+            self.cls['lensed_scalar'] = {}
+            self.cls['lensed_scalar']['ells'] = ells
+            self.cls['lensed_scalar']['cls'] = cls
 
-        # Update, I can create a dictionary with all camb options
-        # so then at least, you can restart camb with the same
-        # values.
-        # or more importantly, look at options you used for specific
-        # run.
-
-        # you could do a check where you warn the user that
-        # options in current camb_param file are not equal to the
-        # ones used for the transfer function or red bispec.
-        # use the pars.diff method.
-
-    # some functions to read and write transfer functions and red_bisps
-    # When reading, should automatically get correct state of class instance
-    # so also read/write camb params with transfer (and poss also with red_bisp)
+            ells = f['unlensed_scalar/ells'][()]
+            cls = f['unlensed_scalar/cls'][()]
+            self.cls['unlensed_scalar'] = {}
+            self.cls['unlensed_scalar']['ells'] = ells
+            self.cls['unlensed_scalar']['cls'] = cls            
+            

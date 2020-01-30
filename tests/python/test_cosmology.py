@@ -4,6 +4,7 @@ from scipy.special import spherical_jn
 import os
 import tempfile
 import pathlib
+import json
 
 import camb
 
@@ -251,9 +252,13 @@ class TestCosmoIO(unittest.TestCase):
         nell = 4
         nk = 3
         npol = 2
+        ncomp = 2
+        nr = 3
         tr_ell_k = np.ones((nell, nk, npol), dtype=float)
         k = np.arange(nk, dtype=float)
         ells = np.arange(nell, dtype=int)
+        radii = np.arange(nr, dtype=float)
+        red_bisp =  np.ones((nr, nell, npol, ncomp), dtype=float)
 
         cosmo.transfer = {'tr_ell_k' : tr_ell_k,
                           'k' : k, 'ells' : ells}
@@ -264,6 +269,10 @@ class TestCosmoIO(unittest.TestCase):
                                         'cls' : cls_lensed},
                      'unlensed_scalar' : {'ells' : ells,
                                           'cls' : cls_unlensed}}
+        cosmo.red_bisp = {'red_bisp' : red_bisp,
+                          'radii' : radii,
+                          'ells' : ells}
+
         self.cosmo = cosmo
 
     def tearDown(self):
@@ -285,11 +294,11 @@ class TestCosmoIO(unittest.TestCase):
             np.testing.assert_almost_equal(
                 cosmo_new.transfer['tr_ell_k'],
                 self.cosmo.transfer['tr_ell_k'])
-            
+
             np.testing.assert_almost_equal(
                 cosmo_new.transfer['k'],
                 self.cosmo.transfer['k'])
-            
+
             np.testing.assert_equal(
                 cosmo_new.transfer['ells'],
                 self.cosmo.transfer['ells'])
@@ -306,18 +315,79 @@ class TestCosmoIO(unittest.TestCase):
 
             cosmo_new.read_cls(filename)
 
-            # Do some tests.
+            np.testing.assert_almost_equal(
+                cosmo_new.cls['lensed_scalar']['cls'],
+                self.cosmo.cls['lensed_scalar']['cls'])
 
-    def test_read_write_camb_params(self):
+            np.testing.assert_equal(
+                cosmo_new.cls['lensed_scalar']['ells'],
+                self.cosmo.cls['lensed_scalar']['ells'])
+
+            np.testing.assert_almost_equal(
+                cosmo_new.cls['unlensed_scalar']['cls'],
+                self.cosmo.cls['unlensed_scalar']['cls'])
+
+            np.testing.assert_equal(
+                cosmo_new.cls['unlensed_scalar']['ells'],
+                self.cosmo.cls['unlensed_scalar']['ells'])
+
+    def test_read_write_red_bisp(self):
 
         pars = camb.CAMBparams(**self.cosmo_opts)
         cosmo_new = Cosmology(pars)
 
         with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
 
+            filename = os.path.join(tmpdirname, 'red_bisp')
+            self.cosmo.write_red_bisp(filename)
+
+            cosmo_new.read_red_bisp(filename)
+
+            np.testing.assert_almost_equal(
+                cosmo_new.red_bisp['red_bisp'],
+                self.cosmo.red_bisp['red_bisp'])
+
+            np.testing.assert_almost_equal(
+                cosmo_new.red_bisp['radii'],
+                self.cosmo.red_bisp['radii'])
+
+            np.testing.assert_equal(
+                cosmo_new.red_bisp['ells'],
+                self.cosmo.red_bisp['ells'])
+
+    def test_write_camb_params(self):
+
+        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
+
             filename = os.path.join(tmpdirname, 'camb_params')
             self.cosmo.write_camb_params(filename)
 
-            cosmo_new.read_camb_params(filename)
+            with open(filename + '.json') as f:
+                params = json.load(f)
 
-            # Do some tests.
+        params_new = camb.CAMBparams()
+
+        # Perhaps put this in method of cosmo, and let cosmo.__init__
+        # accept a filename as param as well.
+        
+        for key in params:
+            if type(params[key]) is dict: # i.e. camb.model.CAMB_Structure.
+                subclass = getattr(params_new, key)
+                for subkey in params[key]:
+                    try:
+                        setattr(subclass, subkey, params[key][subkey])
+                    except AttributeError as e:
+                        # Test if property without setter.
+                        if not hasattr(subclass, subkey):
+                            raise e
+                        
+            else:
+                try:
+                    setattr(params_new, key, params[key])
+                except AttributeError as e:
+                    # Test if property without setter.
+                    if not hasattr(subclass, subkey):
+                        raise e
+
+        # Check if new CAMB parameter object is equal to original.
+        self.assertIs(self.cosmo.camb_params.diff(params_new), None)
