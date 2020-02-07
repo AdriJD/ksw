@@ -1,14 +1,14 @@
 # ksw
 
 ### Dependencies
-***
+
 - Python>=3.4
-- gcc (other C compilers should work too)
-- pixell
-- camb
+- gcc (other C compilers should work)
+- [pixell](https://github.com/simonsobs/pixell)
+- [camb](https://camb.readthedocs.io/en/latest/)
 
 ### Installation
-***
+
 
 ```
 $ make
