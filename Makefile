@@ -15,7 +15,10 @@ PDIR = $(DIR)/ksw
 HS_SDIR = $(DIR)/hyperspherical/src
 HS_IDIR = $(DIR)/hyperspherical/include
 
-CFLAGS = -g -Wall -fpic -std=c99
+NEWDIRS = $(LDIR) $(ODIR) $(TDIR)/obj $(TDIR)/bin
+$(info $(shell mkdir -p -v $(NEWDIRS)))
+
+CFLAGS = -g -Wall -fpic -std=gnu99
 OMPFLAG = -fopenmp
 OPTFLAG = -march=native -O4 -ffast-math
 
@@ -53,7 +56,7 @@ check_python:
 	cd $(TDIR); python -m pytest python/
 
 $(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(OBJECTS) $(LDIR)/libradial_functional.so
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -Wl,-rpath,$(LDIR)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -lm -Wl,-rpath,$(LDIR)
 
 $(TDIR)/obj/run_tests.o: $(TDIR)/src/run_tests.c $(TDIR)/include/seatest.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include -I$(IDIR)
@@ -65,10 +68,10 @@ $(TDIR)/obj/test_radial_functional.o: $(TDIR)/src/test_radial_functional.c $(IDI
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
 
 clean:
-	rm -f $(ODIR)/*.o
-	rm -f $(LDIR)/*.so
-	rm -f $(TDIR)/obj/*.o
-	rm -f $(TDIR)/bin/*
+	rm -rf $(ODIR)
+	rm -rf $(LDIR)
+	rm -rf $(TDIR)/obj
+	rm -rf $(TDIR)/bin
 	rm -f $(CDIR)/*.c
 	rm -f $(PDIR)/*.so
 	rm -rf $(DIR)/build

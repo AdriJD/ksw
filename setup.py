@@ -10,12 +10,11 @@ opj = os.path.join
 path = str(Path(__file__).parent.absolute())
 
 compile_opts = {
-    'extra_compile_args': ['-std=c99',
+    'extra_compile_args': ['-shared', '-std=gnu99', 
                            '-fopenmp',
                            '-Wno-strict-aliasing',
-                           '-g'],
-    'extra_link_args': ['-fopenmp',
-                        '-g']}
+                           '-g']}
+
 compiler_directives = {'language_level' : 3}
 
 ext_modules = [Extension('ksw.radial_functional',
@@ -24,6 +23,7 @@ ext_modules = [Extension('ksw.radial_functional',
                          library_dirs=[opj(path, 'lib')],
                          include_dirs=[opj(path, 'include'),
                                        np.get_include()],
+                         runtime_library_dirs=[opj(path, 'lib')],
                          **compile_opts)]
 
 setup(name='ksw',
