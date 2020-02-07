@@ -17,7 +17,7 @@ HS_IDIR = $(DIR)/hyperspherical/include
 
 CFLAGS = -g -Wall -fpic -std=c99
 OMPFLAG = -fopenmp
-OPTFLAG = -O4 -ffast-math
+OPTFLAG = -march=native -O4 -ffast-math
 
 OBJECTS = $(ODIR)/radial_functional.o \
           $(ODIR)/common.o \

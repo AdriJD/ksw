@@ -10,7 +10,7 @@ from ksw import radial_functional as rf
 
 class Cosmology:
     '''
-    A cosmology instance represent a specific cosmology and
+    A Cosmology instance represent a specific cosmology and
     can calculate power spectra and bispectra.
 
     Parameters
@@ -141,7 +141,7 @@ class Cosmology:
                 'New value {} for param {} makes params invalid.'.format(
                     value, name))
 
-    def calculate_transfer(self, lmax, verbose=True):
+    def compute_transfer(self, lmax, verbose=True):
         '''
         Call CAMB to calculate radiation transfer functions.
 
@@ -213,7 +213,7 @@ class Cosmology:
         self.transfer['k'] = tr.q
         self.transfer['ells'] = ells # Probably sparse.
 
-    def calculate_cls(self):
+    def compute_cls(self):
         '''
         Calculate angular power spectra using precomputed
         transfer functions.
@@ -245,7 +245,7 @@ class Cosmology:
         self.cls['lensed_scalar']['ells'] = ells_lensed
         self.cls['lensed_scalar']['cls'] = cls_lensed_scalar
 
-    def calculate_prim_reduced_bispectrum(self, prim_shape, radii):
+    def compute_prim_reduced_bispectrum(self, prim_shape, radii):
         '''
         Compute the factors of the reduced bispectrum of
         a given primordial shape.

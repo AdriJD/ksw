@@ -87,14 +87,14 @@ class TestCosmo(unittest.TestCase):
         self.assertRaises(AttributeError, cosmo._setattr_camb,
                           'NonExistingParam', 100)
 
-    def test_cosmology_calculate_transfer(self):
+    def test_cosmology_compute_transfer(self):
 
         lmax = 300
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
 
-        cosmo.calculate_transfer(lmax)
+        cosmo.compute_transfer(lmax)
 
         ells = cosmo.transfer['ells']
         k = cosmo.transfer['k']
@@ -110,24 +110,24 @@ class TestCosmo(unittest.TestCase):
         self.assertEqual(ells[0], 2)
         self.assertEqual(ells[-1], lmax)
 
-    def test_cosmology_calculate_transfer_err_value(self):
+    def test_cosmology_compute_transfer_err_value(self):
 
         lmax = 299 # Too low value.
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
 
-        self.assertRaises(ValueError, cosmo.calculate_transfer, lmax)
+        self.assertRaises(ValueError, cosmo.compute_transfer, lmax)
 
-    def test_cosmology_calculate_cls(self):
+    def test_cosmology_compute_cls(self):
 
         lmax = 450
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
 
-        cosmo.calculate_transfer(lmax)
-        cosmo.calculate_cls()
+        cosmo.compute_transfer(lmax)
+        cosmo.compute_cls()
 
         ells_unlensed = cosmo.cls['unlensed_scalar']['ells']
         np.testing.assert_equal(ells_unlensed, np.arange(lmax+1,dtype=int))
@@ -185,19 +185,19 @@ class TestCosmo(unittest.TestCase):
         np.testing.assert_almost_equal(red_bisp_full, red_bisp_full_expec,
                                        decimal=2)
 
-    def test_cosmology_calculate_prim_reduced_bispectrum(self):
+    def test_cosmology_compute_prim_reduced_bispectrum(self):
 
         lmax = 300
         radii = np.asarray([11000., 14000.])
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
-        cosmo.calculate_transfer(lmax)
+        cosmo.compute_transfer(lmax)
 
         funcs, rule, amps = Shape.prim_local(ns=1)
         local = Shape(funcs, rule, amps)
 
-        cosmo.calculate_prim_reduced_bispectrum(local, radii)
+        cosmo.compute_prim_reduced_bispectrum(local, radii)
 
         # check cshape of attribute
         # check dtype of attribute

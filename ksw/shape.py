@@ -17,7 +17,7 @@ class Shape:
     Notes
     -----
 
-    <z_k1, z_k2, z_k3> = (2pi)^3 delta(k1+k2+k3) * B(k1, k2, k3),
+    <zeta_k1, zeta_k2, zeta_k3> = (2pi)^3 delta(k1+k2+k3) * B(k1, k2, k3),
 
     with:
 
