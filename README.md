@@ -1,19 +1,27 @@
 # ksw
 
+### Dependencies
+***
+- Python>=3.4
+- gcc (other C compilers should work too)
+- pixell
+- camb
+
 ### Installation
+***
 
 ```
-make
+$ make
 ```
 
 ```
-pip install .
+$ pip install .
 ```
 
-Run tests:
+$ Run tests:
 
 ```
-make check
+$ make check
 ```
 
 Consider adding the `-e` flag to the `pip install` command to enable automatic 
@@ -22,7 +30,7 @@ updating of code changes when developing.
 As an alternative to the `pip install .` command, you can run:
 
 ```
-make python
+$ make python
 ```
 
 to simply build the python package inside this directory.
