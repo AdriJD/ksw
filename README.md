@@ -18,7 +18,7 @@ $ make
 $ pip install .
 ```
 
-$ Run tests:
+Run tests:
 
 ```
 $ make check
