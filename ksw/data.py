@@ -11,15 +11,15 @@ class Data():
     ----------
     alm_data : (nelem) or (npol, nelem) complex array
         Spherical harmonic coefficients of data in uK and
-        in Healpix ordering.
+        in Healpix ordering. Order pol: T, E.
     n_ell : (nell) or (nspec, nell) array
         Noise covariance matrix (without beam) in uK^2.
-        Order=TT, (EE, TE).
+        Order: TT, EE, TE.
     b_ell : (nell) or (npol, nell) array
         Beam window function of alms.
-    pol : str, array-like of str
+    pol : str, array-like of str, optional
         Data polarization, e.g. "E", or ["T", "E"]. Order
-        should always be T, E.
+        should always be T, E. 
 
     Raises
     ------
@@ -50,7 +50,7 @@ class Data():
         Covariance matrix diagonal in multipole.
     '''
 
-    def __init__(self, alm_data, n_ell, b_ell, pol):
+    def __init__(self, alm_data, n_ell, b_ell, pol=None):
 
         self.pol = pol
         self.alm_data = alm_data
@@ -65,15 +65,15 @@ class Data():
 
     @pol.setter
     def pol(self, pol):
-        '''Make tuple and check contents'''
+        '''Make tuple and check contents.'''
         pol = tuple(pol)
         if pol.count('T') + pol.count('E') != len(pol):
             raise ValueError('Pol={}, but may only contain T and/or E.'.
                              format(pol))
-        elif pol.count('T') != 1:
+        elif pol.count('T') != 1 and pol.count('E') != 1:
             raise ValueError('Pol={}, cannot contain duplicates.'.
                              format(pol))
-        if pol[0] == 'E' and len(pol) > 1:
+        elif pol[0] == 'E' and len(pol) > 1:
             raise ValueError('Incorrect order of pol: {}.'.format(pol))
         self.__pol = pol
 
@@ -144,6 +144,11 @@ class Data():
     def compute_alm_sim(self):
         '''
         Draw isotropic Gaussian realisation from (S+N) covariance.
+
+        Raises
+        ------
+        AttributeError
+            If compute_totcov_diag() has not been called.
         '''
 
         totcov_diag = self.totcov_diag
@@ -166,11 +171,11 @@ class Data():
 
         alm = hp.synalm(cls_in, lmax=self.lmax, new=True)
 
-        if self.npol == ('T', 'E'):
+        if self.pol == ('T', 'E'):
             # Only return I and E.
-            alms = alm[:2,:]
-        if self.pol == ('E',):
-            alm = alm[1,:]
+            alm = alm[:2,:]
+        elif self.pol == ('E',):
+            alm = (alm[1,:])[np.newaxis,:]
         else:
             alm = alm
 
@@ -178,7 +183,7 @@ class Data():
 
     def compute_totcov_diag(self, cosmo, add_lens_power=False):
         '''
-        Return data covariance: (Nl + Cl * bl^2). Diagonal in
+        Compute data covariance: (Nl + Cl * bl^2). Diagonal in
         multipole but may include correlations between polarizations.
 
         Parameters
@@ -230,12 +235,12 @@ class Data():
         # Turn into correct shape and multiply with beam.
         if self.pol == ('T',):
             totcov = totcov[0,:]
-            totcov *= self.b_ell ** 2
             totcov = totcov[np.newaxis,:]
+            totcov *= self.b_ell ** 2            
         elif self.pol == ('E',):
             totcov = totcov[1,:]
-            totcov *= self.b_ell ** 2
             totcov = totcov[np.newaxis,:]
+            totcov *= self.b_ell ** 2            
         elif self.pol == ('T', 'E'):
             polmask = np.ones(4, dtype=bool)
             polmask[2] = False # Mask B.
@@ -266,7 +271,7 @@ class Data():
         Raises
         ------
         AttributeError
-            If compute_alm_sim() has not been called.
+            If compute_alm_sim() has not been called but sim is set.
             If compute_totcov_diag() has not been called.
         '''
 
@@ -288,7 +293,7 @@ class Data():
         c_inv = np.zeros((self.npol, self.npol, nell))
 
         c_inv[0,0] = totcov[0]
-        if npol == 2:            
+        if self.pol == ('T', 'E'):            
             c_inv[0,1] = totcov[2]
             c_inv[1,0] = totcov[2]
             c_inv[1,1] = totcov[1]
@@ -298,12 +303,12 @@ class Data():
         c_inv = np.ascontiguousarray(np.transpose(c_inv, (1, 2, 0)))        
         
         if self.pol == ('T', 'E'):
-            c_inv_a[0] = hp.almxfl(a[0], c_inv[1])
-            c_inv_a[0] += hp.almxfl(a[1], c_inv[2])
-            c_inv_a[1] = hp.almxfl(a[0], c_inv[2])
-            c_inv_a[1] += hp.almxfl(a[1], c_inv[1])
+            c_inv_a[0] = hp.almxfl(alm[0], c_inv[0,0])
+            c_inv_a[0] += hp.almxfl(alm[1], c_inv[0,1])
+            c_inv_a[1] = hp.almxfl(alm[0], c_inv[1,0])
+            c_inv_a[1] += hp.almxfl(alm[1], c_inv[1,1])
 
         elif self.npol == 1:
-            c_inv_a[0] = hp.almxfl(a[0], c_inv[0])
+            c_inv_a[0] = hp.almxfl(alm[0], c_inv[0,0])
 
         return c_inv_a

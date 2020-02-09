@@ -1,4 +1,4 @@
-'''
+'''A
 Test the Data class.
 '''
 import unittest
@@ -17,8 +17,10 @@ class TestData(unittest.TestCase):
         self.nell = self.lmax + 1
         self.nelem = hp.Alm.getsize(self.lmax)
 
-        self.alm_T = np.zeros(self.nelem, dtype=complex)
-        self.alm_TplusE = np.zeros((2, self.nelem), dtype=complex)
+        self.alm_T = np.ones(self.nelem, dtype=complex)
+        self.alm_T[0] = 1.
+        self.alm_TplusE = np.ones((2, self.nelem), dtype=complex)
+        self.alm_TplusE[:,:2] = 0.
         self.n_ell_T = np.arange(self.nell, dtype=float)
         self.n_ell_TplusE = np.arange(
             3 * self.nell, dtype=float).reshape(3, self.nell)
@@ -164,7 +166,51 @@ class TestData(unittest.TestCase):
         self.assertRaises(ValueError, Data, self.alm_TplusE,
                           self.n_ell_TplusE, self.b_ell_TplusE, pol)
         
-    def test_data_compute_totcov_diag(self):
+    def test_data_compute_totcov_diag_1d_T(self):
+
+        cosmo = self.FakeCosmology()
+        pol = ['T']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        # Without lensing power.
+        data.compute_totcov_diag(cosmo, add_lens_power=False)
+        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+
+        expec_totcov = np.zeros((1, self.nell))
+        expec_totcov[0] = self.n_ell_T + self.cls[:,0] * 2
+        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
+
+        # With lensing power.        
+        data.compute_totcov_diag(cosmo, add_lens_power=True)
+        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+
+        expec_totcov[0] = self.n_ell_T + self.cls[:,0]
+        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
+
+    def test_data_compute_totcov_diag_1d_E(self):
+
+        cosmo = self.FakeCosmology()
+        pol = ['E']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        # Without lensing power.
+        data.compute_totcov_diag(cosmo, add_lens_power=False)
+        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+
+        expec_totcov = np.zeros((1, self.nell))
+        expec_totcov[0] = self.n_ell_T + self.cls[:,1] * 2
+        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
+
+        # With lensing power.        
+        data.compute_totcov_diag(cosmo, add_lens_power=True)
+        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+
+        expec_totcov[0] = self.n_ell_T + self.cls[:,1]
+        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
+        
+    def test_data_compute_totcov_diag_2d(self):
 
         cosmo = self.FakeCosmology()
         pol = ['T', 'E']
@@ -190,7 +236,169 @@ class TestData(unittest.TestCase):
         expec_totcov[2] = self.n_ell_TplusE[2] + self.cls[:,3]    
         np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
         
-    
-    # test for sim
-    # test invcov
+    def test_data_get_c_inv_a_diag(self):
+
+        pol = ['T', 'E']
+        data = Data(self.alm_TplusE, self.n_ell_TplusE,
+                    self.b_ell_TplusE, pol)
+
+        totcov_diag = np.ones_like(data.n_ell) # (nspec, nell).
+        totcov_diag[:2,:] = 2.
+        #  2  1  inv:  2/3 -1/3
+        #  1  2       -1/3 2/3 
+        data.totcov_diag = totcov_diag
+        c_inv_a = data.get_c_inv_a_diag()
+
+        c_inv_a_expec = np.zeros_like(self.alm_TplusE)
+        c_inv_a_expec[0,:] = self.alm_TplusE[0] * (2/3.)
+        c_inv_a_expec[0,:] += self.alm_TplusE[1] * (-1/3.)
+        c_inv_a_expec[1,:] = self.alm_TplusE[0] * (-1/3.)
+        c_inv_a_expec[1,:] += self.alm_TplusE[1] * (2/3.)
+        
+        np.testing.assert_almost_equal(c_inv_a, c_inv_a_expec)
+
+    def test_data_get_c_inv_a_diag_1d_T(self):
+
+        pol = ['T']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        totcov_diag = np.ones((1, self.nell))
+        totcov_diag[0,:] = 2.
+        data.totcov_diag = totcov_diag
+        c_inv_a = data.get_c_inv_a_diag()
+
+        c_inv_a_expec = np.zeros((1, self.nelem), dtype=complex)
+        c_inv_a_expec[0,:] = self.alm_T[0] * (1/2.)
+        
+        np.testing.assert_almost_equal(c_inv_a, c_inv_a_expec)
+
+    def test_data_get_c_inv_a_diag_1d_E(self):
+
+        pol = ['E']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        totcov_diag = np.ones((1, self.nell))
+        totcov_diag[0,:] = 2.
+        data.totcov_diag = totcov_diag
+        c_inv_a = data.get_c_inv_a_diag()
+
+        c_inv_a_expec = np.zeros((1, self.nelem), dtype=complex)
+        c_inv_a_expec[0,:] = self.alm_T[0] * (1/2.)
+        
+        np.testing.assert_almost_equal(c_inv_a, c_inv_a_expec)
+
+    def test_data_get_c_inv_a_diag_err(self):
+        
+        pol = ['E']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        # totcov_diag is not set yet.        
+        self.assertRaises(AttributeError, data.get_c_inv_a_diag)
+        
+        totcov_diag = np.ones((1, self.nell))
+        totcov_diag[0,:] = 2.
+        data.totcov_diag = totcov_diag
+
+        opts = {'sim' : True}
+        # alm_sim is not set yet.
+        self.assertRaises(AttributeError, data.get_c_inv_a_diag, **opts)
+
+    def test_data_get_c_inv_a_diag_sim(self):
+        
+        pol = ['E']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        totcov_diag = np.ones((1, self.nell))
+        totcov_diag[0,:] = 2.
+        data.totcov_diag = totcov_diag
+        data.alm_sim = self.alm_T[np.newaxis,:] + 1j
+        c_inv_a = data.get_c_inv_a_diag(sim=True)
+
+        c_inv_a_expec = np.zeros((1, self.nelem), dtype=complex)
+        c_inv_a_expec[0,:] = self.alm_T[0] * (0.5 + 0.5j)
+        
+        np.testing.assert_almost_equal(c_inv_a, c_inv_a_expec)
+        
+    def test_data_compute_alm_sim(self):
+
+        pol = ['T', 'E']
+        data = Data(self.alm_TplusE, self.n_ell_TplusE,
+                    self.b_ell_TplusE, pol)
+
+        totcov_diag = np.ones_like(data.n_ell) # (nspec, nell).
+        totcov_diag[:2,:] = 2.
+        data.totcov_diag = totcov_diag
+        
+        np.random.seed(10)
+        data.compute_alm_sim()
+        np.random.seed(10)
+
+        cls = np.zeros((4, self.nell))
+        cls[:2] = 2.
+        cls[3] = 1.
+        
+        alm = hp.synalm(cls, new=True)
+        alm_sim_expec = np.zeros((2, self.nelem), dtype=complex)
+        alm_sim_expec[0] = alm[0]
+        alm_sim_expec[1] = alm[1]
+
+        np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)
+
+    def test_data_compute_alm_sim_1d_E(self):
+
+        pol = ['E']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        totcov_diag = np.ones((1, self.nell)) # (nspec, nell).
+        totcov_diag[0,:] = 2.
+        data.totcov_diag = totcov_diag
+        
+        np.random.seed(10)
+        data.compute_alm_sim()
+        np.random.seed(10)
+
+        cls = np.zeros((4, self.nell))
+        cls[1] = 2.
+                
+        alm = hp.synalm(cls, new=True)
+        alm_sim_expec = (alm[1])[np.newaxis,:]
+        
+        np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)
+
+    def test_data_compute_alm_sim_1d_T(self):
+
+        pol = ['T']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        totcov_diag = np.ones((1, self.nell)) # (nspec, nell).
+        totcov_diag[0,:] = 2.
+        data.totcov_diag = totcov_diag
+        
+        np.random.seed(10)
+        data.compute_alm_sim()
+        np.random.seed(10)
+
+        cls = np.ones(self.nell) * 2.
+                
+        alm = hp.synalm(cls, new=True)
+        alm_sim_expec = alm[np.newaxis,:]
+
+        np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)
+        
+    def test_data_compute_alm_sim_err(self):
+
+        pol = ['E']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        # totcov_diag is not set yet.        
+        self.assertRaises(AttributeError, data.compute_alm_sim)
+
+        
 
