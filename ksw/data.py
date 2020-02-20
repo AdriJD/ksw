@@ -19,7 +19,7 @@ class Data():
         Beam window function of alms.
     pol : str, array-like of str, optional
         Data polarization, e.g. "E", or ["T", "E"]. Order
-        should always be T, E. 
+        should always be T, E.
 
     Raises
     ------
@@ -48,6 +48,8 @@ class Data():
         same shape, covariance and beam as data alms.
     totcov_diag : (nspec, nell) array, None
         Covariance matrix diagonal in multipole.
+    inv_totcov_diag : (nspec, nell) array, None
+        Inverse covariance matrix diagonal in multipole.
     '''
 
     def __init__(self, alm_data, n_ell, b_ell, pol):
@@ -58,6 +60,7 @@ class Data():
         self.n_ell = n_ell
         self.alm_sim = None
         self.totcov_diag = None
+        self.inv_totcov_diag = None
 
     @property
     def pol(self):
@@ -79,7 +82,7 @@ class Data():
     @property
     def npol(self):
         return len(self.pol)
-    
+
     @property
     def alm_data(self):
         return self.__alm_data
@@ -102,7 +105,7 @@ class Data():
     def lmax(self):
         nelem = self.alm_data.shape[1]
         return hp.Alm.getlmax(nelem)
-        
+
     @property
     def b_ell(self):
         return self.__b_ell
@@ -134,7 +137,7 @@ class Data():
             raise ValueError(
                 'Invalid shape n_ell. Expected {}, got {}.'
                 .format((nspec, self.lmax + 1), n_ell.shape))
-        
+
         self.__n_ell = n_ell
 
     def compute_alm_sim(self):
@@ -149,9 +152,9 @@ class Data():
 
         totcov_diag = self.totcov_diag
         if totcov_diag is None:
-            raise AttributeError(
+            raise AttributeError('No covariance matrix found. '
                 'Call compute_totcov_diag() first.')
-        
+
         # Synalm expects 1D TT array or (TT, EE, BB, TE) array.
         if 'E' in self.pol:
             nspec, nell = totcov_diag.shape
@@ -179,8 +182,9 @@ class Data():
 
     def compute_totcov_diag(self, cosmo, add_lens_power=False):
         '''
-        Compute data covariance: (Nl + Cl * bl^2). Diagonal in
-        multipole but may include correlations between polarizations.
+        Compute data covariance: (Nl + Cl * bl^2) and its inverse.
+        Diagonal in multipole but can include correlations between
+        polarizations.
 
         Parameters
         ----------
@@ -210,8 +214,7 @@ class Data():
 
         # NOTE: perhaps just always compute both
         # lensed and unlensed. Let later methods decide which one to use.
-        # NOTE, pehaps also create inverse cov. at same time.
-        
+
         if not hasattr(cosmo, 'cls'):
             cosmo.compute_cls()
 
@@ -236,11 +239,11 @@ class Data():
         if self.pol == ('T',):
             totcov = totcov[0,:]
             totcov = totcov[np.newaxis,:]
-            totcov *= self.b_ell ** 2            
+            totcov *= self.b_ell ** 2
         elif self.pol == ('E',):
             totcov = totcov[1,:]
             totcov = totcov[np.newaxis,:]
-            totcov *= self.b_ell ** 2            
+            totcov *= self.b_ell ** 2
         elif self.pol == ('T', 'E'):
             polmask = np.ones(4, dtype=bool)
             polmask[2] = False # Mask B.
@@ -250,9 +253,47 @@ class Data():
             totcov[2] *= self.b_ell[0] * self.b_ell[1]
 
         totcov += self.n_ell
+        totcov = np.ascontiguousarray(totcov)
+        self.totcov_diag = totcov
+        self.inv_totcov_diag = self._invert_totcov_diag()
 
-        self.totcov_diag = np.ascontiguousarray(totcov)
+    def _invert_totcov_diag(self):
+        '''
+        Return inverse covariance matrix.
+        
+        Returns
+        -------
+        inv_totcov_diag : (nspec, nell) array
+            Inverse covariance matrix.
+        '''
 
+        totcov = self.totcov_diag
+        if totcov is None:
+            raise AttributeError('No covariance found. '
+                'Call compute_totcov_diag() first.')
+        
+        inv_totcov_diag = np.zeros_like(totcov)
+        nell = totcov.shape[1]
+        inv_totcov = np.zeros((self.npol, self.npol, nell))
+
+        inv_totcov[0,0] = totcov[0]
+        if self.pol == ('T', 'E'):
+            inv_totcov[0,1] = totcov[2]
+            inv_totcov[1,0] = totcov[2]
+            inv_totcov[1,1] = totcov[1]
+
+        # Temporarily put pol dimensions last for faster inverse.
+        inv_totcov = np.transpose(inv_totcov, (2, 0, 1))
+        inv_totcov = np.linalg.inv(np.ascontiguousarray(inv_totcov))
+        inv_totcov = np.transpose(inv_totcov, (1, 2, 0))
+
+        inv_totcov_diag[0] = inv_totcov[0,0]
+        if self.pol == ('T', 'E'):        
+            inv_totcov_diag[1] = inv_totcov[1,1]
+            inv_totcov_diag[2] = inv_totcov[1,0]        
+        
+        return inv_totcov_diag
+            
     def get_c_inv_a_diag(self, sim=False):
         '''
         Return inverse covariance weighted copy of data.
@@ -278,43 +319,25 @@ class Data():
         if sim:
             alm = self.alm_sim
             if alm is None:
-                raise AttributeError(
-                    'Call compute_alm_sim() first.')
+                raise AttributeError('Call compute_alm_sim() first.')
         else:
             alm = self.alm_data
 
-        totcov = self.totcov_diag # (nspec, nell).
-        if totcov is None:
-            raise AttributeError(
+        inv_totcov = self.inv_totcov_diag # (nspec, nell).
+        if inv_totcov is None:
+            raise AttributeError('No inverse covariance found. '
                 'Call compute_totcov_diag() first.')
 
-        c_inv_a = np.zeros_like(alm)
-        nell = totcov.shape[1]
-        c_inv = np.zeros((self.npol, self.npol, nell))
-
-        c_inv[0,0] = totcov[0]
-        if self.pol == ('T', 'E'):            
-            c_inv[0,1] = totcov[2]
-            c_inv[1,0] = totcov[2]
-            c_inv[1,1] = totcov[1]
-
-        c_inv = np.ascontiguousarray(np.transpose(c_inv, (2, 0, 1)))
-        c_inv = np.linalg.inv(c_inv)
-        c_inv = np.ascontiguousarray(np.transpose(c_inv, (1, 2, 0)))        
+        c_inv_a = np.zeros_like(alm)        
+        c_inv_a[0] = hp.almxfl(alm[0], inv_totcov[0])
         
         if self.pol == ('T', 'E'):
-            c_inv_a[0] = hp.almxfl(alm[0], c_inv[0,0])
-            c_inv_a[0] += hp.almxfl(alm[1], c_inv[0,1])
-            c_inv_a[1] = hp.almxfl(alm[0], c_inv[1,0])
-            c_inv_a[1] += hp.almxfl(alm[1], c_inv[1,1])
-
-        elif self.npol == 1:
-            c_inv_a[0] = hp.almxfl(alm[0], c_inv[0,0])
+            c_inv_a[0] += hp.almxfl(alm[1], inv_totcov[2])
+            c_inv_a[1] = hp.almxfl(alm[0], inv_totcov[2])
+            c_inv_a[1] += hp.almxfl(alm[1], inv_totcov[1])
 
         return c_inv_a
 
-    # create inv_totcov_diag when totcov is created
-    # then you can just call this function within
-    # get_c_inv_a_diag. And, you can make a data method
+    # And, you can make a data method
     # def c_inv(self, alm) that filters a set of alms.
-    # In estimator class you would then call: ksw.set_c_inv(data.c_inv)
+    # In estimator class you would then call: estimator.set_c_inv(data.c_inv)
