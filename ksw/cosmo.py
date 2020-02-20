@@ -37,7 +37,9 @@ class Cosmology:
     red_bisp : dict of arrays
         Factors of the reduced bispectrum and metadata.
     '''
-
+    # RED_BISP MUST BE LIST OF ReducedBispectrum INSTANCES
+    # ALSO, CHANGE TO RED_BISPECTRA
+    
     def __init__(self, camb_params, verbose=True):
 
         # In future, allow for several bispectra, i.e.
@@ -245,9 +247,12 @@ class Cosmology:
         self.cls['lensed_scalar']['ells'] = ells_lensed
         self.cls['lensed_scalar']['cls'] = cls_lensed_scalar
 
+
+    # CHANGE TO ADD PRIM RED BISP
+    # ADD KWARG FOR NAME, BUT DEFAULT TO SHAPE NAME.
     def compute_prim_reduced_bispectrum(self, prim_shape, radii):
         '''
-        Compute the factors of the reduced bispectrum of
+        Compute the factors of the reduced bispectrum for
         a given primordial shape.
 
         Parameters
@@ -264,6 +269,10 @@ class Cosmology:
 
         f_k = prim_shape.get_f_k(k)
 
+        # NOTE, here you also need to multiply f_k
+        # by As^2 etc. Or whatever your convention will be.
+    
+        
         # Call cython code.
         red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
 
@@ -275,10 +284,33 @@ class Cosmology:
         self.red_bisp['ells'] = ells_full
         self.red_bisp['radii'] = radii
 
+
+        # REMOVE THIS
         # Interpolate over ells.
         self.red_bisp['red_bisp'] = self._interp_reduced_bispec_over_ell(
             red_bisp, ells_sparse, ells_full)
 
+        # CALL _parse_prim_reduced_bisp
+        # ADD OUTPUT red_bispectra list
+        
+    def _parse_prim_reduced_bispec(self, red_bisp, radii, ells, rule, amps):
+        # Or put this in cosmo class? YES.
+        '''
+        Return reduced bispectrum for primordial model converted
+        into X(i)_ell, Y(i)_ell, Z(i)_ell form used internally.
+
+        Parameters
+        ----------
+        red_bisp : (nr, nell, npol, ncomp) array
+
+        Returns
+        -------
+        red_bisp_conv : (3, nfact, npol, nell) array
+        '''
+        
+        pass
+        
+    # THIS SHOULD NOW BE PART OF ReducedBispectrum
     @staticmethod
     def _interp_reduced_bispec_over_ell(red_bisp, ells_sparse,
                                         ells_full):
@@ -335,10 +367,12 @@ class Cosmology:
             Filename
         '''
 
-        # Put parameters in dict of dicts.
+        # Put CAMB parameters in dict: {param : value}.
         params = {}
 
+        # Loop over attributes of CAMB param file.
         for idx in inspect.getmembers(self.camb_params):
+            # idx : (name, value).
             if idx[0].startswith('_'):
                 continue
             elif inspect.ismethod(idx[1]):
@@ -346,6 +380,7 @@ class Cosmology:
             elif isinstance(idx[1], (int, float, bool, list)):
                 params[idx[0]] = idx[1]
             elif isinstance(idx[1], camb.model.CAMB_Structure):
+                # Subclass, do separate loop over its attributes.
                 params[idx[0]] = {}
                 
                 for jdx in inspect.getmembers(idx[1]):
@@ -357,7 +392,6 @@ class Cosmology:
                     elif isinstance(jdx[1], (int, float, bool, list)):
                         params[idx[0]][jdx[0]] = jdx[1]
                                                        
-        # Store dict.
         with open(filename + '.json', 'w') as f:
             json.dump(params, f, sort_keys=True, indent=4)
 
@@ -457,3 +491,121 @@ class Cosmology:
             self.cls['unlensed_scalar']['ells'] = ells
             self.cls['unlensed_scalar']['cls'] = cls            
             
+class ReducedBispectrum:
+    '''
+    Unified way to store a reduced bispectrum. Flatten 
+    reduced bispectrum into X(i)_ell, Y(i)_ell, Z(i)_ell form.
+
+    Make it the users responsibility to create correct form.
+    Sparse ells are allowed. 
+
+    Parameters
+    ----------
+    red_bispec : (3, nfact, npol, nell_sparse)    
+
+    weights : (3, nfact, npol) array
+        Weights for each factor of reduced bipsectrum.    
+    ells : (nell_sparse) array
+        Possibily sparse array of monotonicially increasing
+        multipoles.
+
+    Attributes
+    ----------
+    red_bispec : (3, nfact, npol, nell) array
+    
+    nfact : int
+        For primordial nfact = nr * len(rule)
+
+    ells_sparse : 
+
+    ells_full : 
+
+    npol : 
+
+    weights : 
+
+    rule ??
+
+    Raises
+    ------
+    ValueError
+        If input shapes do not match.
+    '''
+
+    def __init__(self, red_bisp, weights, ells):
+
+        self.ells_sparse = ells
+        self.ells_full = np.arange(ells[0], ells[-1])
+        self.weights = weights
+        self.red_bisp = red_bisp
+        
+        # Store unique elements of flattened version + indices.
+        red_bisp_unique, idx, iidx = self.get_unique_factors()
+        self.red_bisp_unique = red_bisp_unique
+        #self.
+
+        #    np.unique(
+        #    self.red_bisp, return_indices=True, return_inverse=True)
+        # NOTE, first need to flatten, and cleaner if in own funtion.
+
+    @property
+    def weights(self):
+        return self.__weights
+        
+    @weights.setter
+    def weights(self, weights):
+        '''Check shape.'''
+        
+        if weights.shape[0] != 3:
+            raise ValueError('Shape[0] of weights is {}, expected 3.'
+                             .format(weights.shape[0]))
+        self.__weights = weights
+        
+    @property
+    def red_bisp(self):
+        return self.__red_bisp
+
+    @red_bisp.setter
+    def red_bisp(self, red_bisp):
+        '''Check shape. Interpolate if needed.'''
+        
+        _, nfact, npol = self.weights.size
+        nell = self.ells_sparse.size
+        
+        if red_bisp.shape != (3, nfact, npol, nell):
+            raise ValueError('Shape red_bisp is {}, while '
+            'size ells is {} and shape weights is {}.'.format(
+                red_bisp.shape, self.weights.shape, nell))
+
+        if self.ells_full.size != self.ells_sparse.size: 
+            # Interpolate.           
+            self._interp_bisp()
+            
+        self.__red_bisp = red_bisp
+        
+    def _interp_reduced_bispec_over_ell(self):
+        pass
+
+    def get_unique(self):
+        # Perhaps call at init and store indices and inverse
+        # indices right away.
+        
+        pass
+
+    # in estimator you can also concatenate X, Y and Z
+    # and do unique on that one. Because eq. 74 is the same for
+    # X, Y, Z. Otherwise for eg orthogonal rule: (1,1,0), (2,2,2), (1,2,3)
+    # you would do 1+2+1, 1+2+2, 0+2+3. I.e you repeat 1 twice, 2 three times.
+    # so if you concatenate you get back at alpha, beta, gamma, delta.
+    # then you create an (nfact, 3) int array that tells you which i index in
+    # X_(i,phi) you pick for X, Y and Z in eq. 75.
+
+# reduced bispectrum class?
+# so that cosmo class can have list of bispectrum instances.
+# name
+# radii
+# ells sparse
+# ells
+# method for interp
+# method for reading/writing
+# Store in shape that makes sense for prim and secondary.

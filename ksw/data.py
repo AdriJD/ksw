@@ -50,7 +50,7 @@ class Data():
         Covariance matrix diagonal in multipole.
     '''
 
-    def __init__(self, alm_data, n_ell, b_ell, pol=None):
+    def __init__(self, alm_data, n_ell, b_ell, pol):
 
         self.pol = pol
         self.alm_data = alm_data
@@ -62,7 +62,6 @@ class Data():
     @property
     def pol(self):
         return self.__pol
-
     @pol.setter
     def pol(self, pol):
         '''Make tuple and check contents.'''
@@ -84,7 +83,6 @@ class Data():
     @property
     def alm_data(self):
         return self.__alm_data
-
     @alm_data.setter
     def alm_data(self, alm):
         '''Check if shape is allowed, make 2d. Store copy.'''
@@ -108,7 +106,6 @@ class Data():
     @property
     def b_ell(self):
         return self.__b_ell
-
     @b_ell.setter
     def b_ell(self, b_ell):
         '''Make 2d. Check shape. Store copy.'''
@@ -123,7 +120,6 @@ class Data():
     @property
     def n_ell(self):
         return self.__n_ell
-
     @n_ell.setter
     def n_ell(self, n_ell):
         '''Make 2d. Check shape. Store copy.'''
@@ -212,6 +208,10 @@ class Data():
         multiply factors of reduced bispectrum by b_ell.
         '''
 
+        # NOTE: perhaps just always compute both
+        # lensed and unlensed. Let later methods decide which one to use.
+        # NOTE, pehaps also create inverse cov. at same time.
+        
         if not hasattr(cosmo, 'cls'):
             cosmo.compute_cls()
 
@@ -251,7 +251,7 @@ class Data():
 
         totcov += self.n_ell
 
-        self.totcov_diag = totcov
+        self.totcov_diag = np.ascontiguousarray(totcov)
 
     def get_c_inv_a_diag(self, sim=False):
         '''
@@ -312,3 +312,9 @@ class Data():
             c_inv_a[0] = hp.almxfl(alm[0], c_inv[0,0])
 
         return c_inv_a
+
+    # create inv_totcov_diag when totcov is created
+    # then you can just call this function within
+    # get_c_inv_a_diag. And, you can make a data method
+    # def c_inv(self, alm) that filters a set of alms.
+    # In estimator class you would then call: ksw.set_c_inv(data.c_inv)

@@ -7,21 +7,29 @@ class Shape:
 
     Parameters
     ---------
-    funcs : sequence of callable func
+    funcs : (ncomp) sequence of callable func
         Functions needed for primordial shape.
     rule : sequence of array-like
         Rule to combine functions into primordial shape.
     amps : array-like
-        Amplitude for each term in primordial shape.
+        Amplitude for each element in rule.
+    name : str
+        A name to identify the shape.
+
+    Raises
+    ------
+    ValueError
+        If name is not an identifiable string.
 
     Notes
     -----
+    We parameterize the primordial 3-point function as follows:
 
     <zeta_k1, zeta_k2, zeta_k3> = (2pi)^3 delta(k1+k2+k3) * B(k1, k2, k3),
 
-    with:
+    with B parameterized in terms of the shape f as follows:
 
-    B(k1, k2, k3)  = 2 * fNL * A_s^2 * f(k1, k2, k3)
+    B(k1, k2, k3)  = 2 * fNL * A_s^2 * f(k1, k2, k3).
 
     Examples
     --------
@@ -30,7 +38,7 @@ class Shape:
     >>> def f2(k):
     ...    return k ** -3
 
-    >>> local = Shape([f1, f2], [(1,1,0)], [1, 1, 1])
+    >>> local = Shape([f1, f2], [(1,1,0)], [1], 'MyFirstLocalShape')
 
     >>> def f3(k):
     ...    return k ** -2
@@ -39,15 +47,29 @@ class Shape:
 
     >>> orthogonal = Shape([f1, f2, f3, f4],
                            [(1,1,0), (2,2,2), (1,2,3)],
-                           [-9, -24, 9])
-
+                           [-9, -24, 9], 'orthogonal')
     '''
 
-    def __init__(self, funcs, rule, amps):
+    def __init__(self, funcs, rule, amps, name):
 
         self.funcs = funcs
         self.rule = rule
         self.amps = amps
+        self.name = name
+
+    @property
+    def name(self):
+        return self.__name
+    @name.setter
+    def name(self, name):
+        '''Test for empty string.'''
+        errmsg = 'Name is not an identifiable string'
+        try:
+            if not name.strip():
+                raise ValueError(errmsg)
+        except AttributeError as e:
+            raise ValueError(errmsg) from e
+        self.__name = name
 
     def get_f_k(self, k):
         '''
@@ -77,44 +99,6 @@ class Shape:
         return f_k
 
     @staticmethod
-    def prim_local(ns=1):
-        '''
-        Return input to Shape class for the Local model.
-
-        Parameters
-        ----------
-        ns : float, optional
-            Scalar spectral index.
-
-        Returns
-        -------
-        funcs
-        rule
-        amps
-        '''
-
-        f1 = Shape._power_law(0)
-        f2 = Shape._power_law(-4 + ns)
-        
-        funcs = [f1, f2]
-        rule = [(1,1,0)]
-        amps = [1, 1, 1]
-
-        return funcs, rule, amps
-
-    @staticmethod
-    def prim_equilateral():
-
-        # Call set_prim_model()
-        pass
-
-    @staticmethod
-    def prim_orthogonal():
-
-        # Call set_prim_model()
-        pass
-
-    @staticmethod
     def _power_law(exponent):
         '''
         Create a power law function f(k) = k^e.
@@ -133,3 +117,43 @@ class Shape:
         def f(k):
             return k ** exponent
         return f
+
+
+    @staticmethod
+    def prim_local(ns=1, name='local'):
+        '''
+        Return instance of Shape for the Local model.
+
+        Parameters
+        ----------
+        ns : float, optional
+            Scalar spectral index.
+        name : str
+            Name used to identify shape.
+
+        Returns
+        -------
+        local : ksw.Shape instance
+        '''
+
+        f1 = Shape._power_law(0)
+        f2 = Shape._power_law(-4 + ns)
+        
+        funcs = [f1, f2]
+        rule = [(1,1,0)]
+        amps = [1.]
+
+        return Shape(funcs, rule, amps, name)
+
+    @staticmethod
+    def prim_equilateral():
+
+        # Call set_prim_model()
+        pass
+
+    @staticmethod
+    def prim_orthogonal():
+
+        # Call set_prim_model()
+        pass
+

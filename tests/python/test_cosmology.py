@@ -194,16 +194,15 @@ class TestCosmo(unittest.TestCase):
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax)
 
-        funcs, rule, amps = Shape.prim_local(ns=1)
-        local = Shape(funcs, rule, amps)
+        local = Shape.prim_local(ns=1)
 
         cosmo.compute_prim_reduced_bispectrum(local, radii)
 
-        # check cshape of attribute
-        # check dtype of attribute
+        # Check shape of attribute.
+        # Check dtype of attribute.
         nell = lmax - 1 # red_bisp starts from ell=2.
         nr = len(radii)
-        ncomp = len(funcs)
+        ncomp = len(local.funcs)
         npol = 2
         self.assertEqual(cosmo.red_bisp['red_bisp'].shape,
                          (nr, nell, npol, ncomp))
