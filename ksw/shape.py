@@ -41,12 +41,12 @@ class Shape:
     >>> local = Shape([f1, f2], [(1,1,0)], [1], 'MyFirstLocalShape')
 
     >>> def f3(k):
-    ...    return k ** -2
-    >>> def f4(k):
     ...    return k ** -1
+    >>> def f4(k):
+    ...    return k ** -2
 
     >>> orthogonal = Shape([f1, f2, f3, f4],
-                           [(1,1,0), (2,2,2), (1,2,3)],
+                           [(1,1,0), (3,3,3), (1,2,3)],
                            [-9, -24, 9], 'orthogonal')
     '''
 
@@ -63,7 +63,8 @@ class Shape:
     @name.setter
     def name(self, name):
         '''Test for empty string.'''
-        errmsg = 'Name is not an identifiable string'
+        errmsg = ('Shape name "{}" is not an identifiable string'.
+                  format(name))
         try:
             if not name.strip():
                 raise ValueError(errmsg)
@@ -101,7 +102,7 @@ class Shape:
     @staticmethod
     def _power_law(exponent):
         '''
-        Create a power law function f(k) = k^e.
+        Create a power law function f(k) = k^exponent.
 
         Parameters
         ----------
@@ -117,7 +118,6 @@ class Shape:
         def f(k):
             return k ** exponent
         return f
-
 
     @staticmethod
     def prim_local(ns=1, name='local'):
@@ -136,8 +136,8 @@ class Shape:
         local : ksw.Shape instance
         '''
 
-        f1 = Shape._power_law(0)
-        f2 = Shape._power_law(-4 + ns)
+        f1 = Shape._power_law(0)       # Alpha.
+        f2 = Shape._power_law(-4 + ns) # Beta.
         
         funcs = [f1, f2]
         rule = [(1,1,0)]
@@ -146,14 +146,57 @@ class Shape:
         return Shape(funcs, rule, amps, name)
 
     @staticmethod
-    def prim_equilateral():
+    def prim_equilateral(ns=1, name='equilateral'):
+        '''
+        Return instance of Shape for the Equilateral model.
 
-        # Call set_prim_model()
-        pass
+        Parameters
+        ----------
+        ns : float, optional
+            Scalar spectral index.
+        name : str
+            Name used to identify shape.
+
+        Returns
+        -------
+        equilateral : ksw.Shape instance
+        '''
+
+        f1 = Shape._power_law(0)                  # Alpha.
+        f2 = Shape._power_law(-4 + ns)            # Beta.
+        f3 = Shape._power_law((-4 + ns) / 3.)     # Gamma.
+        f4 = Shape._power_law(2 * (-4 + ns) / 3.) # Delta.
+        
+        funcs = [f1, f2, f3, f4]
+        rule = [(1,1,0), (3,3,3), (1,2,3)]
+        amps = [-3., -6., 3.]
+
+        return Shape(funcs, rule, amps, name)
 
     @staticmethod
-    def prim_orthogonal():
+    def prim_orthogonal(ns=1, name='orthogonal'):
+        '''
+        Return instance of Shape for the Orthogonal model.
 
-        # Call set_prim_model()
-        pass
+        Parameters
+        ----------
+        ns : float, optional
+            Scalar spectral index.
+        name : str
+            Name used to identify shape.
 
+        Returns
+        -------
+        orthogonal : ksw.Shape instance
+        '''
+
+        f1 = Shape._power_law(0)                  # Alpha.
+        f2 = Shape._power_law(-4 + ns)            # Beta.
+        f3 = Shape._power_law((-4 + ns) / 3.)     # Gamma.
+        f4 = Shape._power_law(2 * (-4 + ns) / 3.) # Delta.
+        
+        funcs = [f1, f2, f3, f4]
+        rule = [(1,1,0), (3,3,3), (1,2,3)]
+        amps = [-9., -24., 9.]
+
+        return Shape(funcs, rule, amps, name)
