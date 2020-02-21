@@ -46,10 +46,10 @@ class Data():
     alm_sim : (npol, nelem) complex array, None
         Simulated spherical harmonic coefficients with
         same shape, covariance and beam as data alms.
-    totcov_diag : (nspec, nell) array, None
-        Covariance matrix diagonal in multipole.
-    inv_totcov_diag : (nspec, nell) array, None
-        Inverse covariance matrix diagonal in multipole.
+    totcov_diag : dict of (nspec, nell) arrays, None
+        Lensed and unlensed covariance matrix diagonal in multipole.
+    inv_totcov_diag : dict of (nspec, nell) arrays, None
+        Lensed and unlensed inverse covariance matrix diagonal in multipole.
     '''
 
     def __init__(self, alm_data, n_ell, b_ell, pol):
@@ -140,9 +140,14 @@ class Data():
 
         self.__n_ell = n_ell
 
-    def compute_alm_sim(self):
+    def compute_alm_sim(self, lens_power=False):
         '''
         Draw isotropic Gaussian realisation from (S+N) covariance.
+
+        Parameters
+        ----------
+        lens_power : bool, optional
+            Include lensing power in covariance.
 
         Raises
         ------
@@ -150,11 +155,15 @@ class Data():
             If compute_totcov_diag() has not been called.
         '''
 
-        totcov_diag = self.totcov_diag
-        if totcov_diag is None:
+        if self.totcov_diag is None:
             raise AttributeError('No covariance matrix found. '
                 'Call compute_totcov_diag() first.')
 
+        if lens_power:
+            totcov_diag = self.totcov_diag['lensed']
+        else:
+            totcov_diag = self.totcov_diag['unlensed']
+            
         # Synalm expects 1D TT array or (TT, EE, BB, TE) array.
         if 'E' in self.pol:
             nspec, nell = totcov_diag.shape
@@ -180,7 +189,7 @@ class Data():
 
         self.alm_sim = alm
 
-    def compute_totcov_diag(self, cosmo, add_lens_power=False):
+    def compute_totcov_diag(self, cosmo):
         '''
         Compute data covariance: (Nl + Cl * bl^2) and its inverse.
         Diagonal in multipole but can include correlations between
@@ -190,8 +199,6 @@ class Data():
         ----------
         cosmo : ksw.Cosmology instance
             Cosmology instance to get Cls.
-        add_lens_power : bool, optional
-            Include lensing contribution to Cls.
 
         Raises
         ------
@@ -212,75 +219,73 @@ class Data():
         multiply factors of reduced bispectrum by b_ell.
         '''
 
-        # NOTE: perhaps just always compute both
-        # lensed and unlensed. Let later methods decide which one to use.
-
         if not hasattr(cosmo, 'cls'):
             cosmo.compute_cls()
 
-        if add_lens_power is True:
-            cls_type = 'lensed_scalar'
-        else:
-            cls_type = 'unlensed_scalar'
+        self.totcov_diag = {}
+        self.inv_totcov_diag = {}        
+        
+        for cls_type in ['lensed', 'unlensed']:            
+            
+            cls_ells = cosmo.cls[cls_type+'_scalar']['ells']
+            cls = cosmo.cls[cls_type+'_scalar']['cls']
 
-        cls_ells = cosmo.cls[cls_type]['ells']
-        cls = cosmo.cls[cls_type]['cls']
+            cls_lmax = cls_ells[-1]
 
-        cls_lmax = cls_ells[-1]
+            if cls_lmax < self.lmax:
+                raise ValueError('lmax Cls : {} < lmax data : {}'
+                                 .format(cls_lmax, self.lmax))
 
-        if cls_lmax < self.lmax:
-            raise ValueError('lmax Cls : {} < lmax data : {}'
-                             .format(cls_lmax, self.lmax))
+            # CAMB Cls are (nell, 4), convert to (4, nell).
+            totcov = cls.transpose()[:,:self.lmax+2].copy()
 
-        # CAMB Cls are (nell, 4), convert to (4, nell).
-        totcov = cls.transpose()[:,:self.lmax+2].copy()
+            # Turn into correct shape and multiply with beam.
+            if self.pol == ('T',):
+                totcov = totcov[0,:]
+                totcov = totcov[np.newaxis,:]
+                totcov *= self.b_ell ** 2
+            elif self.pol == ('E',):
+                totcov = totcov[1,:]
+                totcov = totcov[np.newaxis,:]
+                totcov *= self.b_ell ** 2
+            elif self.pol == ('T', 'E'):
+                polmask = np.ones(4, dtype=bool)
+                polmask[2] = False # Mask B.
+                totcov = totcov[polmask,:]
+                totcov[0] *= self.b_ell[0] ** 2
+                totcov[1] *= self.b_ell[1] ** 2
+                totcov[2] *= self.b_ell[0] * self.b_ell[1]
 
-        # Turn into correct shape and multiply with beam.
-        if self.pol == ('T',):
-            totcov = totcov[0,:]
-            totcov = totcov[np.newaxis,:]
-            totcov *= self.b_ell ** 2
-        elif self.pol == ('E',):
-            totcov = totcov[1,:]
-            totcov = totcov[np.newaxis,:]
-            totcov *= self.b_ell ** 2
-        elif self.pol == ('T', 'E'):
-            polmask = np.ones(4, dtype=bool)
-            polmask[2] = False # Mask B.
-            totcov = totcov[polmask,:]
-            totcov[0] *= self.b_ell[0] ** 2
-            totcov[1] *= self.b_ell[1] ** 2
-            totcov[2] *= self.b_ell[0] * self.b_ell[1]
+            totcov += self.n_ell
+            totcov = np.ascontiguousarray(totcov)
 
-        totcov += self.n_ell
-        totcov = np.ascontiguousarray(totcov)
-        self.totcov_diag = totcov
-        self.inv_totcov_diag = self._invert_totcov_diag()
-
-    def _invert_totcov_diag(self):
+            self.totcov_diag[cls_type] = totcov
+            self.inv_totcov_diag[cls_type] = self._invert_totcov_diag(totcov)
+            
+    def _invert_totcov_diag(self, totcov_diag):
         '''
         Return inverse covariance matrix.
         
+        Parameters
+        ----------
+        totcov_diag : (nspec, nell) array
+            Covariance matrix diagonal with multipoles.
+
         Returns
         -------
         inv_totcov_diag : (nspec, nell) array
             Inverse covariance matrix.
         '''
 
-        totcov = self.totcov_diag
-        if totcov is None:
-            raise AttributeError('No covariance found. '
-                'Call compute_totcov_diag() first.')
-        
-        inv_totcov_diag = np.zeros_like(totcov)
-        nell = totcov.shape[1]
+        inv_totcov_diag = np.zeros_like(totcov_diag)
+        nell = totcov_diag.shape[1]
         inv_totcov = np.zeros((self.npol, self.npol, nell))
 
-        inv_totcov[0,0] = totcov[0]
+        inv_totcov[0,0] = totcov_diag[0]
         if self.pol == ('T', 'E'):
-            inv_totcov[0,1] = totcov[2]
-            inv_totcov[1,0] = totcov[2]
-            inv_totcov[1,1] = totcov[1]
+            inv_totcov[0,1] = totcov_diag[2]
+            inv_totcov[1,0] = totcov_diag[2]
+            inv_totcov[1,1] = totcov_diag[1]
 
         # Temporarily put pol dimensions last for faster inverse.
         inv_totcov = np.transpose(inv_totcov, (2, 0, 1))
@@ -294,7 +299,7 @@ class Data():
         
         return inv_totcov_diag
             
-    def get_c_inv_a_diag(self, sim=False):
+    def get_c_inv_a_diag(self, sim=False, lens_power=False):
         '''
         Return inverse covariance weighted copy of data.
         Assuming that covariance is diagonal in multipole.
@@ -303,6 +308,8 @@ class Data():
         ----------
         sim : bool, optional
             Return weighted copy of simulated data.
+        lens_power : bool, optional
+            Include lensing power in invserse covariance.
 
         Returns
         -------
@@ -323,11 +330,15 @@ class Data():
         else:
             alm = self.alm_data
 
-        inv_totcov = self.inv_totcov_diag # (nspec, nell).
-        if inv_totcov is None:
+        if self.inv_totcov_diag is None:
             raise AttributeError('No inverse covariance found. '
                 'Call compute_totcov_diag() first.')
 
+        if lens_power:
+            inv_totcov = self.inv_totcov_diag['lensed']
+        else:
+            inv_totcov = self.inv_totcov_diag['unlensed']
+            
         c_inv_a = np.zeros_like(alm)        
         c_inv_a[0] = hp.almxfl(alm[0], inv_totcov[0])
         

@@ -173,27 +173,28 @@ class TestData(unittest.TestCase):
         data = Data(self.alm_T, self.n_ell_T,
                     self.b_ell_T, pol)
 
-        # Without lensing power.
-        data.compute_totcov_diag(cosmo, add_lens_power=False)
-        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+        data.compute_totcov_diag(cosmo)
+        self.assertEqual(data.totcov_diag['unlensed'].shape,
+                         (1, self.nell))
+        self.assertEqual(data.totcov_diag['lensed'].shape,
+                         (1, self.nell))
 
         expec_totcov = np.zeros((1, self.nell))
-        expec_totcov[0] = self.n_ell_T + self.cls[:,0] * 2
-        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
-
+        expec_totcov[0] = self.n_ell_T + self.cls[:,0] * 2.
+        np.testing.assert_almost_equal(data.totcov_diag['unlensed'],
+                                       expec_totcov)
         # Test if inverse is also computed correctly.
-        np.testing.assert_almost_equal(data.inv_totcov_diag, 1/expec_totcov)
-        
-        # With lensing power.
-        data.compute_totcov_diag(cosmo, add_lens_power=True)
-        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+        np.testing.assert_almost_equal(data.inv_totcov_diag['unlensed'],
+                                       1/expec_totcov)
 
+        # Again with lensing power.
         expec_totcov[0] = self.n_ell_T + self.cls[:,0]
-        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
+        np.testing.assert_almost_equal(data.totcov_diag['lensed'],
+                                       expec_totcov)
 
-        # Test if inverse is also computed correctly.
-        np.testing.assert_almost_equal(data.inv_totcov_diag, 1/expec_totcov)
-        
+        np.testing.assert_almost_equal(data.inv_totcov_diag['lensed'],
+                                       1/expec_totcov)
+
     def test_data_compute_totcov_diag_1d_E(self):
 
         cosmo = self.FakeCosmology()
@@ -201,27 +202,29 @@ class TestData(unittest.TestCase):
         data = Data(self.alm_T, self.n_ell_T,
                     self.b_ell_T, pol)
 
-        # Without lensing power.
-        data.compute_totcov_diag(cosmo, add_lens_power=False)
-        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+        data.compute_totcov_diag(cosmo)
+        self.assertEqual(data.totcov_diag['unlensed'].shape,
+                         (1, self.nell))
+        self.assertEqual(data.totcov_diag['lensed'].shape,
+                         (1, self.nell))
+
 
         expec_totcov = np.zeros((1, self.nell))
         expec_totcov[0] = self.n_ell_T + self.cls[:,1] * 2
-        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
-
+        np.testing.assert_almost_equal(data.totcov_diag['unlensed'],
+                                       expec_totcov)
         # Test if inverse is also computed correctly.
-        np.testing.assert_almost_equal(data.inv_totcov_diag, 1/expec_totcov)
-        
-        # With lensing power.
-        data.compute_totcov_diag(cosmo, add_lens_power=True)
-        self.assertEqual(data.totcov_diag.shape, (1, self.nell))
+        np.testing.assert_almost_equal(data.inv_totcov_diag['unlensed'],
+                                       1/expec_totcov)
 
+        # Again with lensing power.
         expec_totcov[0] = self.n_ell_T + self.cls[:,1]
-        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
+        np.testing.assert_almost_equal(data.totcov_diag['lensed'],
+                                       expec_totcov)
 
-        # Test if inverse is also computed correctly.
-        np.testing.assert_almost_equal(data.inv_totcov_diag, 1/expec_totcov)
-        
+        np.testing.assert_almost_equal(data.inv_totcov_diag['lensed'],
+                                       1/expec_totcov)
+
     def test_data_compute_totcov_diag_2d(self):
 
         cosmo = self.FakeCosmology()
@@ -229,15 +232,16 @@ class TestData(unittest.TestCase):
         data = Data(self.alm_TplusE, self.n_ell_TplusE,
                     self.b_ell_TplusE, pol)
 
-        # Without lensing power.
-        data.compute_totcov_diag(cosmo, add_lens_power=False)
-        self.assertEqual(data.totcov_diag.shape, (3, self.nell))
+        data.compute_totcov_diag(cosmo)
+        self.assertEqual(data.totcov_diag['lensed'].shape, (3, self.nell))
+        self.assertEqual(data.totcov_diag['unlensed'].shape, (3, self.nell))
 
         expec_totcov = np.zeros((3, self.nell))
         expec_totcov[0] = self.n_ell_TplusE[0] + self.cls[:,0] * 2
         expec_totcov[1] = self.n_ell_TplusE[1] + self.cls[:,1] * 2
         expec_totcov[2] = self.n_ell_TplusE[2] + self.cls[:,3] * 2
-        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
+        np.testing.assert_almost_equal(data.totcov_diag['unlensed'],
+                                       expec_totcov)
 
         # Test if inverse is also computed correctly.
         expec_inv_totcov = np.zeros_like(expec_totcov)
@@ -246,30 +250,28 @@ class TestData(unittest.TestCase):
         expec_inv_totcov[0] = expec_totcov[1]
         expec_inv_totcov[1] = expec_totcov[0]
         expec_inv_totcov[2] = -expec_totcov[2]
-        det = expec_totcov[0] * expec_totcov[1] - expec_totcov[2] ** 2 
+        det = expec_totcov[0] * expec_totcov[1] - expec_totcov[2] ** 2
         expec_inv_totcov /= det
-        np.testing.assert_almost_equal(data.inv_totcov_diag, expec_inv_totcov)
-        
-        # With lensing power.
-        data.compute_totcov_diag(cosmo, add_lens_power=True)
-        self.assertEqual(data.totcov_diag.shape, (3, self.nell))
+        np.testing.assert_almost_equal(data.inv_totcov_diag['unlensed'],
+                                       expec_inv_totcov)
 
+        # With lensing power.
         expec_totcov[0] = self.n_ell_TplusE[0] + self.cls[:,0]
         expec_totcov[1] = self.n_ell_TplusE[1] + self.cls[:,1]
         expec_totcov[2] = self.n_ell_TplusE[2] + self.cls[:,3]
-        np.testing.assert_almost_equal(data.totcov_diag, expec_totcov)
-        
-        # Test if inverse is also computed correctly.
+        np.testing.assert_almost_equal(data.totcov_diag['lensed'],
+                                       expec_totcov)
+
         expec_inv_totcov = np.zeros_like(expec_totcov)
 
-        # Inverse of [[a,b],[b,d]] = [[d,-b],[-b,a]] / (ad - bb).
         expec_inv_totcov[0] = expec_totcov[1]
         expec_inv_totcov[1] = expec_totcov[0]
         expec_inv_totcov[2] = -expec_totcov[2]
-        det = expec_totcov[0] * expec_totcov[1] - expec_totcov[2] ** 2 
+        det = expec_totcov[0] * expec_totcov[1] - expec_totcov[2] ** 2
         expec_inv_totcov /= det
-        np.testing.assert_almost_equal(data.inv_totcov_diag, expec_inv_totcov)
-        
+        np.testing.assert_almost_equal(data.inv_totcov_diag['lensed'],
+                                       expec_inv_totcov)
+
     def test_invert_totcov_diag_1d(self):
 
         pol = ['T']
@@ -278,12 +280,10 @@ class TestData(unittest.TestCase):
 
         totcov_diag = np.ones_like(data.n_ell) # (nspec, nell).
         totcov_diag[0,:] = 2.
-        data.totcov_diag = totcov_diag
-
         inv_totcov_diag_expec = np.ones_like(totcov_diag) * 1/2.
 
-        np.testing.assert_almost_equal(data._invert_totcov_diag(),
-                                       inv_totcov_diag_expec)
+        np.testing.assert_almost_equal(
+            data._invert_totcov_diag(totcov_diag), inv_totcov_diag_expec)
 
     def test_invert_totcov_diag_2d(self):
 
@@ -295,15 +295,14 @@ class TestData(unittest.TestCase):
         totcov_diag[:2,:] = 2.
         #  2  1  inv:  2/3 -1/3
         #  1  2       -1/3 2/3
-        data.totcov_diag = totcov_diag
 
         inv_totcov_diag_expec = np.ones_like(totcov_diag)
         inv_totcov_diag_expec[0] = 2/3.
         inv_totcov_diag_expec[1] = 2/3.
         inv_totcov_diag_expec[2] = -1/3.
 
-        np.testing.assert_almost_equal(data._invert_totcov_diag(),
-                                       inv_totcov_diag_expec)
+        np.testing.assert_almost_equal(
+            data._invert_totcov_diag(totcov_diag), inv_totcov_diag_expec)
 
     def test_data_get_c_inv_a_diag(self):
 
@@ -314,8 +313,9 @@ class TestData(unittest.TestCase):
         inv_totcov_diag = np.ones_like(data.n_ell) # (nspec, nell).
         inv_totcov_diag[0] = 2/3.
         inv_totcov_diag[1] = 2/3.
-        inv_totcov_diag[2] = -1/3.                
-        data.inv_totcov_diag = inv_totcov_diag        
+        inv_totcov_diag[2] = -1/3.
+        data.inv_totcov_diag = {'lensed' : 2 * inv_totcov_diag,
+                                'unlensed' : inv_totcov_diag}
         c_inv_a = data.get_c_inv_a_diag()
 
         c_inv_a_expec = np.zeros_like(self.alm_TplusE)
@@ -334,7 +334,9 @@ class TestData(unittest.TestCase):
 
         inv_totcov_diag = np.ones((1, self.nell))
         inv_totcov_diag[0,:] = 0.5
-        data.inv_totcov_diag = inv_totcov_diag
+        data.inv_totcov_diag = {'lensed' : 2 * inv_totcov_diag,
+                                'unlensed' : inv_totcov_diag}
+        
         c_inv_a = data.get_c_inv_a_diag()
 
         c_inv_a_expec = np.zeros((1, self.nelem), dtype=complex)
@@ -350,7 +352,9 @@ class TestData(unittest.TestCase):
 
         inv_totcov_diag = np.ones((1, self.nell))
         inv_totcov_diag[0,:] = 0.5
-        data.inv_totcov_diag = inv_totcov_diag
+        data.inv_totcov_diag = {'lensed' : 2 * inv_totcov_diag,
+                                'unlensed' : inv_totcov_diag}
+        
         c_inv_a = data.get_c_inv_a_diag()
 
         c_inv_a_expec = np.zeros((1, self.nelem), dtype=complex)
@@ -358,19 +362,38 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_almost_equal(c_inv_a, c_inv_a_expec)
 
+    def test_data_get_c_inv_a_diag_1d_lensed(self):
+
+        pol = ['T']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        inv_totcov_diag = np.ones((1, self.nell))
+        inv_totcov_diag[0,:] = 0.5
+        data.inv_totcov_diag = {'lensed' : 4 * inv_totcov_diag,
+                                'unlensed' : inv_totcov_diag}
+        
+        c_inv_a = data.get_c_inv_a_diag(lens_power=True)
+
+        c_inv_a_expec = np.zeros((1, self.nelem), dtype=complex)
+        c_inv_a_expec[0,:] = self.alm_T[0] * (2.)
+
+        np.testing.assert_almost_equal(c_inv_a, c_inv_a_expec)
+                
     def test_data_get_c_inv_a_diag_err(self):
 
         pol = ['E']
         data = Data(self.alm_T, self.n_ell_T,
                     self.b_ell_T, pol)
 
-        # totcov_diag is not set yet.
+        # inv_totcov_diag is not set yet.
         self.assertRaises(AttributeError, data.get_c_inv_a_diag)
 
-        totcov_diag = np.ones((1, self.nell))
-        totcov_diag[0,:] = 2.
-        data.totcov_diag = totcov_diag
-
+        inv_totcov_diag = np.ones((1, self.nell))
+        inv_totcov_diag[0,:] = .5
+        data.inv_totcov_diag = {'lensed' :  inv_totcov_diag,
+                                'unlensed' : inv_totcov_diag}
+        
         opts = {'sim' : True}
         # alm_sim is not set yet.
         self.assertRaises(AttributeError, data.get_c_inv_a_diag, **opts)
@@ -383,8 +406,9 @@ class TestData(unittest.TestCase):
 
         inv_totcov_diag = np.ones((1, self.nell))
         inv_totcov_diag[0,:] = 0.5
-        data.inv_totcov_diag = inv_totcov_diag
-                
+        data.inv_totcov_diag = {'lensed' :  inv_totcov_diag,
+                                'unlensed' : inv_totcov_diag}
+
         data.alm_sim = self.alm_T[np.newaxis,:] + 1j
         c_inv_a = data.get_c_inv_a_diag(sim=True)
 
@@ -401,7 +425,8 @@ class TestData(unittest.TestCase):
 
         totcov_diag = np.ones_like(data.n_ell) # (nspec, nell).
         totcov_diag[:2,:] = 2.
-        data.totcov_diag = totcov_diag
+        data.totcov_diag = {'lensed' : 2 * totcov_diag,
+                            'unlensed' : totcov_diag}
 
         np.random.seed(10)
         data.compute_alm_sim()
@@ -426,8 +451,9 @@ class TestData(unittest.TestCase):
 
         totcov_diag = np.ones((1, self.nell)) # (nspec, nell).
         totcov_diag[0,:] = 2.
-        data.totcov_diag = totcov_diag
-
+        data.totcov_diag = {'lensed' : 2 * totcov_diag,
+                            'unlensed' : totcov_diag}
+        
         np.random.seed(10)
         data.compute_alm_sim()
         np.random.seed(10)
@@ -448,8 +474,9 @@ class TestData(unittest.TestCase):
 
         totcov_diag = np.ones((1, self.nell)) # (nspec, nell).
         totcov_diag[0,:] = 2.
-        data.totcov_diag = totcov_diag
-
+        data.totcov_diag = {'lensed' : 2 * totcov_diag,
+                            'unlensed' : totcov_diag}
+        
         np.random.seed(10)
         data.compute_alm_sim()
         np.random.seed(10)
@@ -461,6 +488,28 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)
 
+    def test_data_compute_alm_sim_lensed(self):
+
+        pol = ['T']
+        data = Data(self.alm_T, self.n_ell_T,
+                    self.b_ell_T, pol)
+
+        totcov_diag = np.ones((1, self.nell)) # (nspec, nell).
+        totcov_diag[0,:] = 2.
+        data.totcov_diag = {'lensed' : 2 * totcov_diag,
+                            'unlensed' : totcov_diag}
+        
+        np.random.seed(10)
+        data.compute_alm_sim(lens_power=True)
+        np.random.seed(10)
+
+        cls = np.ones(self.nell) * 4. # Extra 2 from lensed spectrum.
+
+        alm = hp.synalm(cls, new=True)
+        alm_sim_expec = alm[np.newaxis,:]
+
+        np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)
+        
     def test_data_compute_alm_sim_err(self):
 
         pol = ['E']
