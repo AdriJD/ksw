@@ -52,6 +52,8 @@ class Data():
         Lensed and unlensed inverse covariance matrix diagonal in multipole.
     '''
 
+    # Perhaps only alm_shape and dtype is enough
+    
     def __init__(self, alm_data, n_ell, b_ell, pol):
 
         self.pol = pol
@@ -167,17 +169,17 @@ class Data():
         # Synalm expects 1D TT array or (TT, EE, BB, TE) array.
         if 'E' in self.pol:
             nspec, nell = totcov_diag.shape
-            cls_in = np.zeros((4, nell))
+            c_ell_in = np.zeros((4, nell))
             if 'T' in self.pol:
-                cls_in[0,:] = totcov_diag[0]
-                cls_in[1,:] = totcov_diag[1]
-                cls_in[3,:] = totcov_diag[2]
+                c_ell_in[0,:] = totcov_diag[0]
+                c_ell_in[1,:] = totcov_diag[1]
+                c_ell_in[3,:] = totcov_diag[2]
             else:
-                cls_in[1,:] = totcov_diag[0]
+                c_ell_in[1,:] = totcov_diag[0]
         else:
-            cls_in = totcov_diag
+            c_ell_in = totcov_diag
 
-        alm = hp.synalm(cls_in, lmax=self.lmax, new=True)
+        alm = hp.synalm(c_ell_in, lmax=self.lmax, new=True)
 
         if self.pol == ('T', 'E'):
             # Only return I and E.
@@ -219,16 +221,16 @@ class Data():
         multiply factors of reduced bispectrum by b_ell.
         '''
 
-        if not hasattr(cosmo, 'cls'):
-            cosmo.compute_cls()
+        if not hasattr(cosmo, 'c_ell'):
+            cosmo.compute_c_ell()
 
         self.totcov_diag = {}
         self.inv_totcov_diag = {}        
         
-        for cls_type in ['lensed', 'unlensed']:            
+        for c_ell_type in ['lensed', 'unlensed']:            
             
-            cls_ells = cosmo.cls[cls_type+'_scalar']['ells']
-            cls = cosmo.cls[cls_type+'_scalar']['cls']
+            cls_ells = cosmo.c_ell[c_ell_type+'_scalar']['ells']
+            c_ell = cosmo.c_ell[c_ell_type+'_scalar']['c_ell']
 
             cls_lmax = cls_ells[-1]
 
@@ -237,7 +239,7 @@ class Data():
                                  .format(cls_lmax, self.lmax))
 
             # CAMB Cls are (nell, 4), convert to (4, nell).
-            totcov = cls.transpose()[:,:self.lmax+2].copy()
+            totcov = c_ell.transpose()[:,:self.lmax+2].copy()
 
             # Turn into correct shape and multiply with beam.
             if self.pol == ('T',):
@@ -259,8 +261,8 @@ class Data():
             totcov += self.n_ell
             totcov = np.ascontiguousarray(totcov)
 
-            self.totcov_diag[cls_type] = totcov
-            self.inv_totcov_diag[cls_type] = self._invert_totcov_diag(totcov)
+            self.totcov_diag[c_ell_type] = totcov
+            self.inv_totcov_diag[c_ell_type] = self._invert_totcov_diag(totcov)
             
     def _invert_totcov_diag(self, totcov_diag):
         '''
@@ -293,7 +295,7 @@ class Data():
         inv_totcov = np.transpose(inv_totcov, (1, 2, 0))
 
         inv_totcov_diag[0] = inv_totcov[0,0]
-        if self.pol == ('T', 'E'):        
+        if self.pol == ('T', 'E'):   
             inv_totcov_diag[1] = inv_totcov[1,1]
             inv_totcov_diag[2] = inv_totcov[1,0]        
         

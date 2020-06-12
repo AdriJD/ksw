@@ -8,9 +8,6 @@ import h5py
 
 from ksw import utils, radial_functional as rf
 
-# NOTE, using cls for power spectra is confusing in python,
-# perhaps c_ell. Matches n_ell and b_ell in data too.
-
 class Cosmology:
     '''
     A Cosmology instance represents a specific cosmology. It is
@@ -35,7 +32,7 @@ class Cosmology:
         Possibly modified copy of input CAMB parameters.
     transfer : dict
         Radiation transfer functions and metadata.
-    cls : dict
+    c_ell : dict
         Angular power spectra and metadata.
     red_bispectra : list
         Collection of ReducedBispectrum instances.
@@ -92,7 +89,7 @@ class Cosmology:
             raise ValueError('Invalid CAMB input')
 
         self.transfer = {}
-        self.cls = {}
+        self.c_ell = {}
         self.red_bispectra = []
 
     def _setattr_camb(self, name, value, subclass=None, verbose=True):
@@ -210,7 +207,7 @@ class Cosmology:
         self.transfer['k'] = tr.q
         self.transfer['ells'] = ells # Probably sparse.
 
-    def compute_cls(self):
+    def compute_c_ell(self):
         '''
         Calculate angular power spectra (Cls) using precomputed
         transfer functions.
@@ -225,22 +222,22 @@ class Cosmology:
 
         self._camb_data.power_spectra_from_transfer()
 
-        cls_unlensed_scalar = self._camb_data.get_unlensed_scalar_cls(
+        c_ell_unlensed_scalar = self._camb_data.get_unlensed_scalar_cls(
             lmax=None, CMB_unit='muK', raw_cl=True)
 
-        cls_lensed_scalar = self._camb_data.get_lensed_scalar_cls(
+        c_ell_lensed_scalar = self._camb_data.get_lensed_scalar_cls(
             lmax=None, CMB_unit='muK', raw_cl=True)
 
-        ells_unlensed = np.arange(cls_unlensed_scalar.shape[0])
-        ells_lensed = np.arange(cls_lensed_scalar.shape[0])
+        ells_unlensed = np.arange(c_ell_unlensed_scalar.shape[0])
+        ells_lensed = np.arange(c_ell_lensed_scalar.shape[0])
 
-        self.cls['unlensed_scalar'] = {}
-        self.cls['unlensed_scalar']['ells'] = ells_unlensed
-        self.cls['unlensed_scalar']['cls'] = cls_unlensed_scalar
+        self.c_ell['unlensed_scalar'] = {}
+        self.c_ell['unlensed_scalar']['ells'] = ells_unlensed
+        self.c_ell['unlensed_scalar']['c_ell'] = c_ell_unlensed_scalar
 
-        self.cls['lensed_scalar'] = {}
-        self.cls['lensed_scalar']['ells'] = ells_lensed
-        self.cls['lensed_scalar']['cls'] = cls_lensed_scalar
+        self.c_ell['lensed_scalar'] = {}
+        self.c_ell['lensed_scalar']['ells'] = ells_lensed
+        self.c_ell['lensed_scalar']['c_ell'] = c_ell_lensed_scalar
 
     def add_prim_reduced_bispectrum(self, prim_shape, radii, name=None):
         '''
@@ -371,7 +368,7 @@ class Cosmology:
             self.transfer['k'] = f['k'][()]
             self.transfer['ells'] = f['ells'][()]
 
-    def write_cls(self, filename):
+    def write_c_ell(self, filename):
         '''
         Write the angular power spectra to disk.
 
@@ -384,19 +381,19 @@ class Cosmology:
         with h5py.File(filename + '.hdf5', 'w') as f:
             lens_scal = f.create_group('lensed_scalar')
             lens_scal.create_dataset('ells',
-                    data=self.cls['lensed_scalar']['ells'])
-            lens_scal.create_dataset('cls',
-                    data=self.cls['lensed_scalar']['cls'])
+                    data=self.c_ell['lensed_scalar']['ells'])
+            lens_scal.create_dataset('c_ell',
+                    data=self.c_ell['lensed_scalar']['c_ell'])
 
             unlens_scal = f.create_group('unlensed_scalar')
             unlens_scal.create_dataset('ells',
-                    data=self.cls['unlensed_scalar']['ells'])
-            unlens_scal.create_dataset('cls',
-                    data=self.cls['unlensed_scalar']['cls'])
+                    data=self.c_ell['unlensed_scalar']['ells'])
+            unlens_scal.create_dataset('c_ell',
+                    data=self.c_ell['unlensed_scalar']['c_ell'])
 
-    def read_cls(self, filename):
+    def read_c_ell(self, filename):
         '''
-        Read in cls file and populate cls attribute.
+        Read in c_ell file and populate c_ell attribute.
 
         Parameters
         ----------
@@ -404,20 +401,20 @@ class Cosmology:
             Absolute path to spectra file.
         '''
 
-        self.cls = {}
+        self.c_ell = {}
 
         with h5py.File(filename + '.hdf5', 'r') as f:
             ells = f['lensed_scalar/ells'][()]
-            cls = f['lensed_scalar/cls'][()]
-            self.cls['lensed_scalar'] = {}
-            self.cls['lensed_scalar']['ells'] = ells
-            self.cls['lensed_scalar']['cls'] = cls
+            c_ell = f['lensed_scalar/c_ell'][()]
+            self.c_ell['lensed_scalar'] = {}
+            self.c_ell['lensed_scalar']['ells'] = ells
+            self.c_ell['lensed_scalar']['c_ell'] = c_ell
 
             ells = f['unlensed_scalar/ells'][()]
-            cls = f['unlensed_scalar/cls'][()]
-            self.cls['unlensed_scalar'] = {}
-            self.cls['unlensed_scalar']['ells'] = ells
-            self.cls['unlensed_scalar']['cls'] = cls
+            c_ell = f['unlensed_scalar/c_ell'][()]
+            self.c_ell['unlensed_scalar'] = {}
+            self.c_ell['unlensed_scalar']['ells'] = ells
+            self.c_ell['unlensed_scalar']['c_ell'] = c_ell
 
     def write_camb_params(self, filename):
         '''

@@ -27,22 +27,22 @@ class TestData(unittest.TestCase):
         self.b_ell_T = np.ones(self.nell)
         self.b_ell_TplusE = np.ones((2, self.nell))
 
-        cls = np.ones((self.nell, 4))
-        cls[:,0] *= 2.
-        cls[:,1] *= 4.
-        cls[:,2] *= 10. # BB.
-        cls[:,3] *= 1.
+        c_ell = np.ones((self.nell, 4))
+        c_ell[:,0] *= 2.
+        c_ell[:,1] *= 4.
+        c_ell[:,2] *= 10. # BB.
+        c_ell[:,3] *= 1.
 
         ells = np.arange(self.nell)
-        lensed_scalar = {'cls' : cls, 'ells' : ells}
-        unlensed_scalar = {'cls' : 2 * cls, 'ells' : ells}
+        lensed_scalar = {'c_ell' : c_ell, 'ells' : ells}
+        unlensed_scalar = {'c_ell' : 2 * c_ell, 'ells' : ells}
 
         class FakeCosmology():
             def __init__(self):
-                self.cls = {'lensed_scalar' : lensed_scalar,
+                self.c_ell = {'lensed_scalar' : lensed_scalar,
                             'unlensed_scalar' : unlensed_scalar}
         self.FakeCosmology = FakeCosmology
-        self.cls = cls
+        self.c_ell = c_ell
 
     def tearDown(self):
         # Is called after each test.
@@ -180,7 +180,7 @@ class TestData(unittest.TestCase):
                          (1, self.nell))
 
         expec_totcov = np.zeros((1, self.nell))
-        expec_totcov[0] = self.n_ell_T + self.cls[:,0] * 2.
+        expec_totcov[0] = self.n_ell_T + self.c_ell[:,0] * 2.
         np.testing.assert_almost_equal(data.totcov_diag['unlensed'],
                                        expec_totcov)
         # Test if inverse is also computed correctly.
@@ -188,7 +188,7 @@ class TestData(unittest.TestCase):
                                        1/expec_totcov)
 
         # Again with lensing power.
-        expec_totcov[0] = self.n_ell_T + self.cls[:,0]
+        expec_totcov[0] = self.n_ell_T + self.c_ell[:,0]
         np.testing.assert_almost_equal(data.totcov_diag['lensed'],
                                        expec_totcov)
 
@@ -210,7 +210,7 @@ class TestData(unittest.TestCase):
 
 
         expec_totcov = np.zeros((1, self.nell))
-        expec_totcov[0] = self.n_ell_T + self.cls[:,1] * 2
+        expec_totcov[0] = self.n_ell_T + self.c_ell[:,1] * 2
         np.testing.assert_almost_equal(data.totcov_diag['unlensed'],
                                        expec_totcov)
         # Test if inverse is also computed correctly.
@@ -218,7 +218,7 @@ class TestData(unittest.TestCase):
                                        1/expec_totcov)
 
         # Again with lensing power.
-        expec_totcov[0] = self.n_ell_T + self.cls[:,1]
+        expec_totcov[0] = self.n_ell_T + self.c_ell[:,1]
         np.testing.assert_almost_equal(data.totcov_diag['lensed'],
                                        expec_totcov)
 
@@ -237,9 +237,9 @@ class TestData(unittest.TestCase):
         self.assertEqual(data.totcov_diag['unlensed'].shape, (3, self.nell))
 
         expec_totcov = np.zeros((3, self.nell))
-        expec_totcov[0] = self.n_ell_TplusE[0] + self.cls[:,0] * 2
-        expec_totcov[1] = self.n_ell_TplusE[1] + self.cls[:,1] * 2
-        expec_totcov[2] = self.n_ell_TplusE[2] + self.cls[:,3] * 2
+        expec_totcov[0] = self.n_ell_TplusE[0] + self.c_ell[:,0] * 2
+        expec_totcov[1] = self.n_ell_TplusE[1] + self.c_ell[:,1] * 2
+        expec_totcov[2] = self.n_ell_TplusE[2] + self.c_ell[:,3] * 2
         np.testing.assert_almost_equal(data.totcov_diag['unlensed'],
                                        expec_totcov)
 
@@ -256,9 +256,9 @@ class TestData(unittest.TestCase):
                                        expec_inv_totcov)
 
         # With lensing power.
-        expec_totcov[0] = self.n_ell_TplusE[0] + self.cls[:,0]
-        expec_totcov[1] = self.n_ell_TplusE[1] + self.cls[:,1]
-        expec_totcov[2] = self.n_ell_TplusE[2] + self.cls[:,3]
+        expec_totcov[0] = self.n_ell_TplusE[0] + self.c_ell[:,0]
+        expec_totcov[1] = self.n_ell_TplusE[1] + self.c_ell[:,1]
+        expec_totcov[2] = self.n_ell_TplusE[2] + self.c_ell[:,3]
         np.testing.assert_almost_equal(data.totcov_diag['lensed'],
                                        expec_totcov)
 
@@ -432,11 +432,11 @@ class TestData(unittest.TestCase):
         data.compute_alm_sim()
         np.random.seed(10)
 
-        cls = np.zeros((4, self.nell))
-        cls[:2] = 2.
-        cls[3] = 1.
+        c_ell = np.zeros((4, self.nell))
+        c_ell[:2] = 2.
+        c_ell[3] = 1.
 
-        alm = hp.synalm(cls, new=True)
+        alm = hp.synalm(c_ell, new=True)
         alm_sim_expec = np.zeros((2, self.nelem), dtype=complex)
         alm_sim_expec[0] = alm[0]
         alm_sim_expec[1] = alm[1]
@@ -458,10 +458,10 @@ class TestData(unittest.TestCase):
         data.compute_alm_sim()
         np.random.seed(10)
 
-        cls = np.zeros((4, self.nell))
-        cls[1] = 2.
+        c_ell = np.zeros((4, self.nell))
+        c_ell[1] = 2.
 
-        alm = hp.synalm(cls, new=True)
+        alm = hp.synalm(c_ell, new=True)
         alm_sim_expec = (alm[1])[np.newaxis,:]
 
         np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)
@@ -481,9 +481,9 @@ class TestData(unittest.TestCase):
         data.compute_alm_sim()
         np.random.seed(10)
 
-        cls = np.ones(self.nell) * 2.
+        c_ell = np.ones(self.nell) * 2.
 
-        alm = hp.synalm(cls, new=True)
+        alm = hp.synalm(c_ell, new=True)
         alm_sim_expec = alm[np.newaxis,:]
 
         np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)
@@ -503,9 +503,9 @@ class TestData(unittest.TestCase):
         data.compute_alm_sim(lens_power=True)
         np.random.seed(10)
 
-        cls = np.ones(self.nell) * 4. # Extra 2 from lensed spectrum.
+        c_ell = np.ones(self.nell) * 4. # Extra 2 from lensed spectrum.
 
-        alm = hp.synalm(cls, new=True)
+        alm = hp.synalm(c_ell, new=True)
         alm_sim_expec = alm[np.newaxis,:]
 
         np.testing.assert_almost_equal(data.alm_sim, alm_sim_expec)

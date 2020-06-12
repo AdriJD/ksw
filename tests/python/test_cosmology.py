@@ -1,4 +1,4 @@
-import unittestA
+import unittest
 import numpy as np
 from scipy.special import spherical_jn
 import os
@@ -48,7 +48,7 @@ class TestCosmo(unittest.TestCase):
         self.assertEqual(cosmo.camb_params.Accuracy.IntkAccuracyBoost, 5)
 
         self.assertEqual(cosmo.transfer, {})
-        self.assertEqual(cosmo.cls, {})
+        self.assertEqual(cosmo.c_ell, {})
         self.assertEqual(cosmo.red_bispectra, [])        
         
     def test_cosmology_init_omk(self):
@@ -123,7 +123,7 @@ class TestCosmo(unittest.TestCase):
 
         self.assertRaises(ValueError, cosmo.compute_transfer, lmax)
 
-    def test_cosmology_compute_cls(self):
+    def test_cosmology_compute_c_ell(self):
 
         lmax = 450
         pars = camb.CAMBparams(**self.cosmo_opts)
@@ -131,34 +131,34 @@ class TestCosmo(unittest.TestCase):
         cosmo = Cosmology(pars)
 
         cosmo.compute_transfer(lmax)
-        cosmo.compute_cls()
+        cosmo.compute_c_ell()
 
-        ells_unlensed = cosmo.cls['unlensed_scalar']['ells']
+        ells_unlensed = cosmo.c_ell['unlensed_scalar']['ells']
         np.testing.assert_equal(ells_unlensed, np.arange(lmax+1,dtype=int))
-        ells_lensed = cosmo.cls['lensed_scalar']['ells']
+        ells_lensed = cosmo.c_ell['lensed_scalar']['ells']
         np.testing.assert_equal(ells_lensed, np.arange(ells_lensed.size,
                                                        dtype=int))
-        cls_unlensed = cosmo.cls['unlensed_scalar']['cls']
-        self.assertEqual(cls_unlensed.shape, (lmax+1, 4))
-        self.assertEqual(cls_unlensed.dtype, float)
+        c_ell_unlensed = cosmo.c_ell['unlensed_scalar']['c_ell']
+        self.assertEqual(c_ell_unlensed.shape, (lmax+1, 4))
+        self.assertEqual(c_ell_unlensed.dtype, float)
 
-        cls_lensed = cosmo.cls['lensed_scalar']['cls']
-        self.assertEqual(cls_unlensed.shape, (lmax+1, 4))
-        self.assertEqual(cls_lensed.dtype, float)
+        c_ell_lensed = cosmo.c_ell['lensed_scalar']['c_ell']
+        self.assertEqual(c_ell_unlensed.shape, (lmax+1, 4))
+        self.assertEqual(c_ell_lensed.dtype, float)
 
         # EE amplitude at ell=300 is approximately 50e-5 uK^2.
-        self.assertTrue(40e-5 < cls_unlensed[300,1] < 60e-5)
-        self.assertTrue(40e-5 < cls_lensed[300,1] < 60e-5)
+        self.assertTrue(40e-5 < c_ell_unlensed[300,1] < 60e-5)
+        self.assertTrue(40e-5 < c_ell_lensed[300,1] < 60e-5)
 
         # BB amplitude should be zero for unlensed and
         # approx 5 uk-arcmin rms for large-scale lensed BB.
-        np.testing.assert_almost_equal(cls_unlensed[:,2],
+        np.testing.assert_almost_equal(c_ell_unlensed[:,2],
                                        np.zeros(lmax+1))
         # Cls are in uK^2 radians^2, so convert arcmin to rad.
         exp_BB_amp = np.radians(5 / 60.) ** 2
         exp_BB_cl = np.ones(ells_lensed.size) * exp_BB_amp
         exp_BB_cl[:2] = 0. # Monopole and dipole.
-        np.testing.assert_almost_equal(cls_lensed[:,2],
+        np.testing.assert_almost_equal(c_ell_lensed[:,2],
                                        exp_BB_cl, decimal=1)
 
     def test_cosmology_add_prim_reduced_bispectrum(self):
@@ -237,7 +237,7 @@ class TestCosmoIO(unittest.TestCase):
         # Get location of this script.
         self.path = pathlib.Path(__file__).parent.absolute()
 
-        # Cosmo instance with transfer, cls and camb params.
+        # Cosmo instance with transfer, c_ell and camb params.
         self.cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
 
@@ -258,12 +258,12 @@ class TestCosmoIO(unittest.TestCase):
         cosmo.transfer = {'tr_ell_k' : tr_ell_k,
                           'k' : k, 'ells' : ells}
 
-        cls_lensed = np.ones((nell, 4), dtype=float)
-        cls_unlensed = np.ones((nell, 4), dtype=float) * 2.
-        cosmo.cls = {'lensed_scalar' : {'ells' : ells,
-                                        'cls' : cls_lensed},
+        c_ell_lensed = np.ones((nell, 4), dtype=float)
+        c_ell_unlensed = np.ones((nell, 4), dtype=float) * 2.
+        cosmo.c_ell = {'lensed_scalar' : {'ells' : ells,
+                                        'c_ell' : c_ell_lensed},
                      'unlensed_scalar' : {'ells' : ells,
-                                          'cls' : cls_unlensed}}
+                                          'c_ell' : c_ell_unlensed}}
         cosmo.red_bisp = {'red_bisp' : red_bisp,
                           'radii' : radii,
                           'ells' : ells}
@@ -298,33 +298,33 @@ class TestCosmoIO(unittest.TestCase):
                 cosmo_new.transfer['ells'],
                 self.cosmo.transfer['ells'])
 
-    def test_read_write_cls(self):
+    def test_read_write_c_ell(self):
 
         pars = camb.CAMBparams(**self.cosmo_opts)
         cosmo_new = Cosmology(pars)
 
         with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
 
-            filename = os.path.join(tmpdirname, 'cls')
-            self.cosmo.write_cls(filename)
+            filename = os.path.join(tmpdirname, 'c_ell')
+            self.cosmo.write_c_ell(filename)
 
-            cosmo_new.read_cls(filename)
-
-            np.testing.assert_almost_equal(
-                cosmo_new.cls['lensed_scalar']['cls'],
-                self.cosmo.cls['lensed_scalar']['cls'])
-
-            np.testing.assert_equal(
-                cosmo_new.cls['lensed_scalar']['ells'],
-                self.cosmo.cls['lensed_scalar']['ells'])
+            cosmo_new.read_c_ell(filename)
 
             np.testing.assert_almost_equal(
-                cosmo_new.cls['unlensed_scalar']['cls'],
-                self.cosmo.cls['unlensed_scalar']['cls'])
+                cosmo_new.c_ell['lensed_scalar']['c_ell'],
+                self.cosmo.c_ell['lensed_scalar']['c_ell'])
 
             np.testing.assert_equal(
-                cosmo_new.cls['unlensed_scalar']['ells'],
-                self.cosmo.cls['unlensed_scalar']['ells'])
+                cosmo_new.c_ell['lensed_scalar']['ells'],
+                self.cosmo.c_ell['lensed_scalar']['ells'])
+
+            np.testing.assert_almost_equal(
+                cosmo_new.c_ell['unlensed_scalar']['c_ell'],
+                self.cosmo.c_ell['unlensed_scalar']['c_ell'])
+
+            np.testing.assert_equal(
+                cosmo_new.c_ell['unlensed_scalar']['ells'],
+                self.cosmo.c_ell['unlensed_scalar']['ells'])
 
     def test_write_camb_params(self):
 
