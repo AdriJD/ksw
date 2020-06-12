@@ -207,12 +207,12 @@ class Data():
 
         Notes
         -----
-        We multipy Cls by b_ell**2. We leave Nls unmodified.
-        This assumes that the data alms are beam convolved.
-        (C^-1 a) will thus divide out b_ell^2, which is
-        problematic when Nl is zero. If Nl is nonzero at high ell
-        this is fine again. The factors of the reduced bispectrum
-        need a factor of b_ell. We "forward propagate" the beam.
+        We multipy Cls by b_ell**2. We leave Nls unmodified. This 
+        assumes that the data alms are beam convolved. (C^-1 a) 
+        will thus divide out b_ell^2, which is problematic when Nl
+        is zero. If Nl is nonzero at high ell this is fine again.
+        The factors of the reduced bispectrum need a factor of b_ell.
+        We "forward propagate" the beam.
 
         The alternative: alm has b_ell divided out, is then mutiplied
         with (Nell / b_ell^2 + Cl)^-1. In this case, you do not

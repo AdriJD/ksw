@@ -2,9 +2,10 @@
 Test the cython wrapper of the radial_functional c code.
 '''
 import unittest
-from ksw import radial_functional as rf
 import numpy as np
 from scipy.special import spherical_jn
+
+from ksw import radial_functional as rf
 
 class TestRadialFunc(unittest.TestCase):
     

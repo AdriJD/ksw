@@ -9,9 +9,9 @@ class Shape:
     ---------
     funcs : (ncomp) sequence of callable func
         Functions needed for primordial shape.
-    rule : sequence of array-like
+    rule : (nprim) sequence of array-like
         Rule to combine functions into primordial shape.
-    amps : array-like
+    amps : (nprim) array-like
         Amplitude for each element in rule.
     name : str
         A name to identify the shape.
@@ -60,6 +60,7 @@ class Shape:
     @property
     def name(self):
         return self.__name
+    
     @name.setter
     def name(self, name):
         '''Test for empty string.'''

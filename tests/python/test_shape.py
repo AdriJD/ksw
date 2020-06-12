@@ -1,9 +1,8 @@
-'''A
-Test the Model class.
+'''
+Test the Shape class.
 '''
 import unittest
 import numpy as np
-import os
 
 from ksw import Shape
 

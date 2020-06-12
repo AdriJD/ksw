@@ -47,6 +47,10 @@ class TestCosmo(unittest.TestCase):
         self.assertEqual(cosmo.camb_params.Accuracy.lSampleBoost, 2)
         self.assertEqual(cosmo.camb_params.Accuracy.IntkAccuracyBoost, 5)
 
+        self.assertEqual(cosmo.transfer, {})
+        self.assertEqual(cosmo.cls, {})
+        self.assertEqual(cosmo.red_bispectra, [])        
+        
     def test_cosmology_init_omk(self):
 
         self.cosmo_opts['omk'] = 1.
@@ -157,35 +161,7 @@ class TestCosmo(unittest.TestCase):
         np.testing.assert_almost_equal(cls_lensed[:,2],
                                        exp_BB_cl, decimal=1)
 
-    def test_cosmology_interp_reduced_bispec_over_ell(self):
-
-        ells_sparse = np.asarray([0, 5, 10, 15, 20, 25, 30])
-        ells_full = np.arange(0, 31)
-
-        nr = 3
-        nell = ells_sparse.size
-        npol = 2
-        ncomp = 1
-
-        red_bisp = np.ones((nr, nell, npol, ncomp), dtype=float)
-        red_bisp *= (
-            np.sin(0.1 * ells_sparse)[np.newaxis,:,np.newaxis,np.newaxis])
-
-        red_bisp_full = Cosmology._interp_reduced_bispec_over_ell(
-            red_bisp, ells_sparse, ells_full)
-
-        nell_full = ells_full.size
-
-        self.assertEqual(red_bisp_full.shape, (nr, nell_full, npol, ncomp))
-
-        red_bisp_full_expec = np.ones((nr, nell_full, npol, ncomp))
-        red_bisp_full_expec *= (
-            np.sin(0.1 * ells_full)[np.newaxis,:,np.newaxis,np.newaxis])
-
-        np.testing.assert_almost_equal(red_bisp_full, red_bisp_full_expec,
-                                       decimal=2)
-
-    def test_cosmology_compute_prim_reduced_bispectrum(self):
+    def test_cosmology_add_prim_reduced_bispectrum(self):
 
         lmax = 300
         radii = np.asarray([11000., 14000.])
@@ -196,27 +172,46 @@ class TestCosmo(unittest.TestCase):
 
         local = Shape.prim_local(ns=1)
 
-        cosmo.compute_prim_reduced_bispectrum(local, radii)
-
-        # Check shape of attribute.
-        # Check dtype of attribute.
-        nell = lmax - 1 # red_bisp starts from ell=2.
+        self.assertTrue(len(cosmo.red_bispectra) == 0)
+        cosmo.add_prim_reduced_bispectrum(local, radii)
+        self.assertTrue(len(cosmo.red_bispectra) == 1)
+        
+        red_bisp = cosmo.red_bispectra[0]
+        
+        nell = lmax - 1 # Reduced Bispectrum starts from ell=2.
         nr = len(radii)
         ncomp = len(local.funcs)
         npol = 2
-        self.assertEqual(cosmo.red_bisp['red_bisp'].shape,
-                         (nr, nell, npol, ncomp))
-        self.assertEqual(cosmo.red_bisp['red_bisp'].dtype, float)
+        nfact = nr * len(local.rule)
 
+        self.assertEqual(red_bisp.factors.shape,
+                         (ncomp * nr, npol, nell))
+        self.assertEqual(red_bisp.factors.dtype, float)
+
+        self.assertEqual(red_bisp.rule.shape, (nfact, 3))
+        self.assertEqual(red_bisp.rule.dtype, int)        
+
+        self.assertEqual(red_bisp.weights.shape, (nfact, 3, npol))
+        self.assertEqual(red_bisp.weights.dtype, float)        
+        
         ells = np.arange(2, lmax+1)
-        np.testing.assert_equal(cosmo.red_bisp['ells'], ells)
-        np.testing.assert_almost_equal(cosmo.red_bisp['radii'], radii)
+        np.testing.assert_equal(red_bisp.ells_full, ells)
 
+        rule_exp = np.asarray([[2, 2, 0], [3, 3, 1]], dtype=int)
+        np.testing.assert_array_equal(red_bisp.rule, rule_exp)
+
+        weights_exp = np.ones((nfact, 3, npol))
+        weights_exp[0,...] = ((radii[1] - radii[0]) / 2.) * radii[0] ** 2
+        weights_exp[1,...] = ((radii[1] - radii[0]) / 2.) * radii[1] ** 2
+        print(red_bisp.weights)
+        print(weights_exp)
+        np.testing.assert_array_equal(red_bisp.weights, weights_exp)
+        
         # Manually compute reduced bispec factors for given r, ell.
         k = cosmo.transfer['k']
         tr_ell_k = cosmo.transfer['tr_ell_k'] # (nell, nk, npol).
         ells_sparse = cosmo.transfer['ells']
-
+        
         lidx = 40 # Randomly picked.
         pidx = 1 # Look at E-mode.
         ridx = 1
@@ -228,10 +223,11 @@ class TestCosmo(unittest.TestCase):
         integrand = k ** 2 * spherical_jn(ell, radius * k)
         integrand *= tr_ell_k[lidx,:,pidx] * func
         ans_expec = (2 / np.pi) * np.trapz(integrand, k)
-
+        ans_expec *= 2 * cosmo.camb_params.InitPower.As ** 2
+        
         lidx_full = ell - 2
 
-        ans = cosmo.red_bisp['red_bisp'][ridx,lidx_full,pidx, cidx]
+        ans = red_bisp.factors[cidx*nr+ridx,pidx,lidx_full]        
         self.assertAlmostEqual(ans, ans_expec, places=6)
 
 class TestCosmoIO(unittest.TestCase):

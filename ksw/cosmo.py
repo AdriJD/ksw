@@ -6,15 +6,18 @@ import json
 import camb
 import h5py
 
-from ksw import radial_functional as rf
+from ksw import utils, radial_functional as rf
+
+# NOTE, using cls for power spectra is confusing in python,
+# perhaps c_ell. Matches n_ell and b_ell in data too.
 
 class Cosmology:
     '''
-    A Cosmology instance represent a specific cosmology and
-    can calculate power spectra and bispectra.
+    A Cosmology instance represents a specific cosmology. It is
+    used to calculate power spectra and reduced bispectra.
 
     Parameters
-    ---------
+    ----------
     camb_params : camb.model.CAMBparams instance
         CAMB input parameter object.
     verbose : bool, optional
@@ -30,20 +33,15 @@ class Cosmology:
     ----------
     camb_params : camb.model.CAMBparams instance
         Possibly modified copy of input CAMB parameters.
-    transfer : dict of arrays
+    transfer : dict
         Radiation transfer functions and metadata.
-    cls : dict of arrays
+    cls : dict
         Angular power spectra and metadata.
-    red_bisp : dict of arrays
-        Factors of the reduced bispectrum and metadata.
+    red_bispectra : list
+        Collection of ReducedBispectrum instances.
     '''
-    # RED_BISP MUST BE LIST OF ReducedBispectrum INSTANCES
-    # ALSO, CHANGE TO RED_BISPECTRA
     
     def __init__(self, camb_params, verbose=True):
-
-        # In future, allow for several bispectra, i.e.
-        # Several primordial, ISW-lensing, etc.
 
         if camb_params.validate() is False:
             raise ValueError('Input CAMB params file invalid.')
@@ -53,8 +51,8 @@ class Cosmology:
 
         self.camb_params = camb_params.copy()
 
-        # Do not change any cosmological or primordial setting,
-        # but check the accuracy and calculation settings.
+        # Check accuracy and calculation settings, but do not change
+        # cosmological or primordial settings.
         self._setattr_camb('WantScalars', True, verbose=verbose)
         self._setattr_camb('WantTensors', False, verbose=verbose)
         self._setattr_camb('WantCls', True, verbose=verbose)
@@ -93,13 +91,17 @@ class Cosmology:
         if self.camb_params.validate() is False:
             raise ValueError('Invalid CAMB input')
 
+        self.transfer = {}
+        self.cls = {}
+        self.red_bispectra = []
+        
     def _setattr_camb(self, name, value, subclass=None, verbose=True):
         '''
         Set a CAMB parameter and print message if the parameter
         changed its value.
 
         Parameters
-        ---------
+        ----------
         name : str
             Parameter.
         value : obj
@@ -148,7 +150,7 @@ class Cosmology:
         Call CAMB to calculate radiation transfer functions.
 
         Parameters
-        ---------
+        ----------
         lmax : int
             Maximum multipole.
         verbose : bool, optional
@@ -162,21 +164,17 @@ class Cosmology:
             If lmax is too low (lmax < 300).
         '''
 
-        self.transfer = {}
-
         if lmax < 300:
             # CAMB crashes for too low lmax.
             raise ValueError('Pick lmax >= 300.')
 
         k_eta_fac = 2.5 # Default used by CAMB.
-
         self.camb_params.set_for_lmax(lmax, lens_margin=0,
                                       k_eta_fac=k_eta_fac)
 
         if self.camb_params.validate() is False:
             raise ValueError(
-                'Value {} for lmax makes params invalid'.format(
-                    lmax))
+            'Value {} for lmax makes params invalid'.format(lmax))
 
         # Make CAMB do the actual calculations (slow).
         data = camb.get_transfer_functions(self.camb_params)
@@ -184,7 +182,6 @@ class Cosmology:
 
         # Copy in resulting transfer functions (fast).
         tr = data.get_cmb_transfer_data('scalar')
-
         # Modify scalar E-mode and tensor I transfer functions, see
         # Zaldarriaga 1997 eq. 18 and 39. (CAMB applies these factors
         # at a later stage).
@@ -192,9 +189,7 @@ class Cosmology:
         # CAMB ells are in int32, so convert.
         ells = ells.astype(int)
         prefactor = np.sqrt((ells + 2) * (ells + 1) * ells * (ells - 1))
-
         tr.delta_p_l_k[1,...] *= prefactor[:,np.newaxis]
-
         # Scale with CMB temperature in uK.
         tr.delta_p_l_k *= (self.camb_params.TCMB * 1e6)
 
@@ -217,11 +212,16 @@ class Cosmology:
 
     def compute_cls(self):
         '''
-        Calculate angular power spectra using precomputed
+        Calculate angular power spectra (Cls) using precomputed
         transfer functions.
-        '''
 
-        self.cls = {}
+        Notes
+        -----
+        Spectra are CAMB output and are therefore column-major
+        (nell, npol). The pol order is TT, EE, BB, TE. nell can 
+        be different for lensed and unlensed spectra. The monopole
+        and dipole are included. Units are muK^2.
+        '''
 
         self._camb_data.power_spectra_from_transfer()
 
@@ -230,11 +230,6 @@ class Cosmology:
 
         cls_lensed_scalar = self._camb_data.get_lensed_scalar_cls(
             lmax=None, CMB_unit='muK', raw_cl=True)
-
-        # CAMB cls are column-major (nell, npol)
-        # Pol order is TT, EE, BB, TE.
-        # nell is different for lensed and unlensed.
-        # Monopole and dipole are included.
 
         ells_unlensed = np.arange(cls_unlensed_scalar.shape[0])
         ells_lensed = np.arange(cls_lensed_scalar.shape[0])
@@ -247,13 +242,10 @@ class Cosmology:
         self.cls['lensed_scalar']['ells'] = ells_lensed
         self.cls['lensed_scalar']['cls'] = cls_lensed_scalar
 
-
-    # CHANGE TO ADD PRIM RED BISP
-    # ADD KWARG FOR NAME, BUT DEFAULT TO SHAPE NAME.
-    def compute_prim_reduced_bispectrum(self, prim_shape, radii):
+    def add_prim_reduced_bispectrum(self, prim_shape, radii, name=None):
         '''
-        Compute the factors of the reduced bispectrum for
-        a given primordial shape.
+        Compute the factors of the reduced bispectrum for a given 
+        primordial shape and add to internal list of reduced bispectra.
 
         Parameters
         ----------
@@ -261,6 +253,9 @@ class Cosmology:
             Primordial shape function.
         radii : array-like
             Radii in Mpc.
+        name : str, optional
+            Name to identify reduced bispectrum, defaults to name  
+            attribute of primordial shape.
         '''
 
         tr_ell_k = self.transfer['tr_ell_k']
@@ -268,88 +263,80 @@ class Cosmology:
         ells_sparse = self.transfer['ells']
 
         f_k = prim_shape.get_f_k(k)
-
-        # NOTE, here you also need to multiply f_k
-        # by As^2 etc. Or whatever your convention will be.
-    
+        f_k *= 2 * self.camb_params.InitPower.As ** 2
         
-        # Call cython code.
+        # Call C code.
         red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
 
-        lmin = ells_sparse[0]
-        lmax = ells_sparse[-1]
-        ells_full = np.arange(lmin, lmax+1, dtype=int)
-
-        self.red_bisp = {}
-        self.red_bisp['ells'] = ells_full
-        self.red_bisp['radii'] = radii
-
-
-        # REMOVE THIS
-        # Interpolate over ells.
-        self.red_bisp['red_bisp'] = self._interp_reduced_bispec_over_ell(
-            red_bisp, ells_sparse, ells_full)
-
-        # CALL _parse_prim_reduced_bisp
-        # ADD OUTPUT red_bispectra list
+        factors, rule, weights = self._parse_prim_reduced_bispec(
+            red_bisp, radii, prim_shape.rule, prim_shape.amps)
         
-    def _parse_prim_reduced_bispec(self, red_bisp, radii, ells, rule, amps):
-        # Or put this in cosmo class? YES.
+        if name is None:
+            name = prim_shape.name
+            
+        self.red_bispectra.append(
+            ReducedBispectrum(factors, rule, weights, ells_sparse, name))
+        
+    def _parse_prim_reduced_bispec(self, red_bisp, radii, prim_rule, amps):
         '''
-        Return reduced bispectrum for primordial model converted
-        into X(i)_ell, Y(i)_ell, Z(i)_ell form used internally.
+        Rearrange factors of reduced bispectrum for a primordial model
+        into the form required by the ReducedBispectrum class.
 
         Parameters
         ----------
         red_bisp : (nr, nell, npol, ncomp) array
+            Factors of reduced bispectrum.
+        radii : (nr) array-like
+            Radii in Mpc.
+        prim_rule : (nprim) sequence of array-like
+            Rule to combine factors into primordial shape, see ksw.Shape.
+        amps : (nprim) array-like
+            Amplitude for each element in rule, see ksw.Shape.
 
         Returns
         -------
-        red_bisp_conv : (3, nfact, npol, nell) array
+        factors : (ncomp * nr, npol, nell) array
+            Rearranged factors of reduced bispectrum.
+        rule : (nfact, 3) int array
+            Array of indices to first dimension of factors that form the
+            reduced bispectrum.
+        weights : (nfact, 3, npol) float array
+            (nprim * nr) weights (amp * r^2 dr) for each element in rule.
         '''
+
+        nr, nell, npol, ncomp = red_bisp.shape
+        nfact = nr * len(prim_rule)        
+
+        # Unique factors, just reshaped version of input reduced bispectrum.
+        factors = np.ascontiguousarray(np.transpose(red_bisp, (3, 0, 2, 1)))
+        factors = factors.reshape((ncomp * nr, npol, nell), order='C')
         
+        # For primordial bispectra the last two dims of weights are constant.
+        weights = np.ones((nfact, 3, npol))
+        rule = np.ones((nfact, 3), dtype=int)        
+        
+        dr = utils.get_trapz_weights(radii) * radii ** 2
+        ridxs = np.arange(nr) # Indices to radii.
+        start = 0
+        for amp, ru in zip(amps, prim_rule):
+            weights[start:start+nr] = (amp * dr)[:,np.newaxis,np.newaxis]
+            # Indices into first dim of factors (which is (ncomp, nr)).
+            rule[start:start+nr,:] = ridxs[:,np.newaxis] + (np.asarray(ru) * nr)
+            start += nr
+                        
+        return factors, rule, weights
+
+    def add_reduced_bispectrum_from_file():
         pass
-        
-    # THIS SHOULD NOW BE PART OF ReducedBispectrum
-    @staticmethod
-    def _interp_reduced_bispec_over_ell(red_bisp, ells_sparse,
-                                        ells_full):
-        '''
-        Interpolate factors of reduced bispectrum over all
-        multipoles.
-
-        Parameters
-        ----------
-        red_bisp : (nr, nell, npol, ncomp) array
-            Factors of reduced bispectrum that are sparsly sampled
-            over multipoles.
-        ells_sparse : (nell) array
-            Sparsly sampled multipoles.
-        ells_full : (nell_full) array
-            Fully sampled multipoles.
-
-        Returns
-        -------
-        red_bisp_full : (nr, nell_full, npol, ncomp) array
-            Fully sampled factors of reduced bispectrum.
-        '''
-
-        # Scipy does internal transpose of input array,
-        # transposing beforehand is less efficient.
-        cs = CubicSpline(ells_sparse, red_bisp, axis=1)
-
-        red_bisp_full = cs(ells_full)
-
-        return red_bisp_full
-
+    
     def write_transfer(self, filename):
         '''
-        Write the transfer function to disk.
+        Write the transfer functions to disk.
 
         Parameters
         ----------
         filename : str
-            Filename
+            Absolute path to transfer file.
         '''
 
         with h5py.File(filename + '.hdf5', 'w') as f:
@@ -357,59 +344,23 @@ class Cosmology:
             f.create_dataset('k', data=self.transfer['k'])
             f.create_dataset('ells', data=self.transfer['ells'])
 
-    def write_camb_params(self, filename):
+    def read_transfer(self, filename):
         '''
-        Dump the CAMB parameters to human readable file.
+        Read in transfer file and populate transfer attribute.
 
         Parameters
         ----------
         filename : str
-            Filename
+            Absolute path to transfer file.
         '''
 
-        # Put CAMB parameters in dict: {param : value}.
-        params = {}
+        self.transfer = {}
 
-        # Loop over attributes of CAMB param file.
-        for idx in inspect.getmembers(self.camb_params):
-            # idx : (name, value).
-            if idx[0].startswith('_'):
-                continue
-            elif inspect.ismethod(idx[1]):
-                continue
-            elif isinstance(idx[1], (int, float, bool, list)):
-                params[idx[0]] = idx[1]
-            elif isinstance(idx[1], camb.model.CAMB_Structure):
-                # Subclass, do separate loop over its attributes.
-                params[idx[0]] = {}
-                
-                for jdx in inspect.getmembers(idx[1]):
+        with h5py.File(filename + '.hdf5', 'r') as f:
+            self.transfer['tr_ell_k'] = f['tr_ell_k'][()]
+            self.transfer['k'] = f['k'][()]
+            self.transfer['ells'] = f['ells'][()]
 
-                    if jdx[0].startswith('_'):
-                        continue
-                    elif inspect.ismethod(jdx[1]):
-                        continue
-                    elif isinstance(jdx[1], (int, float, bool, list)):
-                        params[idx[0]][jdx[0]] = jdx[1]
-                                                       
-        with open(filename + '.json', 'w') as f:
-            json.dump(params, f, sort_keys=True, indent=4)
-
-    def write_red_bisp(self, filename):
-        '''
-        Write the reduced bispectrum to disk.
-
-        Parameters
-        ----------
-        filename : str
-            Filename
-        '''
-
-        with h5py.File(filename + '.hdf5', 'w') as f:
-            f.create_dataset('red_bisp', data=self.red_bisp['red_bisp'])
-            f.create_dataset('radii', data=self.red_bisp['radii'])
-            f.create_dataset('ells', data=self.red_bisp['ells'])
-    
     def write_cls(self, filename):
         '''
         Write the angular power spectra to disk.
@@ -417,8 +368,9 @@ class Cosmology:
         Parameters
         ----------
         filename : str
-            Filename
+            Absolute path to output file.
         '''
+        
         with h5py.File(filename + '.hdf5', 'w') as f:
             lens_scal = f.create_group('lensed_scalar')
             lens_scal.create_dataset('ells',
@@ -431,41 +383,7 @@ class Cosmology:
                     data=self.cls['unlensed_scalar']['ells'])
             unlens_scal.create_dataset('cls',
                     data=self.cls['unlensed_scalar']['cls'])
-            
-    def read_transfer(self, filename):
-        '''
-        Read in tranfer file and populate transfer attribute.
 
-        Parameters
-        ----------
-        filename : str
-            Filename
-        '''
-        
-        self.transfer = {}
-
-        with h5py.File(filename + '.hdf5', 'r') as f:
-            self.transfer['tr_ell_k'] = f['tr_ell_k'][()]
-            self.transfer['k'] = f['k'][()]
-            self.transfer['ells'] = f['ells'][()]
-
-    def read_red_bisp(self, filename):
-        '''
-        Read in reduced bispectrum file and populate red_bisp attribute.
-
-        Parameters
-        ----------
-        filename : str
-            Filename
-        '''
-
-        self.red_bisp = {}
-
-        with h5py.File(filename + '.hdf5', 'r') as f:
-            self.red_bisp['red_bisp'] = f['red_bisp'][()]
-            self.red_bisp['radii'] = f['radii'][()]
-            self.red_bisp['ells'] = f['ells'][()]
-    
     def read_cls(self, filename):
         '''
         Read in cls file and populate cls attribute.
@@ -473,7 +391,7 @@ class Cosmology:
         Parameters
         ----------
         filename : str
-            Filename
+            Absolute path to spectra file.
         '''
 
         self.cls = {}
@@ -489,109 +407,244 @@ class Cosmology:
             cls = f['unlensed_scalar/cls'][()]
             self.cls['unlensed_scalar'] = {}
             self.cls['unlensed_scalar']['ells'] = ells
-            self.cls['unlensed_scalar']['cls'] = cls            
-            
+            self.cls['unlensed_scalar']['cls'] = cls
+                        
+    def write_camb_params(self, filename):
+        '''
+        Write the CAMB parameters to human readable file.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to parameter file.
+        '''
+
+        # Put CAMB parameters in dict: {param : value}.
+        params = {}
+        # Loop over attr ibutes of CAMB param file.
+        for idx in inspect.getmembers(self.camb_params):
+            # idx : (name, value).
+            if idx[0].startswith('_'):
+                continue
+            elif inspect.ismethod(idx[1]):
+                continue
+            elif isinstance(idx[1], (int, float, bool, list)):
+                params[idx[0]] = idx[1]
+            elif isinstance(idx[1], camb.model.CAMB_Structure):
+                # Subclass, do separate loop over its attributes.
+                params[idx[0]] = {}
+
+                for jdx in inspect.getmembers(idx[1]):
+                    if jdx[0].startswith('_'):
+                        continue
+                    elif inspect.ismethod(jdx[1]):
+                        continue
+                    elif isinstance(jdx[1], (int, float, bool, list)):
+                        params[idx[0]][jdx[0]] = jdx[1]
+
+        with open(filename + '.json', 'w') as f:
+            json.dump(params, f, sort_keys=True, indent=4)
+
 class ReducedBispectrum:
     '''
-    Unified way to store a reduced bispectrum. Flatten 
-    reduced bispectrum into X(i)_ell, Y(i)_ell, Z(i)_ell form.
+    A ReducedBispectrum instance represents a reduced bispectrum
+    that consists of a sum of terms that are each seperable in
+    the l1, l2, l3 multipoles:
 
-    Make it the users responsibility to create correct form.
-    Sparse ells are allowed. 
+    b_l1_l2_l3 = sum_i^nfact X(i)_l1 Y(i)_l1 Z(i)_l1.
 
     Parameters
     ----------
-    red_bispec : (3, nfact, npol, nell_sparse)    
-
-    weights : (3, nfact, npol) array
-        Weights for each factor of reduced bipsectrum.    
+    factors = (n, npol, nell_sparse)
+        Unique f_ells that make up the bispectrum.
+    rule : (nfact, 3) int array
+        Indices to first dimension of unique factors array that
+        create the (nfact, 3, npol, nell) reduced bispectrum.
+    weights : (nfact, 3, npol) float array
+        Weights for each element in rule.
     ells : (nell_sparse) array
         Possibily sparse array of monotonicially increasing
         multipoles.
+    name : str
+        A name to identify the reduced bispectrum.
 
     Attributes
     ----------
-    red_bispec : (3, nfact, npol, nell) array
-    
-    nfact : int
-        For primordial nfact = nr * len(rule)
-
-    ells_sparse : 
-
-    ells_full : 
-
-    npol : 
-
-    weights : 
-
-    rule ??
+    factors : (n, npol, nell)
+        Unique f_ells that make up the bispectrum.
+    rule : (nfact, 3) int array
+        Indices to first dimension of unique factors array that
+        create the (nfact, 3, npol, nell) reduced bispectrum.
+    weights : (nfact, 3, npol) float array
+        Weights for each element in rule.
+    ells_sparse : (nell_sparse) int array
+        Possibily sparse array of monotonicially increasing
+        multipoles.        
+    ells_full : (nell) int array
+        Fully sampled array of multipoles.
+    npol : int
+        Number of polarizations.
 
     Raises
     ------
     ValueError
         If input shapes do not match.
+        If rule refers to nonexisting factors.
+        If name is not an identifiable string.
+    TypeError
+        If rule is not an array of integers.
     '''
 
-    def __init__(self, red_bisp, weights, ells):
+    def __init__(self, factors, rule, weights, ells, name):
 
         self.ells_sparse = ells
-        self.ells_full = np.arange(ells[0], ells[-1])
+        self.ells_full = np.arange(ells[0], ells[-1] + 1)
+        self.factors = factors
+        _, self.npol, _ = self.factors.shape
         self.weights = weights
-        self.red_bisp = red_bisp
+        self.rule = rule
+        self.name = name
         
-        # Store unique elements of flattened version + indices.
-        red_bisp_unique, idx, iidx = self.get_unique_factors()
-        self.red_bisp_unique = red_bisp_unique
-        #self.
+    @property
+    def factors(self):
+        return self.__factors
+    
+    @factors.setter
+    def factors(self, factors):
+        '''Check shape. Interpolate if needed.'''
 
-        #    np.unique(
-        #    self.red_bisp, return_indices=True, return_inverse=True)
-        # NOTE, first need to flatten, and cleaner if in own funtion.
+        if self.ells_sparse.size != factors.shape[2]:
+            raise ValueError('Shape of factors {}, does not '
+            'match with shape ells {}.'.format(factors.shape,
+                                        self.ells_sparse.size))
+            
+        if self.ells_full.size != self.ells_sparse.size:
+            factors = self._interp_factors(factors)
+        else:
+            factors = factors.copy()
+
+        self.__factors = factors
+        
+    @property
+    def rule(self):
+        return self.__rule
+    
+    @rule.setter
+    def rule(self, rule):
+        '''Check shape, type and values.'''
+
+        if rule.shape != (self.weights.shape[0], 3):
+            raise ValueError('Shape of rule is {}, expected {}.'
+                    .format(rule.shape, (self.weights.shape[0], 3)))
+        if rule.dtype != int:
+            raise TypeError('dtype rule is {} instead of int'.
+                            format(rule.dtype))
+        if rule.min() < 0:
+            raise ValueError('Rule does not support negative indices.')
+        if rule.max() >= self.factors.shape[0]:
+            raise ValueError('Rule points to at least one index that is '
+                             'out of bounds.')
+        self.__rule = rule
 
     @property
     def weights(self):
         return self.__weights
-        
+    
     @weights.setter
     def weights(self, weights):
         '''Check shape.'''
         
-        if weights.shape[0] != 3:
-            raise ValueError('Shape[0] of weights is {}, expected 3.'
-                             .format(weights.shape[0]))
+        if weights.shape[1:] != (3, self.npol):
+            raise ValueError('Shape[1:] of weights is {}, expected {}.'
+                             .format(weights.shape[1:], (3, self.npol)))
         self.__weights = weights
-        
+
     @property
-    def red_bisp(self):
-        return self.__red_bisp
-
-    @red_bisp.setter
-    def red_bisp(self, red_bisp):
-        '''Check shape. Interpolate if needed.'''
+    def name(self):
+        return self.__name
+    
+    @name.setter
+    def name(self, name):
+        '''Test for empty string.'''
         
-        _, nfact, npol = self.weights.size
-        nell = self.ells_sparse.size
+        errmsg = ('Shape name "{}" is not an identifiable string'.
+                  format(name))
+        try:
+            if not name.strip():
+                raise ValueError(errmsg)
+        except AttributeError as e:
+            raise ValueError(errmsg) from e
         
-        if red_bisp.shape != (3, nfact, npol, nell):
-            raise ValueError('Shape red_bisp is {}, while '
-            'size ells is {} and shape weights is {}.'.format(
-                red_bisp.shape, self.weights.shape, nell))
+        self.__name = name
+                
+    def _interp_factors(self, factors):
+        '''
+        Return factors of reduced bispectrum interpolated 
+        over all multipoles.
 
-        if self.ells_full.size != self.ells_sparse.size: 
-            # Interpolate.           
-            self._interp_bisp()
+        Parameters
+        ----------
+        factors : (n, npol, nell_sparse) array
+            Factors of reduced bispectrum to be interpolated.
+
+        Returns
+        -------
+        factors_full : (n, npol, nell) array
+            Input interpolated over multipole.
+        '''
+
+        cs = CubicSpline(self.ells_sparse, factors, axis=2)
+        return cs(self.ells_full)
+
+    # Use name as prefix..
+    def write_red_bisp(self, filename):
+        '''
+        Write the reduced bispectrum to disk.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to output file.
+        '''
+
+        with h5py.File(filename + '.hdf5', 'w') as f:
+            f.create_dataset('red_bisp', data=self.red_bisp['red_bisp'])
+            f.create_dataset('radii', data=self.red_bisp['radii'])
+            f.create_dataset('ells', data=self.red_bisp['ells'])
             
-        self.__red_bisp = red_bisp
-        
-    def _interp_reduced_bispec_over_ell(self):
-        pass
+    # NOTE, how to do this..
+    # Put this I/O stuff in ReducedBispectrum
+    # save and load the processed bispectrum.
+    # filename could use name attribute.
 
-    def get_unique(self):
-        # Perhaps call at init and store indices and inverse
-        # indices right away.
-        
-        pass
+    # Like a static method that return an instance of the class?
+    # like this
+    # @classmethod
+    # def init_from_file(cls, files)
+    #     read and parse files
+    #     return cls(parsed_files)
+    #
+    # you can then just do red_bisp = ReducedBispectrum.init_from_file(...)        
+    def read_red_bisp(self, filename):
+        '''
+        Read in reduced bispectrum file and populate red_bisp attribute.
 
+        Parameters
+        ----------
+        filename : str
+            Absolute path to reduced bispectrum file.
+        '''
+
+        # now needs to save the attributes if ReducedBispectrum class.
+        
+        self.red_bisp = {}
+
+        with h5py.File(filename + '.hdf5', 'r') as f:
+            self.red_bisp['red_bisp'] = f['red_bisp'][()]
+            self.red_bisp['radii'] = f['radii'][()]
+            self.red_bisp['ells'] = f['ells'][()]
+
+    
     # in estimator you can also concatenate X, Y and Z
     # and do unique on that one. Because eq. 74 is the same for
     # X, Y, Z. Otherwise for eg orthogonal rule: (1,1,0), (2,2,2), (1,2,3)
