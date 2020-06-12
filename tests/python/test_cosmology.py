@@ -1,4 +1,4 @@
-import unittest
+import unittestA
 import numpy as np
 from scipy.special import spherical_jn
 import os
@@ -8,7 +8,7 @@ import json
 
 import camb
 
-from ksw import Cosmology, Shape
+from ksw import Cosmology, Shape, ReducedBispectrum
 
 class TestCosmo(unittest.TestCase):
 
@@ -326,30 +326,6 @@ class TestCosmoIO(unittest.TestCase):
                 cosmo_new.cls['unlensed_scalar']['ells'],
                 self.cosmo.cls['unlensed_scalar']['ells'])
 
-    def test_read_write_red_bisp(self):
-
-        pars = camb.CAMBparams(**self.cosmo_opts)
-        cosmo_new = Cosmology(pars)
-
-        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
-
-            filename = os.path.join(tmpdirname, 'red_bisp')
-            self.cosmo.write_red_bisp(filename)
-
-            cosmo_new.read_red_bisp(filename)
-
-            np.testing.assert_almost_equal(
-                cosmo_new.red_bisp['red_bisp'],
-                self.cosmo.red_bisp['red_bisp'])
-
-            np.testing.assert_almost_equal(
-                cosmo_new.red_bisp['radii'],
-                self.cosmo.red_bisp['radii'])
-
-            np.testing.assert_equal(
-                cosmo_new.red_bisp['ells'],
-                self.cosmo.red_bisp['ells'])
-
     def test_write_camb_params(self):
 
         with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
@@ -386,3 +362,38 @@ class TestCosmoIO(unittest.TestCase):
 
         # Check if new CAMB parameter object is equal to original.
         self.assertIs(self.cosmo.camb_params.diff(params_new), None)
+
+    def test_cosmology_add_reduced_bispectrum_from_file(self):
+
+        pars = camb.CAMBparams(**self.cosmo_opts)
+        cosmo = Cosmology(pars)
+
+        n_unique = 2
+        nfact = 4
+        npol = 2
+        ells_sparse = np.asarray([3, 5, 7, 10, 13, 15])
+        ells_full = np.arange(3, 16)
+        
+        weights = np.ones((nfact, 3, npol))
+        rule = np.ones((nfact, 3), dtype=int)
+        factors = np.ones((n_unique, npol, ells_sparse.size))
+        name = 'test_bispec'
+
+        rb = ReducedBispectrum(factors, rule, weights, ells_sparse, name)
+        
+        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
+
+            filename = os.path.join(tmpdirname, 'red_bisp')
+            rb.write(filename)
+
+            cosmo.add_reduced_bispectrum_from_file(filename)
+        
+        rb2 = cosmo.red_bispectra[0]
+        np.testing.assert_array_almost_equal(rb2.factors, rb.factors)
+        np.testing.assert_array_equal(rb2.rule, rb.rule)
+        np.testing.assert_array_almost_equal(rb2.weights, rb.weights)
+        np.testing.assert_array_equal(rb2.ells_full, ells_full)
+        np.testing.assert_array_equal(rb2.ells_sparse, ells_full)
+        self.assertEqual(rb2.name, rb.name)        
+        
+        
