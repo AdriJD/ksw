@@ -28,4 +28,16 @@ class TestUtils(unittest.TestCase):
         x = np.asarray([3, 4, -5, 10])
         self.assertRaises(ValueError, utils.get_trapz_weights, x)        
         
+    def test_compute_fftlen_fftw(self):
+
+        len_min = 734
+        len_opt_exp = 735 # 2^0 3^1 5^1 7^2.
+        len_opt_even_exp = 750 # 2^1 3^1 5^3 7^0.
+
+        len_opt_even = utils.compute_fftlen_fftw(len_min)
+        self.assertEqual(len_opt_even, len_opt_even_exp)
+        
+        len_opt = utils.compute_fftlen_fftw(len_min, even=False)
+        self.assertEqual(len_opt, len_opt_exp)
+
         
