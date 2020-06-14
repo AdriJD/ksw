@@ -9,22 +9,21 @@ class Data():
 
     Parameters
     ----------
-    alm_data : (nelem) or (npol, nelem) complex array
-        Spherical harmonic coefficients of data in uK and
-        in Healpix ordering. Order pol: T, E.
+    lmax : int
+        Maximum multipole assumed for alms and related quantities.
     n_ell : (nell) or (nspec, nell) array
-        Noise covariance matrix (without beam) in uK^2.
-        Order: TT, EE, TE.
+        Noise covariance matrix (without beam) in uK^2. Order: TT, EE, TE.
     b_ell : (nell) or (npol, nell) array
         Beam window function of alms.
-    pol : str, array-like of str, optional
-        Data polarization, e.g. "E", or ["T", "E"]. Order
-        should always be T, E.
+    pol : str, array-like of str
+        Data polarization, e.g. "E", or ["T", "E"]. Order should be T, E.
+    cosmo : ksw.Cosmology instance
+        Cosmology instance to get Cls.
 
     Raises
     ------
     ValueError
-        If input shapes are not consistent.
+        If input shapes are inconsistent.
         If elements of pol are invalid.
 
     Attributes
@@ -35,38 +34,42 @@ class Data():
         Number of included polarization.
     lmax : int
         Maximum multipole of data.
-    alm_data : (npol, nelem) complex array
-        Spherical harmonic coefficients of data in uK and
-        Healpix ordering.
     b_ell : (npol, nell) array
         Beam window function for each polarization.
     n_ell : (nspec, nell) array
-        Noise covariance matrix (without beam) in uK^2.
-        Order=TT, (EE, TE).
-    alm_sim : (npol, nelem) complex array, None
-        Simulated spherical harmonic coefficients with
-        same shape, covariance and beam as data alms.
-    totcov_diag : dict of (nspec, nell) arrays, None
-        Lensed and unlensed covariance matrix diagonal in multipole.
-    inv_totcov_diag : dict of (nspec, nell) arrays, None
-        Lensed and unlensed inverse covariance matrix diagonal in multipole.
-    '''
+        Noise covariance matrix (without beam) in uK^2. Order=TT, (EE, TE).
+    cov_ell_lensed : (nspec, nell) array
+        Lensed covariance matrix diagonal in multipole.
+    cov_ell_nonlensed : (nspec, nell) array
+        Non-lensed covariance matrix diagonal in multipole.
+    icov_ell_lensed : (nspec, nell) array
+        Inverse lensed covariance matrix diagonal in multipole.
+    icov_ell_nonlensed : (nspec, nell) array
+        Inverse non-lensed covariance matrix diagonal in multipole.
 
-    # Perhaps only alm_shape and dtype is enough
+    Notes
+    -----
+    Lowering lmax after initiation will truncate all quantities correctly.
+    '''
     
-    def __init__(self, alm_data, n_ell, b_ell, pol):
+    def __init__(self, lmax, n_ell, b_ell, pol, cosmo):
 
         self.pol = pol
-        self.alm_data = alm_data
+        self.lmax = lmax
         self.b_ell = b_ell
         self.n_ell = n_ell
-        self.alm_sim = None
-        self.totcov_diag = None
-        self.inv_totcov_diag = None
+        self.cosmo = cosmo
+
+        covs = self._compute_totcov_diag()
+        self.cov_ell_lensed = covs[0]
+        self.icov_ell_lensed = covs[1]
+        self.cov_ell_nonlensed = covs[2]         
+        self.icov_ell_nonlensed = covs[3]
 
     @property
     def pol(self):
         return self.__pol
+    
     @pol.setter
     def pol(self, pol):
         '''Make tuple and check contents.'''
@@ -85,46 +88,31 @@ class Data():
     def npol(self):
         return len(self.pol)
 
-    @property
-    def alm_data(self):
-        return self.__alm_data
-    @alm_data.setter
-    def alm_data(self, alm):
-        '''Check if shape is allowed, make 2d. Store copy.'''
-        alm = np.ascontiguousarray(np.atleast_2d(alm.copy()))
-        if alm.shape[0] != self.npol:
-            raise ValueError(
-                'Shape alm: {} does not match with length of pol: {}.'
-                .format(alm.shape, self.npol))
-
-        nelem = alm.shape[1]
-        if hp.Alm.getlmax(nelem) == -1:
-            raise ValueError(
-                'Invalid size of alm : nelem = {}'.format(nelem))
-        self.__alm_data = alm
-
-    @property
-    def lmax(self):
-        nelem = self.alm_data.shape[1]
-        return hp.Alm.getlmax(nelem)
-
+    def _trunc_x_ell(self, x_ell, name):
+        '''If needed, truncate last dim to lmax or raise IndexError.'''
+        if x_ell.shape[-1] < self.lmax + 1:
+            raise IndexError('lmax {} < lmax ({} < {})'
+            .format(name, x_ell.shape[-1], self.lmax))
+        return np.ascontiguousarray(x_ell[...,:self.lmax+1])
+    
     @property
     def b_ell(self):
-        return self.__b_ell
+        return self._trunc_x_ell(self.__b_ell, 'b_ell')
+    
     @b_ell.setter
     def b_ell(self, b_ell):
         '''Make 2d. Check shape. Store copy.'''
         b_ell = np.ascontiguousarray(np.atleast_2d(b_ell.copy()))
-        if b_ell.shape != (self.npol, self.lmax + 1):
+        if b_ell.shape[0] != self.npol:
             raise ValueError(
-                'Invalid shape b_ell. Expected {}, got {}.'
-                .format((self.npol, self.lmax + 1),
-                        b_ell.shape))
+                'Invalid shape[0] of b_ell. Expected {}, got {}.'
+                .format(self.npol, b_ell.shape[0]))
         self.__b_ell = b_ell
 
     @property
     def n_ell(self):
-        return self.__n_ell
+        return self._trunc_x_ell(self.__n_ell, 'n_ell')        
+    
     @n_ell.setter
     def n_ell(self, n_ell):
         '''Make 2d. Check shape. Store copy.'''
@@ -135,80 +123,74 @@ class Data():
         elif self.npol == 2:
             nspec = 3
 
-        if n_ell.shape != (nspec, self.lmax + 1):
+        if n_ell.shape[0] != nspec:
             raise ValueError(
-                'Invalid shape n_ell. Expected {}, got {}.'
-                .format((nspec, self.lmax + 1), n_ell.shape))
+                'Invalid shape[0] n_ell. Expected {}, got {}.'
+                .format(nspec, n_ell.shape[0]))
 
         self.__n_ell = n_ell
 
-    def compute_alm_sim(self, lens_power=False):
-        '''
-        Draw isotropic Gaussian realisation from (S+N) covariance.
+    @property
+    def cov_ell_lensed(self):
+        return self._trunc_x_ell(
+            self.__cov_ell_lensed, 'cov_ell_lensed')
 
-        Parameters
-        ----------
-        lens_power : bool, optional
-            Include lensing power in covariance.
+    @cov_ell_lensed.setter
+    def cov_ell_lensed(self, cov):
+        self.__cov_ell_lensed = cov
 
-        Raises
-        ------
-        AttributeError
-            If compute_totcov_diag() has not been called.
-        '''
+    @property
+    def cov_ell_nonlensed(self):
+        return self._trunc_x_ell(
+            self.__cov_ell_nonlensed, 'cov_ell_nonlensed')        
+        
+    @cov_ell_nonlensed.setter
+    def cov_ell_nonlensed(self, cov):
+        self.__cov_ell_nonlensed = cov
 
-        if self.totcov_diag is None:
-            raise AttributeError('No covariance matrix found. '
-                'Call compute_totcov_diag() first.')
+    @property
+    def icov_ell_lensed(self):
+        return self._trunc_x_ell(
+            self.__icov_ell_lensed, 'icov_ell_lensed')        
 
-        if lens_power:
-            totcov_diag = self.totcov_diag['lensed']
-        else:
-            totcov_diag = self.totcov_diag['unlensed']
-            
-        # Synalm expects 1D TT array or (TT, EE, BB, TE) array.
-        if 'E' in self.pol:
-            nspec, nell = totcov_diag.shape
-            c_ell_in = np.zeros((4, nell))
-            if 'T' in self.pol:
-                c_ell_in[0,:] = totcov_diag[0]
-                c_ell_in[1,:] = totcov_diag[1]
-                c_ell_in[3,:] = totcov_diag[2]
-            else:
-                c_ell_in[1,:] = totcov_diag[0]
-        else:
-            c_ell_in = totcov_diag
+    @icov_ell_lensed.setter
+    def icov_ell_lensed(self, icov):
+        self.__icov_ell_lensed = icov
 
-        alm = hp.synalm(c_ell_in, lmax=self.lmax, new=True)
-
-        if self.pol == ('T', 'E'):
-            # Only return I and E.
-            alm = alm[:2,:]
-        elif self.pol == ('E',):
-            alm = (alm[1,:])[np.newaxis,:]
-        else:
-            alm = alm
-
-        self.alm_sim = alm
-
-    def compute_totcov_diag(self, cosmo):
+    @property
+    def icov_ell_nonlensed(self):
+        return self._trunc_x_ell(
+            self.__icov_ell_nonlensed, 'icov_ell_nonlensed')        
+        
+    @icov_ell_nonlensed.setter
+    def icov_ell_nonlensed(self, icov):
+        self.__icov_ell_nonlensed = icov
+        
+    def _compute_totcov_diag(self):
         '''
         Compute data covariance: (Nl + Cl * bl^2) and its inverse.
-        Diagonal in multipole but can include correlations between
-        polarizations.
-
-        Parameters
-        ----------
-        cosmo : ksw.Cosmology instance
-            Cosmology instance to get Cls.
 
         Raises
         ------
         ValueError
             If data lmax > transfer function lmax.
 
+        Returns
+        -------
+        cov_ell_lensed : (nspec, nell) array
+            Lensed covariance matrix diagonal in multipole.
+        cov_ell_nonlensed : (nspec, nell) array
+            Non-lensed covariance matrix diagonal in multipole.
+        icov_ell_lensed : (nspec, nell) array
+            Inverse lensed covariance matrix diagonal in multipole.
+        icov_ell_nonlensed : (nspec, nell) array
+            Inverse non-lensed covariance matrix diagonal in multipole.
+
         Notes
         -----
+        Diagonal in multipole but can include correlations between
+        polarizations.
+
         We multipy Cls by b_ell**2. We leave Nls unmodified. This 
         assumes that the data alms are beam convolved. (C^-1 a) 
         will thus divide out b_ell^2, which is problematic when Nl
@@ -220,18 +202,16 @@ class Data():
         with (Nell / b_ell^2 + Cl)^-1. In this case, you do not
         multiply factors of reduced bispectrum by b_ell.
         '''
-
-        if not hasattr(cosmo, 'c_ell'):
-            cosmo.compute_c_ell()
-
-        self.totcov_diag = {}
-        self.inv_totcov_diag = {}        
         
+        if not hasattr(self.cosmo, 'c_ell'):
+            self.cosmo.compute_c_ell()
+
+        ret = []
         for c_ell_type in ['lensed', 'unlensed']:            
             
-            cls_ells = cosmo.c_ell[c_ell_type+'_scalar']['ells']
-            c_ell = cosmo.c_ell[c_ell_type+'_scalar']['c_ell']
-
+            cls_ells = self.cosmo.c_ell[c_ell_type+'_scalar']['ells']
+            c_ell = self.cosmo.c_ell[c_ell_type+'_scalar']['c_ell']
+                  
             cls_lmax = cls_ells[-1]
 
             if cls_lmax < self.lmax:
@@ -257,100 +237,202 @@ class Data():
                 totcov[0] *= self.b_ell[0] ** 2
                 totcov[1] *= self.b_ell[1] ** 2
                 totcov[2] *= self.b_ell[0] * self.b_ell[1]
-
+            
             totcov += self.n_ell
             totcov = np.ascontiguousarray(totcov)
+            inv_totcov = self._invert_cov_diag(totcov)
 
-            self.totcov_diag[c_ell_type] = totcov
-            self.inv_totcov_diag[c_ell_type] = self._invert_totcov_diag(totcov)
+            ret.append(totcov)
+            ret.append(inv_totcov)
+
+        return ret
             
-    def _invert_totcov_diag(self, totcov_diag):
+    def _invert_cov_diag(self, cov_diag):
         '''
         Return inverse covariance matrix.
         
         Parameters
         ----------
-        totcov_diag : (nspec, nell) array
+        cov_diag : (nspec, nell) array
             Covariance matrix diagonal with multipoles.
 
         Returns
         -------
-        inv_totcov_diag : (nspec, nell) array
+        icov_diag : (nspec, nell) array
             Inverse covariance matrix.
         '''
 
-        inv_totcov_diag = np.zeros_like(totcov_diag)
-        nell = totcov_diag.shape[1]
-        inv_totcov = np.zeros((self.npol, self.npol, nell))
+        icov_diag = np.zeros_like(cov_diag)
+        nell = cov_diag.shape[1]
+        icov = np.zeros((self.npol, self.npol, nell))
 
-        inv_totcov[0,0] = totcov_diag[0]
+        icov[0,0] = cov_diag[0]
         if self.pol == ('T', 'E'):
-            inv_totcov[0,1] = totcov_diag[2]
-            inv_totcov[1,0] = totcov_diag[2]
-            inv_totcov[1,1] = totcov_diag[1]
+            icov[0,1] = cov_diag[2]
+            icov[1,0] = cov_diag[2]
+            icov[1,1] = cov_diag[1]
 
         # Temporarily put pol dimensions last for faster inverse.
-        inv_totcov = np.transpose(inv_totcov, (2, 0, 1))
-        inv_totcov = np.linalg.inv(np.ascontiguousarray(inv_totcov))
-        inv_totcov = np.transpose(inv_totcov, (1, 2, 0))
+        icov = np.transpose(icov, (2, 0, 1))
+        icov = np.linalg.inv(np.ascontiguousarray(icov))
+        icov = np.transpose(icov, (1, 2, 0))
 
-        inv_totcov_diag[0] = inv_totcov[0,0]
+        icov_diag[0] = icov[0,0]
         if self.pol == ('T', 'E'):   
-            inv_totcov_diag[1] = inv_totcov[1,1]
-            inv_totcov_diag[2] = inv_totcov[1,0]        
+            icov_diag[1] = icov[1,1]
+            icov_diag[2] = icov[1,0]        
         
-        return inv_totcov_diag
-            
-    def get_c_inv_a_diag(self, sim=False, lens_power=False):
+        return icov_diag
+    
+    def compute_alm_sim(self, lens_power=False):
         '''
-        Return inverse covariance weighted copy of data.
+        Draw isotropic Gaussian realisation from (S+N) covariance.
+
+        Parameters
+        ----------
+        lens_power : bool, optional
+            Include lensing power in covariance.
+
+        Returns
+        -------
+        alm_sim : (npol, nelem) complex array
+            Simulated alm with ells up to lmax.
+        '''
+
+        if lens_power:
+            cov_ell = self.cov_ell_lensed
+        else:
+            cov_ell = self.cov_ell_nonlensed
+            
+        # Synalm expects 1D TT array or (TT, EE, BB, TE) array.
+        if 'E' in self.pol:
+            nspec, nell = cov_ell.shape
+            c_ell_in = np.zeros((4, nell))
+            if 'T' in self.pol:
+                c_ell_in[0,:] = cov_ell[0]
+                c_ell_in[1,:] = cov_ell[1]
+                c_ell_in[3,:] = cov_ell[2]
+            else:
+                c_ell_in[1,:] = cov_ell[0]
+        else:
+            c_ell_in = cov_ell
+
+        alm = hp.synalm(c_ell_in, lmax=self.lmax, new=True)
+
+        if self.pol == ('T', 'E'):
+            # Only return I and E.
+            alm = alm[:2,:]
+        elif self.pol == ('E',):
+            alm = (alm[1,:])[np.newaxis,:]
+        else:
+            alm = alm
+
+        return alm
+                    
+    def _icov_diag(self, alm, lens_power=False):    
+        '''
+        Return (in-place) inverse covariance weighted version if input.
         Assuming that covariance is diagonal in multipole.
 
         Parameters
         ----------
-        sim : bool, optional
-            Return weighted copy of simulated data.
+        alm : (npol, nelem) array
+            Healpix-ordered alm array to be inverse weighted. Order: T, E.
         lens_power : bool, optional
             Include lensing power in invserse covariance.
 
         Returns
         -------
         c_inv_a : (npol, nelem) complex array
-            Inverse covariance weighted copy of data.
+            Inverse covariance weighted input array.
 
         Raises
         ------
-        AttributeError
-            If compute_alm_sim() has not been called but sim is set.
-            If compute_totcov_diag() has not been called.
+        ValueError
+            If shape input alm does not match npol or exceeds lmax.
         '''
 
-        if sim:
-            alm = self.alm_sim
-            if alm is None:
-                raise AttributeError('Call compute_alm_sim() first.')
+        if alm.ndim == 1:
+            input_1d = True
+            alm = np.atleast_2d(alm)
         else:
-            alm = self.alm_data
+            input_1d = False
 
-        if self.inv_totcov_diag is None:
-            raise AttributeError('No inverse covariance found. '
-                'Call compute_totcov_diag() first.')
-
+        if alm.shape[0] != self.npol:
+            raise ValueError(
+                'Shape alm: {} does not match with length of pol: {}.'
+                .format(alm.shape, self.npol))
+                    
+        lmax_alm = hp.Alm.getlmax(alm.shape[-1])
+        if lmax_alm > self.lmax:
+            raise ValueError('lmax alm exceeds lmax icov ({} > {})'.
+                             format(lmax_alm, self.lmax))
+               
         if lens_power:
-            inv_totcov = self.inv_totcov_diag['lensed']
+            icov = self.icov_ell_lensed
         else:
-            inv_totcov = self.inv_totcov_diag['unlensed']
-            
-        c_inv_a = np.zeros_like(alm)        
-        c_inv_a[0] = hp.almxfl(alm[0], inv_totcov[0])
-        
+            icov = self.icov_ell_nonlensed
+
         if self.pol == ('T', 'E'):
-            c_inv_a[0] += hp.almxfl(alm[1], inv_totcov[2])
-            c_inv_a[1] = hp.almxfl(alm[0], inv_totcov[2])
-            c_inv_a[1] += hp.almxfl(alm[1], inv_totcov[1])
+            # Would be nice get rid of this copy with C or cython.
+            tmp = alm.copy()
+            hp.almxfl(tmp[0], icov[2,:lmax_alm+1], inplace=True)
+            hp.almxfl(tmp[1], icov[2,:lmax_alm+1], inplace=True)
+            hp.almxfl(alm[0], icov[0,:lmax_alm+1], inplace=True)            
+            hp.almxfl(alm[1], icov[1,:lmax_alm+1], inplace=True)
+            alm[1] += tmp[0]
+            alm[0] += tmp[1]
+        else:
+            hp.almxfl(alm[0], icov[0,:lmax_alm+1], inplace=True)            
+            
+        if input_1d:
+            return alm[0]
+        else:
+            return alm
 
-        return c_inv_a
+    def icov_diag_lensed(self, alm):
+        '''
+        Return (in-place) inverse lensed covariance weighted version if input.
+        Assuming that covariance is diagonal in multipole.
 
-    # And, you can make a data method
-    # def c_inv(self, alm) that filters a set of alms.
-    # In estimator class you would then call: estimator.set_c_inv(data.c_inv)
+        Parameters
+        ----------
+        alm : (npol, nelem) array
+            Healpix-ordered alm array to be inverse weighted. Order: T, E.
+
+        Returns
+        -------
+        c_inv_a : (npol, nelem) complex array
+            Inverse covariance weighted input array.
+
+        Raises
+        ------
+        ValueError
+            If shape input alm does not match npol or exceeds lmax.
+        '''
+        
+        return self._icov_diag(alm, lens_power=True)
+    
+    def icov_diag_nonlensed(self, alm):
+        '''
+        Return (in-place) inverse non-lensed covariance weighted version if input.
+        Assuming that covariance is diagonal in multipole.
+
+        Parameters
+        ----------
+        alm : (npol, nelem) array
+            Healpix-ordered alm array to be inverse weighted. Order: T, E.
+
+        Returns
+        -------
+        c_inv_a : (npol, nelem) complex array
+            Inverse covariance weighted input array.
+
+        Raises
+        ------
+        ValueError
+            If shape input alm does not match npol or exceeds lmax.
+        '''
+        
+        return self._icov_diag(alm, lens_power=False)
+        
