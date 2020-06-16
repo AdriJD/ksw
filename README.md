@@ -39,6 +39,6 @@ to simply build the python package inside this directory.
 ## Copyright & license
 - libpshtlight extracted from [libpsht](http://sourceforge.net/projects/libpsht/). Copyright Martin Reinecke. Licensed under the GNU GPL v.2.
 - hyperspherical extracted from [CLASS](https://github.com/lesgourg/class_public) (see directory for more information)
-- libpsht python wrappers adapted from [wavemoth](https://github.com/wavemoth/wavemoth/tree/a236048034913cffbbc99a9fe7f96b2d88caa739). Copyright Dag Sverre Seljebotn. Licensed under the GNU GPL v. 2
+- libpsht python wrappers adapted from [wavemoth](https://github.com/wavemoth/wavemoth/tree/a236048034913cffbbc99a9fe7f96b2d88caa739). Copyright Dag Sverre Seljebotn. Licensed under the GNU GPL v.2.
 
 
