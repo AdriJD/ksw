@@ -10,7 +10,7 @@ opj = os.path.join
 path = str(Path(__file__).parent.absolute())
 
 compile_opts = {
-    'extra_compile_args': ['-shared', '-std=gnu99', 
+    'extra_compile_args': ['-shared', '-std=gnu99',
                            '-fopenmp',
                            '-Wno-strict-aliasing',
                            '-g']}
@@ -24,13 +24,18 @@ ext_modules = [Extension('ksw.radial_functional',
                          include_dirs=[opj(path, 'include'),
                                        np.get_include()],
                          runtime_library_dirs=[opj(path, 'lib')],
+                         **compile_opts),
+               Extension('ksw.legendre',
+                         [opj(path, 'cython', 'legendre.pyx'),
+                          opj(path, 'libpshtlight', 'ylmgen_c.c'),
+                          opj(path, 'libpshtlight', 'c_utils.c'),
+                          opj(path, 'libpshtlight', 'walltime_c.c')],
+                         include_dirs=[opj(path, 'include'),
+                                       opj(path, 'libpshtlight'),
+                                       np.get_include()],
                          **compile_opts)]
 
 setup(name='ksw',
       packages=['ksw'],
       ext_modules=cythonize(ext_modules,
                             compiler_directives=compiler_directives))
-
-
-
-

@@ -1,4 +1,4 @@
-'''A
+'''
 Test the Data class.
 '''
 import unittest
