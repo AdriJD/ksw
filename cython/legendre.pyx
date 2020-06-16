@@ -1,4 +1,7 @@
-from __future__ import division
+'''
+Wrapper functions adapted from the wavemoth repository by Dag Sverre Seljebotn.
+See https://github.com/wavemoth/wavemoth.
+'''
 
 cdef extern from "../libpshtlight/ylmgen_c.h":
     ctypedef struct Ylmgen_C:
