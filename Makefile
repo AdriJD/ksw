@@ -20,7 +20,7 @@ $(info $(shell mkdir -p -v $(NEWDIRS)))
 
 CFLAGS = -g -Wall -fpic -std=gnu99
 OMPFLAG = -fopenmp
-OPTFLAG = -march=native -O4 -ffast-math
+OPTFLAG = -march=native -Ofast -ffast-math
 
 OBJECTS = $(ODIR)/radial_functional.o \
           $(ODIR)/common.o \
