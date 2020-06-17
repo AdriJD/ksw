@@ -182,7 +182,12 @@ class Cosmology:
         # Modify scalar E-mode and tensor I transfer functions, see
         # Zaldarriaga 1997 eq. 18 and 39. (CAMB applies these factors
         # at a later stage).
-        ells = tr.L
+        try:
+            # CAMB changes this at least one time.
+            # See Nov 19 CAMB commit: Formatting; py 3.8 test.
+            ells = tr.L
+        except AttributeError:
+            ells = tr.l
         # CAMB ells are in int32, so convert.
         ells = ells.astype(int)
         prefactor = np.sqrt((ells + 2) * (ells + 1) * ells * (ells - 1))
