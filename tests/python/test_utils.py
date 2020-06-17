@@ -40,4 +40,66 @@ class TestUtils(unittest.TestCase):
         len_opt = utils.compute_fftlen_fftw(len_min, even=False)
         self.assertEqual(len_opt, len_opt_exp)
 
+    def test_alm2a_m_ell(self):
+
+        alm = np.ones((1, 2, 10), dtype=complex)
+        alm *= np.arange(10, dtype=complex)
+        
+        arr = np.ones((1, 2, 4, 4), dtype=alm.dtype)
+        arr_exp = np.ones((1, 2, 4, 4), dtype=alm.dtype)        
+        arr_exp *= np.asarray([[0, 1, 2, 3],
+                              [0, 4, 5, 6],
+                              [0, 0, 7, 8],
+                              [0, 0, 0, 9]], dtype=complex)
+        
+        utils.alm2a_m_ell(alm, arr)
+        np.testing.assert_array_equal(arr, arr_exp)
+
+        self.assertTrue(arr.flags['OWNDATA'])
+
+    def test_alm2a_m_ell_err(self):
+
+        alm = np.ones((1, 2, 10), dtype=complex)
+        alm *= np.arange(10, dtype=complex)
+        
+        arr = np.ones((2, 2, 4, 4), dtype=alm.dtype) # Wrong dims.        
+
+        self.assertRaises(ValueError, utils.alm2a_m_ell, alm, arr)
+
+        arr = np.ones((1, 2, 5, 5), dtype=alm.dtype) # Wrong last dims.
+
+        self.assertRaises(ValueError, utils.alm2a_m_ell, alm, arr)        
+
+    def test_a_m_ell2alm(self):
+
+        arr = np.ones((1, 2, 4, 4), dtype=complex)        
+        arr *= np.asarray([[0, 1, 2, 3],
+                           [0, 4, 5, 6],
+                           [0, 0, 7, 8],
+                           [0, 0, 0, 9]], dtype=complex)
+        
+        alm = np.ones((1, 2, 10), dtype=complex) * np.nan
+        alm_exp = np.ones_like(alm) * np.arange(10, dtype=complex)
+                        
+        utils.a_m_ell2alm(arr, alm)
+        np.testing.assert_array_equal(alm, alm_exp)
+
+        self.assertTrue(alm.flags['OWNDATA'])
+
+    def test_a_m_ell2alm_err(self):
+
+        arr = np.ones((1, 2, 4, 4), dtype=complex)        
+        arr *= np.asarray([[0, 1, 2, 3],
+                           [0, 4, 5, 6],
+                           [0, 0, 7, 8],
+                           [0, 0, 0, 9]], dtype=complex)
+        
+        alm = np.ones((2, 2, 10), dtype=complex) # Wrong dim.s
+
+        self.assertRaises(ValueError, utils.a_m_ell2alm, arr, alm)
+
+        alm = np.ones((1, 2, 12), dtype=alm.dtype) # Wrong last dims.
+
+        self.assertRaises(ValueError, utils.a_m_ell2alm, arr, alm)        
+
         

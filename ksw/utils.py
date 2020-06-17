@@ -1,5 +1,7 @@
 import numpy as np
 
+import healpy as hp
+
 def get_trapz_weights(x):
     '''
     Compute weights dx for trapezoidal integration rule.
@@ -78,3 +80,86 @@ def compute_fftlen_fftw(len_min, even=True):
                         len_opt = fftlen
 
     return len_opt
+
+def alm2a_m_ell(alm, arr, mmax=None):
+    '''
+    Fill N + 2 dimensional array with N + 1 dimensional alm array.
+
+    Parameters
+    ----------
+    alm : (..., nelem) array
+        Healpix ordered (m-major) alm array.
+    arr : (..., nm, nell):
+        m-major alm array to be filled.
+    mmax : int, None
+        Maxumum m-mode used for alm array,
+
+    Raises
+    ------
+    ValueError
+        If shapes do not match.
+    '''
+    
+    # first dims must match.
+    if alm.shape[:-1] != arr.shape[:-2]:
+        raise ValueError('Mismatch shapes alm {} and arr {}'.
+                         format(alm.shape, arr.shape))
+    # Last dims must match.
+    lmax = hp.Alm.getlmax(alm.shape[-1], mmax=mmax)
+    if mmax is None:
+        mmax = lmax
+    if arr.shape[-2:] != (mmax + 1, lmax + 1):
+        raise ValueError(
+            'Expected arr.shape[-2:] (mmax+1, lmax+1) = {}, got {} '.format(
+                (mmax + 1, lmax + 1), arr.shape[-2:]))
+    
+    arr *= 0
+    for m in range(mmax + 1):
+        
+        start = hp.Alm.getidx(lmax, m, m)
+        end = start + lmax + 1 - m
+        
+        arr[...,m,m:] = alm[...,start:end]
+        
+    return
+    
+def a_m_ell2alm(arr, alm):
+    '''
+    Fill N + 1 dimensional alm array with N + 2 dimensional array.
+
+    Parameters
+    ----------
+    arr : (..., nm, nell):
+        m-major alm array.
+    alm : (..., nelem) array
+        Healpix ordered (m-major) alm array to be filled
+
+    Raises
+    ------
+    ValueError
+        If shapes do not match.
+    '''
+    
+    # first dims must match.
+    if alm.shape[:-1] != arr.shape[:-2]:
+        raise ValueError('Mismatch shapes alm {} and arr {}'.
+                         format(alm.shape, arr.shape))
+    # Last dims must match.
+    mmax = arr.shape[-2] - 1
+    lmax = arr.shape[-1] - 1
+
+    if alm.shape[-1] != hp.Alm.getsize(lmax, mmax=mmax):
+        raise ValueError(
+            'Expected alm.shape[-1] (mmax+1, lmax+1) = {}, got {}'.
+            format(hp.Alm.getsize(lmax, mmax=mmax), alm.shape[-1]))
+    
+    alm *= 0
+    for m in range(mmax + 1):
+        
+        start = hp.Alm.getidx(lmax, m, m)
+        end = start + lmax + 1 - m
+        
+        alm[...,start:end] = arr[...,m,m:]
+        
+    return
+    
