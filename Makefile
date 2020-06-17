@@ -56,7 +56,7 @@ check_python:
 	cd $(TDIR); python -m pytest python/
 
 $(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(OBJECTS) $(LDIR)/libradial_functional.so
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -lm -Wl,-rpath,$(LDIR)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -lm -lgomp -Wl,-rpath,$(LDIR)
 
 $(TDIR)/obj/run_tests.o: $(TDIR)/src/run_tests.c $(TDIR)/include/seatest.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include -I$(IDIR)
