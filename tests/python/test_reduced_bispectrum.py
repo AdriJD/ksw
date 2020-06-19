@@ -29,6 +29,10 @@ class TestReducedBispectrum(unittest.TestCase):
         np.testing.assert_almost_equal(rb.factors, factors)
         np.testing.assert_almost_equal(rb.rule, rule)        
         np.testing.assert_almost_equal(rb.weights, weights)
+        self.assertEqual(rb.lmin, 0)
+        self.assertEqual(rb.lmax, 2)
+        self.assertEqual(rb.npol, npol)
+        self.assertEqual(rb.nfact, nfact)
 
     def test_reducedbispectrum_init_err_shape(self):
 
@@ -126,6 +130,26 @@ class TestReducedBispectrum(unittest.TestCase):
         self.assertRaises(ValueError, ReducedBispectrum,
                           factors, rule, weights, ells, name)
 
+    def test_reducedbispectrum_init_err_derived(self):
+
+        n_unique = 2
+        nfact = 3
+        npol = 2
+        nell = 3
+
+        factors = np.ones((n_unique, npol, nell))
+        weights = np.ones((nfact, 3, npol))
+        rule = np.ones((nfact, 3), dtype=int)
+        ells = np.arange(nell)
+        name = 'test'
+
+        rb = ReducedBispectrum(factors, rule, weights, ells, name)
+
+        self.assertRaises(AttributeError, setattr, rb, 'lmax', 10)
+        self.assertRaises(AttributeError, setattr, rb, 'lmin', 10)
+        self.assertRaises(AttributeError, setattr, rb, 'npol', 10)
+        self.assertRaises(AttributeError, setattr, rb, 'nfact', 10)
+                                  
     def test_reducedbispectrum_init_interp_bispec(self):
 
         n_unique = 2

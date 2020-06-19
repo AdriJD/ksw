@@ -496,6 +496,11 @@ class ReducedBispectrum:
         Fully sampled array of multipoles.
     npol : int
         Number of polarizations.
+    nfact : int
+        Number of factored sums making up this reduced bispectrum.
+    lmax : int
+        Maximum multipole describing this reduced bispectrum.
+
 
     Raises
     ------
@@ -512,7 +517,6 @@ class ReducedBispectrum:
         self.ells_sparse = ells
         self.ells_full = np.arange(ells[0], ells[-1] + 1)
         self.factors = factors
-        _, self.npol, _ = self.factors.shape
         self.weights = weights
         self.rule = rule
         self.name = name
@@ -589,6 +593,22 @@ class ReducedBispectrum:
 
         self.__name = name
 
+    @property
+    def npol(self):
+        return self.factors.shape[1]
+
+    @property
+    def nfact(self):
+        return self.rule.shape[0]
+
+    @property
+    def lmax(self):
+        return self.ells_full[-1]
+
+    @property
+    def lmin(self):
+        return self.ells_full[0]    
+        
     def _interp_factors(self, factors):
         '''
         Return factors of reduced bispectrum interpolated
