@@ -500,7 +500,8 @@ class ReducedBispectrum:
         Number of factored sums making up this reduced bispectrum.
     lmax : int
         Maximum multipole describing this reduced bispectrum.
-
+    lmin : int
+        Minimum multipole describing this reduced bispectrum.
 
     Raises
     ------

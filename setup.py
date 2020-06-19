@@ -1,5 +1,6 @@
 from distutils.core import setup
 from distutils.extension import Extension
+from distutils.sysconfig import get_python_inc
 from Cython.Build import cythonize
 import numpy as np
 import os
@@ -33,6 +34,7 @@ ext_modules = [Extension('ksw.radial_functional',
                          libraries=['gomp'],
                          include_dirs=[opj(path, 'include'),
                                        opj(path, 'libpshtlight'),
+                                       get_python_inc(),
                                        np.get_include()],
                          **compile_opts)]
 
