@@ -81,7 +81,7 @@ def compute_fftlen_fftw(len_min, even=True):
 
     return len_opt
 
-def alm2a_m_ell(alm, out=None, mmax=None):
+def alm2a_ell_m(alm, out=None, mmax=None):
     '''
     Fill N + 2 dimensional array with N + 1 dimensional alm array.
 
@@ -89,15 +89,15 @@ def alm2a_m_ell(alm, out=None, mmax=None):
     ----------
     alm : (..., nelem) array
         Healpix ordered (m-major) alm array.
-    out : (..., nm, nell) array, optional
-        m-major alm array to be filled.
+    out : (..., nell, nm) array, optional
+        ell-major alm array to be filled.
     mmax : int, None
         Maxumum m-mode used for alm array,
 
     Returns
     -------
-    a_m_ell : (..., nm, nell) array
-        (N + 2) d m-major alm array.
+    a_m_ell : (..., nell, nm) array
+        (N + 2) d ell-major alm array.
 
     Raises
     ------
@@ -110,17 +110,17 @@ def alm2a_m_ell(alm, out=None, mmax=None):
         mmax = lmax
         
     if out is not None:
-        # first dims must match.
+        # First dims must match.
         if alm.shape[:-1] != out.shape[:-2]:
             raise ValueError('Mismatch shapes alm {} and out {}'.
                              format(alm.shape, out.shape))
         # Last dims must match.
-        if out.shape[-2:] != (mmax + 1, lmax + 1):
+        if out.shape[-2:] != (lmax + 1, mmax + 1):
             raise ValueError(
-                'Expected out.shape[-2:] (mmax+1, lmax+1) = {}, got {} '.format(
-                    (mmax + 1, lmax + 1), out.shape[-2:]))
+                'Expected out.shape[-2:] (lmax+1, mmax+1) = {}, got {} '.format(
+                    (lmax + 1, mmax + 1), out.shape[-2:]))
     else:
-        out = np.empty(alm.shape[:-1] + (mmax + 1, lmax + 1), dtype=alm.dtype)
+        out = np.empty(alm.shape[:-1] + (lmax + 1, mmax + 1), dtype=alm.dtype)
     
     out *= 0
     for m in range(mmax + 1):
@@ -128,18 +128,18 @@ def alm2a_m_ell(alm, out=None, mmax=None):
         start = hp.Alm.getidx(lmax, m, m)
         end = start + lmax + 1 - m
         
-        out[...,m,m:] = alm[...,start:end]
+        out[...,m:,m] = alm[...,start:end]
         
     return out
     
-def a_m_ell2alm(arr, out=None):
+def a_ell_m2alm(arr, out=None):
     '''
     Fill N + 1 dimensional alm array with N + 2 dimensional array.
 
     Parameters
     ----------
-    arr : (..., nm, nell):
-        m-major alm array.
+    arr : (..., nell, nm):
+        ell-major alm array.
     out : (..., nelem) array, optional
         Healpix ordered (m-major) alm array to be filled
 
@@ -154,18 +154,17 @@ def a_m_ell2alm(arr, out=None):
         If shapes do not match.
     '''
     
-    mmax = arr.shape[-2] - 1
-    lmax = arr.shape[-1] - 1
+    mmax = arr.shape[-1] - 1
+    lmax = arr.shape[-2] - 1
 
     if out is not None:
-        # first dims must match.
+        # First dims must match.
         if out.shape[:-1] != arr.shape[:-2]:
-            raise ValueError('Mismatch shapes out {} and arr {}'.
+            raise ValueError('Mismatch shapes out : {} and arr : {}'.
                              format(out.shape, arr.shape))
         # Last dims must match.
         if out.shape[-1] != hp.Alm.getsize(lmax, mmax=mmax):
-            raise ValueError(
-                'Expected out.shape[-1] (mmax+1, lmax+1) = {}, got {}'.
+            raise ValueError('Expected out.shape[-1] : {}, got : {}'.
                 format(hp.Alm.getsize(lmax, mmax=mmax), out.shape[-1]))
     else:
         out = np.empty(arr.shape[:-2] + (hp.Alm.getsize(lmax, mmax=mmax),),
@@ -177,7 +176,7 @@ def a_m_ell2alm(arr, out=None):
         start = hp.Alm.getidx(lmax, m, m)
         end = start + lmax + 1 - m
         
-        out[...,start:end] = arr[...,m,m:]
+        out[...,start:end] = arr[...,m:,m]
         
     return out
     
