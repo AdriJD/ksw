@@ -81,7 +81,7 @@ def compute_fftlen_fftw(len_min, even=True):
 
     return len_opt
 
-def alm2a_m_ell(alm, arr, mmax=None):
+def alm2a_m_ell(alm, out=None, mmax=None):
     '''
     Fill N + 2 dimensional array with N + 1 dimensional alm array.
 
@@ -89,41 +89,50 @@ def alm2a_m_ell(alm, arr, mmax=None):
     ----------
     alm : (..., nelem) array
         Healpix ordered (m-major) alm array.
-    arr : (..., nm, nell):
+    out : (..., nm, nell) array, optional
         m-major alm array to be filled.
     mmax : int, None
         Maxumum m-mode used for alm array,
+
+    Returns
+    -------
+    a_m_ell : (..., nm, nell) array
+        (N + 2) d m-major alm array.
 
     Raises
     ------
     ValueError
         If shapes do not match.
     '''
-    
-    # first dims must match.
-    if alm.shape[:-1] != arr.shape[:-2]:
-        raise ValueError('Mismatch shapes alm {} and arr {}'.
-                         format(alm.shape, arr.shape))
-    # Last dims must match.
+
     lmax = hp.Alm.getlmax(alm.shape[-1], mmax=mmax)
     if mmax is None:
         mmax = lmax
-    if arr.shape[-2:] != (mmax + 1, lmax + 1):
-        raise ValueError(
-            'Expected arr.shape[-2:] (mmax+1, lmax+1) = {}, got {} '.format(
-                (mmax + 1, lmax + 1), arr.shape[-2:]))
+        
+    if out is not None:
+        # first dims must match.
+        if alm.shape[:-1] != out.shape[:-2]:
+            raise ValueError('Mismatch shapes alm {} and out {}'.
+                             format(alm.shape, out.shape))
+        # Last dims must match.
+        if out.shape[-2:] != (mmax + 1, lmax + 1):
+            raise ValueError(
+                'Expected out.shape[-2:] (mmax+1, lmax+1) = {}, got {} '.format(
+                    (mmax + 1, lmax + 1), out.shape[-2:]))
+    else:
+        out = np.empty(alm.shape[:-1] + (mmax + 1, lmax + 1), dtype=alm.dtype)
     
-    arr *= 0
+    out *= 0
     for m in range(mmax + 1):
         
         start = hp.Alm.getidx(lmax, m, m)
         end = start + lmax + 1 - m
         
-        arr[...,m,m:] = alm[...,start:end]
+        out[...,m,m:] = alm[...,start:end]
         
-    return
+    return out
     
-def a_m_ell2alm(arr, alm):
+def a_m_ell2alm(arr, out=None):
     '''
     Fill N + 1 dimensional alm array with N + 2 dimensional array.
 
@@ -131,8 +140,13 @@ def a_m_ell2alm(arr, alm):
     ----------
     arr : (..., nm, nell):
         m-major alm array.
-    alm : (..., nelem) array
+    out : (..., nelem) array, optional
         Healpix ordered (m-major) alm array to be filled
+
+    Returns
+    -------
+    alm : (..., nelem) array
+        Healpix ordered (m-major) alm array        
 
     Raises
     ------
@@ -140,26 +154,47 @@ def a_m_ell2alm(arr, alm):
         If shapes do not match.
     '''
     
-    # first dims must match.
-    if alm.shape[:-1] != arr.shape[:-2]:
-        raise ValueError('Mismatch shapes alm {} and arr {}'.
-                         format(alm.shape, arr.shape))
-    # Last dims must match.
     mmax = arr.shape[-2] - 1
     lmax = arr.shape[-1] - 1
 
-    if alm.shape[-1] != hp.Alm.getsize(lmax, mmax=mmax):
-        raise ValueError(
-            'Expected alm.shape[-1] (mmax+1, lmax+1) = {}, got {}'.
-            format(hp.Alm.getsize(lmax, mmax=mmax), alm.shape[-1]))
-    
-    alm *= 0
+    if out is not None:
+        # first dims must match.
+        if out.shape[:-1] != arr.shape[:-2]:
+            raise ValueError('Mismatch shapes out {} and arr {}'.
+                             format(out.shape, arr.shape))
+        # Last dims must match.
+        if out.shape[-1] != hp.Alm.getsize(lmax, mmax=mmax):
+            raise ValueError(
+                'Expected out.shape[-1] (mmax+1, lmax+1) = {}, got {}'.
+                format(hp.Alm.getsize(lmax, mmax=mmax), out.shape[-1]))
+    else:
+        out = np.empty(arr.shape[:-2] + (hp.Alm.getsize(lmax, mmax=mmax),),
+                       dtype=arr.dtype)        
+        
+    out *= 0
     for m in range(mmax + 1):
         
         start = hp.Alm.getidx(lmax, m, m)
         end = start + lmax + 1 - m
         
-        alm[...,start:end] = arr[...,m,m:]
+        out[...,start:end] = arr[...,m,m:]
         
-    return
+    return out
     
+class FakeMPIComm():
+    '''
+    Mimic an actual MPI communicator.
+
+    Attributes
+    ----------
+    size : int    
+    rank : int
+    '''
+    
+    def __init__(self):
+        pass
+    
+    def Get_size(self):
+        return 1
+    def Get_rank(self):        
+        return 0
