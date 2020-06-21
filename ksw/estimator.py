@@ -334,8 +334,8 @@ class KSW():
 
         Returns
         -------
-        estimate : scalar
-            fNL estimate.
+        estimate : scalar, None
+            fNL estimate on root.
 
         Raises
         ------
@@ -384,7 +384,10 @@ class KSW():
 
         t_cubic = utils.reduce(t_cubic)
 
-        return (t_cubic - lin_term) / fisher            
+        if comm.Get_rank() == 0:
+            return (t_cubic - lin_term) / fisher
+        else:
+            return None
     
     def backward(self, a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                  x_i_phi, y_i_phi, z_i_phi, y_ell_m):
