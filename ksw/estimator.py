@@ -14,7 +14,7 @@ class KSW():
     ----------
     data : ksw.Data instance
         Data instance containing a cosmology instance, beams and covariance.
-    c_inv : callable, None
+    icov : callable, None
         Function takes (npol, nelem) alm-like complex array
         and returns the inverse-variance-weighted version of
         that array. Defaults to diagonal weighting.
@@ -29,7 +29,7 @@ class KSW():
         that array. 
     mc_idx : int
         Counter for Monte Carlo estimates.
-    mc_gt : (npol, nelem) array, None
+    mc_gt : (npol, nelem) complex array, None
         Current <grad T (C^-1 a)> Monte Carlo estimate (eq 60 Smith Zaldarriaga).
     mc_gt_sq : float, None
         Current <grad T (C^-1 a) C^-1 grad T(C^-1 a)> Monte Carlo
