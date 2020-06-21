@@ -7,6 +7,7 @@
 - [camb](https://camb.readthedocs.io/en/latest/)
 - [pytest](https://pypi.org/project/pytest/)
 - [mpi4py](https://pypi.org/project/mpi4py/)
+- [pyfftw](https://pypi.org/project/pyFFTW/)
 
 ### Installation
 
