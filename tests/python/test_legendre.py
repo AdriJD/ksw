@@ -5,7 +5,7 @@ from ksw import legendre
 
 class TestLegendre(unittest.TestCase):
 
-    def test_compute_normalized_associated_legendre(self):
+    def test_legendre_compute_normalized_associated_legendre(self):
 
         # Test output shape and values.
         thetas = np.linspace(0, np.pi, 10)
@@ -33,7 +33,7 @@ class TestLegendre(unittest.TestCase):
         out = legendre.compute_normalized_associated_legendre(m, thetas, lmax)
         np.testing.assert_array_almost_equal(out, out_exp)
 
-    def test_compute_normalized_associated_legendre_out(self):
+    def test_legendre_compute_normalized_associated_legendre_out(self):
 
         thetas = np.linspace(0, np.pi, 10)
         lmax = 2
@@ -47,7 +47,7 @@ class TestLegendre(unittest.TestCase):
         legendre.compute_normalized_associated_legendre(m, thetas, lmax, out=out)
         np.testing.assert_array_almost_equal(out, out_exp)
 
-    def test_compute_normalized_associated_legendre_err(self):
+    def test_legendre_compute_normalized_associated_legendre_err(self):
 
         thetas = np.linspace(0, np.pi, 10)
         lmax = 2
@@ -65,7 +65,7 @@ class TestLegendre(unittest.TestCase):
         self.assertRaises(ValueError, legendre.compute_normalized_associated_legendre,
                           m, thetas, lmax, out=out)
 
-    def test_normalized_associated_legendre_ms(self):
+    def test_legendre_normalized_associated_legendre_ms(self):
 
         lmax = 2
         ms = np.arange(lmax + 1)
@@ -99,7 +99,7 @@ class TestLegendre(unittest.TestCase):
         out = legendre.normalized_associated_legendre_ms(ms, theta, lmax)
         np.testing.assert_array_almost_equal(out, out_exp)
 
-    def test_normalized_associated_legendre_ms_out(self):
+    def test_legendre_normalized_associated_legendre_ms_out(self):
 
         lmax = 2
         ms = np.arange(lmax + 1)
@@ -121,7 +121,7 @@ class TestLegendre(unittest.TestCase):
         legendre.normalized_associated_legendre_ms(ms, theta, lmax, out=out)
         np.testing.assert_array_almost_equal(out, out_exp)
 
-    def test_normalized_associated_legendre_ms_err(self):
+    def test_legendre_normalized_associated_legendre_ms_err(self):
 
         lmax = 2
         ms = np.arange(lmax + 1)

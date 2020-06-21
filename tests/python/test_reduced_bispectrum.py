@@ -188,7 +188,7 @@ class TestReducedBispectrumIO(unittest.TestCase):
         # Is called after each test.
         pass
         
-    def test_read_write_red_bisp(self):
+    def test_reducedbispectrum_io_read_write_red_bisp(self):
 
         n_unique = 2
         nfact = 4

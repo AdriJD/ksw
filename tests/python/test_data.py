@@ -1,6 +1,3 @@
-'''
-Test the Data class.
-'''
 import unittest
 import numpy as np
 
@@ -352,7 +349,7 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_almost_equal(alm, alm_sim_expec)
         
-    def test_icov_diag_lensed_2d(self):
+    def test_data_icov_diag_lensed_2d(self):
     
         cosmo = self.FakeCosmology()        
         pol = ['T', 'E']
@@ -372,7 +369,7 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(alm, alm_exp)
 
-    def test_icov_diag_lensed_1d_T(self):
+    def test_data_icov_diag_lensed_1d_T(self):
     
         cosmo = self.FakeCosmology()        
         pol = ['T']
@@ -396,7 +393,7 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(alm, alm_exp)
         
-    def test_icov_diag_lensed_1D_E(self):
+    def test_data_icov_diag_lensed_1D_E(self):
     
         cosmo = self.FakeCosmology()        
         pol = ['E']
@@ -413,7 +410,7 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(alm, alm_exp)
         
-    def test_icov_diag_nonlensed_2d(self):
+    def test_data_icov_diag_nonlensed_2d(self):
     
         cosmo = self.FakeCosmology()        
         pol = ['T', 'E']
@@ -433,7 +430,7 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(alm, alm_exp)
 
-    def test_icov_diag_nonlensed_1d_T(self):
+    def test_data_icov_diag_nonlensed_1d_T(self):
     
         cosmo = self.FakeCosmology()        
         pol = ['T']
@@ -457,7 +454,7 @@ class TestData(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(alm, alm_exp)
         
-    def test_icov_diag_nonlensed_1D_E(self):
+    def test_data_icov_diag_nonlensed_1D_E(self):
     
         cosmo = self.FakeCosmology()        
         pol = ['E']

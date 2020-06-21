@@ -1,4 +1,5 @@
 import numpy as np
+from mpi4py import MPI
 
 import healpy as hp
 
@@ -179,6 +180,63 @@ def a_ell_m2alm(arr, out=None):
         out[...,start:end] = arr[...,m:,m]
         
     return out
+
+def reduce_array(arr, comm, op=MPI.SUM, root=0):
+    '''
+    Reduce numpy array to root.
+
+    Parameters
+    ----------
+    arr : array
+    comm : MPI communicator
+    op : mpi4py.MPI.Op object, optional
+        Operation during reduce.
+    root : int, optional
+        Reduce array to this rank.
+    
+    Returns
+    -------
+    arr_out : array, None
+        Reduced array on root, None on other ranks.
+    '''
+
+    if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
+        return arr
+    
+    if comm.Get_rank() == root:
+        arr_out = np.zeros_like(arr)
+    else:
+        arr_out = None
+
+    comm.Reduce(arr, arr_out, op=op, root=root)
+
+    return arr_out
+
+def reduce(obj, comm, op=MPI.SUM, root=0):
+    '''
+    Reduce python object to root.
+
+    Parameters
+    ----------
+    opj : object
+    comm : MPI communicator
+    op : mpi4py.MPI.Op object, optional
+        Operation during reduce.
+    root : int, optional
+        Reduce object to this rank.
+    
+    Returns
+    -------
+    obj_out : obj, None
+        Reduced object on root, None on other ranks.
+    '''
+    
+    if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
+        return obj
+
+    obj_out = comm.reduce(obj, op=op, root=root)
+
+    return obj_out
     
 class FakeMPIComm():
     '''

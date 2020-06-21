@@ -274,7 +274,7 @@ class TestCosmoIO(unittest.TestCase):
         # Is called after each test.
         pass
 
-    def test_read_write_transfer(self):
+    def test_cosmo_io_read_write_transfer(self):
 
         pars = camb.CAMBparams(**self.cosmo_opts)
         cosmo_new = Cosmology(pars)
@@ -298,7 +298,7 @@ class TestCosmoIO(unittest.TestCase):
                 cosmo_new.transfer['ells'],
                 self.cosmo.transfer['ells'])
 
-    def test_read_write_c_ell(self):
+    def test_cosmo_io_read_write_c_ell(self):
 
         pars = camb.CAMBparams(**self.cosmo_opts)
         cosmo_new = Cosmology(pars)
@@ -326,7 +326,7 @@ class TestCosmoIO(unittest.TestCase):
                 cosmo_new.c_ell['unlensed_scalar']['ells'],
                 self.cosmo.c_ell['unlensed_scalar']['ells'])
 
-    def test_write_camb_params(self):
+    def test_cosmo_io_write_camb_params(self):
 
         with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
 

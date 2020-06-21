@@ -1,14 +1,12 @@
-'''
-Test the Shape class.
-'''
 import unittest
 import numpy as np
+from mpi4py import MPI
 
 from ksw import utils
 
 class TestUtils(unittest.TestCase):
 
-    def test_get_trapz_weights(self):
+    def test_utils_get_trapz_weights(self):
 
         x = np.asarray([3, 4, 5, 10])
         dx = utils.get_trapz_weights(x)
@@ -20,7 +18,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertAlmostEqual(np.sum(y * dx), np.trapz(y, x))
 
-    def test_get_trapz_weights_err(self):
+    def test_utils_get_trapz_weights_err(self):
 
         x = np.arange(9).reshape((3, 3))
         self.assertRaises(ValueError, utils.get_trapz_weights, x)
@@ -28,7 +26,7 @@ class TestUtils(unittest.TestCase):
         x = np.asarray([3, 4, -5, 10])
         self.assertRaises(ValueError, utils.get_trapz_weights, x)
 
-    def test_compute_fftlen_fftw(self):
+    def test_utils_compute_fftlen_fftw(self):
 
         len_min = 734
         len_opt_exp = 735 # 2^0 3^1 5^1 7^2.
@@ -40,7 +38,7 @@ class TestUtils(unittest.TestCase):
         len_opt = utils.compute_fftlen_fftw(len_min, even=False)
         self.assertEqual(len_opt, len_opt_exp)
 
-    def test_alm2a_ell_m(self):
+    def test_utils_alm2a_ell_m(self):
 
         alm = np.ones((1, 2, 10), dtype=complex)
         alm *= np.arange(10, dtype=complex)
@@ -57,7 +55,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertTrue(arr.flags['OWNDATA'])
 
-    def test_alm2a_ell_m_copy(self):
+    def test_utils_alm2a_ell_m_copy(self):
 
         alm = np.ones((1, 2, 10), dtype=complex)
         alm *= np.arange(10, dtype=complex)
@@ -71,7 +69,7 @@ class TestUtils(unittest.TestCase):
         arr = utils.alm2a_ell_m(alm)
         np.testing.assert_array_equal(arr, arr_exp)
         
-    def test_alm2a_ell_m_err(self):
+    def test_utils_alm2a_ell_m_err(self):
 
         alm = np.ones((1, 2, 10), dtype=complex)
         alm *= np.arange(10, dtype=complex)
@@ -84,7 +82,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertRaises(ValueError, utils.alm2a_ell_m, alm, **{'out' : arr})
 
-    def test_a_ell_m2alm(self):
+    def test_utils_a_ell_m2alm(self):
 
         arr = np.ones((1, 2, 4, 4), dtype=complex)
         arr *= np.asarray([[0, 0, 0, 0],
@@ -100,7 +98,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertTrue(alm.flags['OWNDATA'])
 
-    def test_a_ell_m2alm_copy(self):
+    def test_utils_a_ell_m2alm_copy(self):
 
         arr = np.ones((1, 2, 4, 4), dtype=complex)
         arr *= np.asarray([[0, 0, 0, 0],
@@ -114,7 +112,7 @@ class TestUtils(unittest.TestCase):
         alm = utils.a_ell_m2alm(arr)
         np.testing.assert_array_equal(alm, alm_exp)
         
-    def test_a_ell_m2alm_err(self):
+    def test_utils_a_ell_m2alm_err(self):
 
         arr = np.ones((1, 2, 4, 4), dtype=complex)
         arr *= np.asarray([[0, 0, 0, 0],
@@ -130,8 +128,40 @@ class TestUtils(unittest.TestCase):
 
         self.assertRaises(ValueError, utils.a_ell_m2alm, arr, **{'out' : alm})
 
-    def test_fakempicomm(self):
+    def test_utils_fakempicomm(self):
 
         comm = utils.FakeMPIComm()
         self.assertEqual(comm.Get_rank(), 0)
         self.assertEqual(comm.Get_size(), 1)
+
+    def test_utils_reduce_array_fake(self):
+
+        arr = np.random.randn(100).reshape((5, 20)).astype(complex)
+        arr_out = utils.reduce_array(arr, comm=utils.FakeMPIComm())
+
+        np.testing.assert_array_equal(arr, arr_out)
+
+    def test_utils_reduce_array(self):
+
+        # Note, I can only test the n=1 case.        
+        
+        arr = np.random.randn(100).reshape((5, 20)).astype(complex)
+        arr_out = utils.reduce_array(arr, comm=MPI.COMM_WORLD)
+
+        np.testing.assert_array_equal(arr, arr_out)
+
+    def test_utils_reduce_fake(self):
+
+        obj = 2
+        obj_out = utils.reduce(obj, comm=utils.FakeMPIComm())
+
+        self.assertEqual(obj, obj_out)
+
+    def test_utils_reduce(self):
+
+        # Note, I can only test the n=1 case.        
+        obj = 2
+        obj_out = utils.reduce(obj, comm=MPI.COMM_WORLD)
+
+        self.assertEqual(obj, obj_out)
+        

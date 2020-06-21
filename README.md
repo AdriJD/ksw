@@ -4,9 +4,9 @@
 
 - Python>=3.4
 - gcc (other C compilers should also work but have not been tested)
-- [pixell](https://github.com/simonsobs/pixell)
 - [camb](https://camb.readthedocs.io/en/latest/)
 - [pytest](https://pypi.org/project/pytest/)
+- [mpi4py](https://pypi.org/project/mpi4py/)
 
 ### Installation
 

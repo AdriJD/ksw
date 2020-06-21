@@ -73,7 +73,7 @@ class TestShape(unittest.TestCase):
 
         np.testing.assert_almost_equal(f_k, exp_f_k)
 
-    def test_power_law(self):
+    def test_shape_power_law(self):
 
         exponent = -2.5
         f = Shape._power_law(exponent)

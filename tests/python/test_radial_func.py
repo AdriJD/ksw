@@ -9,21 +9,21 @@ from ksw import radial_functional as rf
 
 class TestRadialFunc(unittest.TestCase):
     
-    def test_check_and_return_shape_2d(self):
+    def test_radial_func_check_and_return_shape_2d(self):
 
         arr_shape = (10, 5)
         arr = np.ones(arr_shape)
         s = rf.check_and_return_shape(arr, arr_shape)
         self.assertEqual(s, arr_shape)
 
-    def test_check_and_return_shape_1d(self):
+    def test_radial_func_check_and_return_shape_1d(self):
 
         arr_shape = (10,)
         arr = np.ones(arr_shape)
         s = rf.check_and_return_shape(arr, arr_shape)
         self.assertEqual(s, arr_shape)
         
-    def test_check_and_return_shape_raise(self):
+    def test_radial_func_check_and_return_shape_raise(self):
 
         arr_shape = (10, 5)
         arr = np.ones(arr_shape)
@@ -31,7 +31,7 @@ class TestRadialFunc(unittest.TestCase):
         self.assertRaises(ValueError, rf.check_and_return_shape,
                      arr, arr_shape_wrong)
 
-    def test_check_and_return_shape_none(self):
+    def test_radial_func_check_and_return_shape_none(self):
 
         arr_shape = (10, 5)
         arr = np.ones(arr_shape)
@@ -118,7 +118,6 @@ class TestRadialFunc(unittest.TestCase):
         self.assertRaises(ValueError, rf.radial_func,
                     f_k, tr_ell_k, k, radii, ells)
         
-
     def test_radial_func(self):
 
         # Test using orthogonality of spherical bessel functions.
