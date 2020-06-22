@@ -121,7 +121,7 @@ def alm2a_ell_m(alm, out=None, mmax=None):
                 'Expected out.shape[-2:] (lmax+1, mmax+1) = {}, got {} '.format(
                     (lmax + 1, mmax + 1), out.shape[-2:]))
     else:
-        out = np.empty(alm.shape[:-1] + (lmax + 1, mmax + 1), dtype=alm.dtype)
+        out = np.zeros(alm.shape[:-1] + (lmax + 1, mmax + 1), dtype=alm.dtype)
     
     out *= 0
     for m in range(mmax + 1):
@@ -168,7 +168,7 @@ def a_ell_m2alm(arr, out=None):
             raise ValueError('Expected out.shape[-1] : {}, got : {}'.
                 format(hp.Alm.getsize(lmax, mmax=mmax), out.shape[-1]))
     else:
-        out = np.empty(arr.shape[:-2] + (hp.Alm.getsize(lmax, mmax=mmax),),
+        out = np.zeros(arr.shape[:-2] + (hp.Alm.getsize(lmax, mmax=mmax),),
                        dtype=arr.dtype)        
         
     out *= 0
