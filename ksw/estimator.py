@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.special import roots_legendre
 
+import healpy as hp
 import pyfftw
 
 from ksw import utils, legendre
@@ -276,7 +277,7 @@ class KSW():
         alm = utils.alm2a_ell_m(alm)
         grad_t = np.zeros_like(alm)
         
-        red_bisp = self.cosmo.red_bispectra[0]
+        red_bisp = self.cosmology.red_bispectra[0]
         x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
         x_i_phi, y_i_phi, z_i_phi = self._init_rings(red_bisp.nfact)
 
@@ -295,25 +296,25 @@ class KSW():
                           x_i_phi, y_i_phi, z_i_phi, ylm)
 
             self.forward(grad_t, x_i_ell, y_i_ell, z_i_ell,
-                         x_i_ell, y_i_ell, z_i_ell, ylm, ct_weight)
+                         x_i_phi, y_i_phi, z_i_phi, ylm, ct_weight)
         
-        grad_t = utils.reduce_array(grad_t) 
-        
-        # Correct for -m here. See notes `forward()`.
-        np.conj(grad_t, out=grad_t)
-        grad_t *= m_phase[np.newaxis,np.newaxis,:]
+        grad_t = utils.reduce_array(grad_t, comm) 
 
-        # Turn back into healpy shape.
-        grad_t = a_ell_m2alm(grad_t)
+        if comm.Get_rank() == 0:        
+            # Correct for -m here. See notes `forward()`.
+            np.conj(grad_t, out=grad_t)
+            grad_t *= m_phase[np.newaxis,np.newaxis,:]
 
-        # Add to Monte Carlo estimates.
-        if comm.Get_rank() == 0:
+            # Turn back into healpy shape.
+            grad_t = utils.a_ell_m2alm(grad_t)
+
+            # Add to Monte Carlo estimates.
             if self.mc_gt is None:
                 self.mc_gt = grad_t                
             else:
                 self.mc_gt += grad_t
 
-            mc_gt_sq = np.einsum('ij, ij', grad_t.copy(), icov(grad_t))
+            mc_gt_sq = np.einsum('ij, ij', grad_t.copy(), self.icov(grad_t))
             
             if self.mc_gt_sq is None:
                 self.mc_gt_sq = mc_gt_sq
@@ -361,7 +362,7 @@ class KSW():
         alm = utils.alm2a_ell_m(alm)
         grad_t = np.zeros_like(alm)
         
-        red_bisp = self.cosmo.red_bispectra[0]
+        red_bisp = self.cosmology.red_bispectra[0]
         x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
         x_i_phi, y_i_phi, z_i_phi = self._init_rings(red_bisp.nfact)
 
@@ -379,10 +380,10 @@ class KSW():
                           x_i_phi, y_i_phi, z_i_phi, ylm)
 
             t_a = np.einsum('ij, ij, ij', x_i_phi, y_i_phi, z_i_phi, optimize=True)
-            t_a *= np.pi * ct_weight / 3 / estimator.nphi
+            t_a *= np.pi * ct_weight / 3 / self.nphi
             t_cubic += t_a
 
-        t_cubic = utils.reduce(t_cubic)
+        t_cubic = utils.reduce(t_cubic, comm)
 
         if comm.Get_rank() == 0:
             return (t_cubic - lin_term) / fisher

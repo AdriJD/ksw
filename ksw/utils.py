@@ -235,7 +235,7 @@ def reduce(obj, comm, op=MPI.SUM, root=0):
         return obj
 
     obj_out = comm.reduce(obj, op=op, root=root)
-
+    
     return obj_out
     
 class FakeMPIComm():

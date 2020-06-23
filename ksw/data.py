@@ -58,7 +58,7 @@ class Data():
         self.lmax = lmax
         self.b_ell = b_ell
         self.n_ell = n_ell
-        self.cosmo = cosmo
+        self.cosmology = cosmo
 
         covs = self._compute_totcov_diag()
         self.cov_ell_lensed = covs[0]
@@ -203,14 +203,14 @@ class Data():
         multiply factors of reduced bispectrum by b_ell.
         '''
         
-        if not hasattr(self.cosmo, 'c_ell'):
-            self.cosmo.compute_c_ell()
+        if not hasattr(self.cosmology, 'c_ell'):
+            self.cosmology.compute_c_ell()
 
         ret = []
         for c_ell_type in ['lensed', 'unlensed']:            
             
-            cls_ells = self.cosmo.c_ell[c_ell_type+'_scalar']['ells']
-            c_ell = self.cosmo.c_ell[c_ell_type+'_scalar']['c_ell']
+            cls_ells = self.cosmology.c_ell[c_ell_type+'_scalar']['ells']
+            c_ell = self.cosmology.c_ell[c_ell_type+'_scalar']['c_ell']
                   
             cls_lmax = cls_ells[-1]
 
@@ -219,7 +219,7 @@ class Data():
                                  .format(cls_lmax, self.lmax))
 
             # CAMB Cls are (nell, 4), convert to (4, nell).
-            totcov = c_ell.transpose()[:,:self.lmax+2].copy()
+            totcov = c_ell.transpose()[:,:self.lmax+1].copy()
 
             # Turn into correct shape and multiply with beam.
             if self.pol == ('T',):

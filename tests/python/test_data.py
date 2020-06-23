@@ -59,7 +59,7 @@ class TestData(unittest.TestCase):
         self.assertEqual(data.pol, ('T',))
         self.assertEqual(data.lmax, self.lmax)
         self.assertEqual(data.npol, 1)
-        self.assertTrue(isinstance(data.cosmo, self.FakeCosmology))
+        self.assertTrue(isinstance(data.cosmology, self.FakeCosmology))
         np.testing.assert_almost_equal(data.b_ell, self.b_ell_T[np.newaxis,:])
         np.testing.assert_almost_equal(data.n_ell, self.n_ell_T[np.newaxis,:])        
         
@@ -87,7 +87,7 @@ class TestData(unittest.TestCase):
         self.assertEqual(data.pol, ('T', 'E'))
         self.assertEqual(data.lmax, self.lmax)
         self.assertEqual(data.npol, 2)
-        self.assertTrue(isinstance(data.cosmo, self.FakeCosmology))
+        self.assertTrue(isinstance(data.cosmology, self.FakeCosmology))
         np.testing.assert_almost_equal(data.b_ell, self.b_ell_TplusE)
         np.testing.assert_almost_equal(data.n_ell, self.n_ell_TplusE)        
 
