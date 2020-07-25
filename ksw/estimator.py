@@ -160,9 +160,9 @@ class KSW():
         m_ell_m[:] = 0
 
         fft_forward = pyfftw.FFTW(n_ell_phi, m_ell_m, direction='FFTW_FORWARD',
-                                   flags=('FFTW_MEASURE',))
+                                   flags=('FFTW_MEASURE',), threads=pyfftw.config.NUM_THREADS)
         fft_backward = pyfftw.FFTW(m_ell_m, n_ell_phi, direction='FFTW_BACKWARD',
-                                   flags=('FFTW_MEASURE',))
+                                   flags=('FFTW_MEASURE',), threads=pyfftw.config.NUM_THREADS)
 
         # Reshape to 3d. Can be done without copy. The arrays are aligned in memory, so the 
         # FFTs work on these reshapes arrays just as well.
