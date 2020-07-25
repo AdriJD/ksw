@@ -1,5 +1,4 @@
 import numpy as np
-from mpi4py import MPI
 
 import healpy as hp
 
@@ -181,7 +180,7 @@ def a_ell_m2alm(arr, out=None):
         
     return out
 
-def reduce_array(arr, comm, op=MPI.SUM, root=0):
+def reduce_array(arr, comm, op=None, root=0):
     '''
     Reduce numpy array to root.
 
@@ -190,7 +189,7 @@ def reduce_array(arr, comm, op=MPI.SUM, root=0):
     arr : array
     comm : MPI communicator
     op : mpi4py.MPI.Op object, optional
-        Operation during reduce.
+        Operation during reduce, defaults to SUM.
     root : int, optional
         Reduce array to this rank.
     
@@ -208,11 +207,14 @@ def reduce_array(arr, comm, op=MPI.SUM, root=0):
     else:
         arr_out = None
 
-    comm.Reduce(arr, arr_out, op=op, root=root)
+    if op is not None:
+        comm.Reduce(arr, arr_out, op=op, root=root)
+    else:
+        comm.Reduce(arr, arr_out, root=root)
 
     return arr_out
 
-def reduce(obj, comm, op=MPI.SUM, root=0):
+def reduce(obj, comm, op=None, root=0):
     '''
     Reduce python object to root.
 
@@ -221,7 +223,7 @@ def reduce(obj, comm, op=MPI.SUM, root=0):
     opj : object
     comm : MPI communicator
     op : mpi4py.MPI.Op object, optional
-        Operation during reduce.
+        Operation during reduce, defaults to SUM.
     root : int, optional
         Reduce object to this rank.
     
@@ -234,7 +236,10 @@ def reduce(obj, comm, op=MPI.SUM, root=0):
     if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
         return obj
 
-    obj_out = comm.reduce(obj, op=op, root=root)
+    if op is not None:
+        obj_out = comm.reduce(obj, op=op, root=root)
+    else:
+        obj_out = comm.reduce(obj, root=root)
     
     return obj_out
     
