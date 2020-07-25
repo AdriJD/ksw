@@ -8,9 +8,9 @@ from ksw import utils, legendre
 
 class KSW():
     '''
-    Implementation of the Komatsu Spergel Wandelt estimator using the 
+    Implementation of the Komatsu Spergel Wandelt estimator using the
     factorization by Smith and Zaldarriaga 2011.
-    
+
     Parameters
     ----------
     data : ksw.Data instance
@@ -27,7 +27,7 @@ class KSW():
     icov : callable, None
         Function takes (npol, nelem) alm-like complex array
         and returns the inverse-variance-weighted version of
-        that array. 
+        that array.
     mc_idx : int
         Counter for Monte Carlo estimates.
     mc_gt : (npol, nelem) complex array, None
@@ -41,7 +41,7 @@ class KSW():
         Weight for each isolatitude ring.
     nphi : int
         Number of phi points.
-    m_ell_m : (npol, nell, nm) complex array            
+    m_ell_m : (npol, nell, nm) complex array
         M_lm in Eq. 73 in Smith Zaldarriaga 2011.
     n_ell_phi : (npol, nell, nphi) array
         N_lphi in Eq. 73 in Smith Zaldarriaga 2011.
@@ -50,7 +50,7 @@ class KSW():
     fft_forward : pyfftw.pyfftw.FFTW instance
         The FFT from n_ell_phi to m_ell_m.
     '''
-    
+
     def __init__(self, data, icov=None):
 
         self.data = data
@@ -58,7 +58,7 @@ class KSW():
         if icov is None:
             icov = data.icov_diag_nonlensed
         self.icov = icov
-        self.mc_idx = 0    
+        self.mc_idx = 0
         self.mc_gt = None
         self.mc_gt_sq = None
 
@@ -92,7 +92,7 @@ class KSW():
     @mc_gt_sq.setter
     def mc_gt_sq(self, mc_gt_sq):
         self.__mc_gt_sq = mc_gt_sq
-        
+
     def get_coords(self):
         '''
         Compute samples on sphere that are sufficient for lmax.
@@ -110,24 +110,24 @@ class KSW():
         -----
         We use Gauss-Legendre weights for isolatitude rings, see astro-ph/0305537.
         '''
-        
+
         lmax = self.data.lmax
-        
+
         cos_thetas, ct_weights = roots_legendre(int(np.floor(1.5 * lmax) + 1))
         thetas = np.arccos(cos_thetas)
-        
-        nphi_min = 3 * lmax + 1 
+
+        nphi_min = 3 * lmax + 1
         nphi = utils.compute_fftlen_fftw(nphi_min, even=True)
-        
+
         return thetas, ct_weights, nphi
-        
+
     def init_fft(self):
         '''
         Initialize m <-> phi FFTs.
 
         Returns
         -------
-        m_ell_m : (npol, nell, nm) complex array            
+        m_ell_m : (npol, nell, nm) complex array
             M_lm in Eq. 73 in Smith Zaldarriaga 2011.
         n_ell_phi : (npol, nell, nphi) array
             N_lphi in Eq. 73 in Smith Zaldarriaga 2011.
@@ -146,24 +146,35 @@ class KSW():
         FFTW forward matches X_m = sum_phi Y_phi e^-i m phi.
         '''
 
-        n_ell_phi = pyfftw.empty_aligned((self.data.npol, self.data.lmax + 1, self.nphi),
-                                       dtype=np.float64) 
-        m_ell_m = pyfftw.empty_aligned(n_ell_phi.shape[:2] + (n_ell_phi.shape[-1] // 2 + 1,),
-                                      dtype=np.complex128)
-        n_ell_phi[:] = 0 
-        m_ell_m[:] = 0 
-        
+        # Allocate 2d arrays here and reshape to 3d after ffts are initialized.
+        # Reason is that the intel MLK backend of FFTW does not allow 1d ffts over
+        # 3d arrays, but it does allow 2d arrays.
+        n_ell_phi = pyfftw.empty_aligned(
+            (self.data.npol * (self.data.lmax + 1), self.nphi),
+            dtype=np.float64)
+        m_ell_m = pyfftw.empty_aligned(
+            (self.data.npol * (self.data.lmax + 1), (n_ell_phi.shape[-1] // 2 + 1)),
+            dtype=np.complex128)
+
+        n_ell_phi[:] = 0
+        m_ell_m[:] = 0
+
         fft_forward = pyfftw.FFTW(n_ell_phi, m_ell_m, direction='FFTW_FORWARD',
-                                   flags=('FFTW_MEASURE',))         
+                                   flags=('FFTW_MEASURE',))
         fft_backward = pyfftw.FFTW(m_ell_m, n_ell_phi, direction='FFTW_BACKWARD',
-                                   flags=('FFTW_MEASURE',)) 
-                
+                                   flags=('FFTW_MEASURE',))
+
+        # Reshape to 3d. Can be done without copy. The arrays are aligned in memory, so the 
+        # FFTs work on these reshapes arrays just as well.
+        n_ell_phi = n_ell_phi.reshape((self.data.npol, self.data.lmax + 1, self.nphi))
+        m_ell_m = m_ell_m.reshape((self.data.npol, self.data.lmax + 1, (n_ell_phi.shape[-1] // 2 + 1)))
+
         return m_ell_m, n_ell_phi, fft_backward, fft_forward
 
     def _init_reduced_bispectrum(self, red_bisp):
         '''
         Combine reduced bispectrum factors, rule and weights with
-        the data beam into X_{i ell}, Y_{i ell}, Z_{i ell} arrays.  
+        the data beam into X_{i ell}, Y_{i ell}, Z_{i ell} arrays.
 
         Parameters
         ----------
@@ -183,7 +194,7 @@ class KSW():
         ValueError
             If lmax of reduced bispectrum < lmax of data.
         '''
-        
+
         # We use lmax data as reference.
         if red_bisp.lmax < self.data.lmax:
             raise ValueError('lmax bispectrum ({}) < lmax data ({})'.format(
@@ -202,28 +213,28 @@ class KSW():
         # Slice corresponding to data pol. Assume red. bisp. has T and E.
         if self.data.npol == 1 and 'T' in self.data.pol:
             pslice = slice(0, 1, None)
-        elif self.data.npol == 1 and 'E' in self.data.pol:            
+        elif self.data.npol == 1 and 'E' in self.data.pol:
             pslice = slice(1, 2, None)
         else:
             pslice = slice(0, 2, None)
-            
+
         x_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[red_bisp.rule[:,0],pslice,:end_ells_full]
         x_i_ell *= (red_bisp.weights[:,0,:])[:,pslice,np.newaxis]
-        x_i_ell *= self.data.b_ell        
+        x_i_ell *= self.data.b_ell
 
         y_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[red_bisp.rule[:,1],pslice,:end_ells_full]
         y_i_ell *= (red_bisp.weights[:,1,:])[:,pslice,np.newaxis]
-        y_i_ell *= self.data.b_ell                
+        y_i_ell *= self.data.b_ell
 
         z_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[red_bisp.rule[:,2],pslice,:end_ells_full]
         z_i_ell *= (red_bisp.weights[:,2,:])[:,pslice,np.newaxis]
-        z_i_ell *= self.data.b_ell                
+        z_i_ell *= self.data.b_ell
 
         return x_i_ell, y_i_ell, z_i_ell
-        
+
     def _init_rings(self, nfact):
         '''
         Allocate the X_{i phi}, Y_{i phi}, Z_{i phi} ring arrays.
@@ -248,10 +259,10 @@ class KSW():
         z_i_phi = np.zeros_like(x_i_phi)
 
         return x_i_phi, y_i_phi, z_i_phi
-    
+
     def step(self, alm, comm=None):
         '''
-        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)> 
+        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)>
         and <grad T (C^-1 a)> Monte Carlo estimates.
 
         Parameters
@@ -276,14 +287,14 @@ class KSW():
         alm = self.icov(alm)
         alm = utils.alm2a_ell_m(alm)
         grad_t = np.zeros_like(alm)
-        
+
         red_bisp = self.cosmology.red_bispectra[0]
         x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
         x_i_phi, y_i_phi, z_i_phi = self._init_rings(red_bisp.nfact)
 
         ms = np.arange(self.data.lmax + 1)
         m_phase = (-1) ** ms.astype(float)
-        
+
         # Distribute rings over ranks.
         for tidx in range(comm.Get_rank(), len(self.thetas), comm.Get_size()):
 
@@ -297,10 +308,10 @@ class KSW():
 
             self.forward(grad_t, x_i_ell, y_i_ell, z_i_ell,
                          x_i_phi, y_i_phi, z_i_phi, ylm, ct_weight)
-        
-        grad_t = utils.reduce_array(grad_t, comm) 
 
-        if comm.Get_rank() == 0:        
+        grad_t = utils.reduce_array(grad_t, comm)
+
+        if comm.Get_rank() == 0:
             # Correct for -m here. See notes `forward()`.
             np.conj(grad_t, out=grad_t)
             grad_t *= m_phase[np.newaxis,np.newaxis,:]
@@ -310,17 +321,18 @@ class KSW():
 
             # Add to Monte Carlo estimates.
             if self.mc_gt is None:
-                self.mc_gt = grad_t                
+                self.mc_gt = grad_t
             else:
                 self.mc_gt += grad_t
 
-            mc_gt_sq = np.einsum('ij, ij', grad_t.copy(), self.icov(grad_t))
-            
+            mc_gt_sq = np.einsum('ij, ij', np.conj(grad_t), self.icov(grad_t))
+            print('mc_gt_sq: ', mc_gt_sq)
+
             if self.mc_gt_sq is None:
                 self.mc_gt_sq = mc_gt_sq
             else:
                 self.mc_gt_sq += mc_gt_sq
-            
+
         self.mc_idx += 1
 
     def compute_estimate(self, alm, comm=None):
@@ -357,17 +369,17 @@ class KSW():
         t_cubic = 0 # The cubic estimate.
         fisher = self.compute_fisher()
         lin_term = self.compute_linear_term(alm)
-        
+
         alm = self.icov(alm)
         alm = utils.alm2a_ell_m(alm)
         grad_t = np.zeros_like(alm)
-        
+
         red_bisp = self.cosmology.red_bispectra[0]
         x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
         x_i_phi, y_i_phi, z_i_phi = self._init_rings(red_bisp.nfact)
 
         ms = np.arange(self.data.lmax + 1)
-        
+
         # Distribute rings over ranks.
         for tidx in range(comm.Get_rank(), len(self.thetas), comm.Get_size()):
 
@@ -386,10 +398,13 @@ class KSW():
         t_cubic = utils.reduce(t_cubic, comm)
 
         if comm.Get_rank() == 0:
+            print('t_cubic: ', t_cubic)
+            print('lin_term', lin_term)
+            print('fisher', fisher)
             return (t_cubic - lin_term) / fisher
         else:
             return None
-    
+
     def backward(self, a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                  x_i_phi, y_i_phi, z_i_phi, y_ell_m):
         '''
@@ -422,14 +437,14 @@ class KSW():
         self.n_ell_phi *= self.nphi # Correct for FFT normalization.
 
         np.einsum('ijk, jkm -> im', x_i_ell, self.n_ell_phi,
-                  optimize='optimal', out=x_i_phi) 
+                  optimize='optimal', out=x_i_phi)
         np.einsum('ijk, jkm -> im', y_i_ell, self.n_ell_phi,
-                  optimize='optimal', out=y_i_phi) 
+                  optimize='optimal', out=y_i_phi)
         np.einsum('ijk, jkm -> im', z_i_ell, self.n_ell_phi,
-                  optimize='optimal', out=z_i_phi) 
+                  optimize='optimal', out=z_i_phi)
 
     def forward(self, a_ell_m, x_i_ell, y_i_ell, z_i_ell,
-                 x_i_phi, y_i_phi, z_i_phi, y_ell_m, ct_weight):        
+                 x_i_phi, y_i_phi, z_i_phi, y_ell_m, ct_weight):
         '''
         X_{i phi} Y_{i phi} Z_{i phi} -> a_ell_m.
 
@@ -456,16 +471,16 @@ class KSW():
 
         Notes
         -----
-        Output is the complex conjugate * (-1)^m of Eq. 79 of 
-        Smith & Zaldarriaga. This is because the FFTW forward 
+        Output is the complex conjugate * (-1)^m of Eq. 79 of
+        Smith & Zaldarriaga. This is because the FFTW forward
         transform does e^{-i m phi). So we calculate the answer
         for negative m compared to Eq. 79.
         '''
-        
+
         # Construct dT/dX, dT/dY, dT/dZ (Eq. 76).
         x_i_phi_tmp = x_i_phi.copy()
-        y_i_phi_tmp = y_i_phi.copy()        
-        
+        y_i_phi_tmp = y_i_phi.copy()
+
         x_i_phi[:] = y_i_phi
         x_i_phi *= z_i_phi
 
@@ -475,8 +490,8 @@ class KSW():
         z_i_phi[:] = x_i_phi_tmp
         z_i_phi *= y_i_phi_tmp
 
-        # Fill dT/dN (Eq. 77).        
-        n_ell_phi_tmp = np.zeros_like(self.n_ell_phi)                
+        # Fill dT/dN (Eq. 77).
+        n_ell_phi_tmp = np.zeros_like(self.n_ell_phi)
 
         np.einsum('ijk, il -> jkl', x_i_ell, x_i_phi, out=n_ell_phi_tmp,
                   optimize='optimal')
@@ -493,17 +508,17 @@ class KSW():
         # Multiply dT/dN with weight.
         weight = np.pi * ct_weight / 3 / self.nphi
         self.n_ell_phi *= weight
-                
+
         # dt_dm: fft forward. Forward normalization is already correct.
         self.fft_forward()
         self.m_ell_m[:,:,:self.data.lmax+1] *= y_ell_m
 
         # Result must be added to a_ell_m.
         a_ell_m += self.m_ell_m[:,:,:self.data.lmax+1]
-    
+
     def compute_fisher(self):
         '''
-        Return Fisher information at current iteration. 
+        Return Fisher information at current iteration.
 
         Returns
         -------
@@ -512,13 +527,14 @@ class KSW():
 
         if self.mc_gt_sq is None or self.mc_gt is None:
             return None
-        
+
         fisher = self.mc_gt_sq
-        fisher -= np.einsum('ij, ij', self.mc_gt, self.icov(self.mc_gt.copy()))
+        print('mc_gt_sq', fisher)
+        fisher -= np.einsum('ij, ij', np.conj(self.mc_gt), self.icov(self.mc_gt.copy()))
         fisher /= 3.
 
         return fisher
-        
+
     def compute_linear_term(self, alm):
         '''
         Return linear term at current iteration for input data alm.
@@ -531,17 +547,20 @@ class KSW():
         Returns
         -------
         lin_term : float, None
-            Linear term of the estimator. 
+            Linear term of the estimator.
 
         Notes
         -----
         Linear term is defined as sum(a C^-1 grad T[C^-1 a]). See Eq. 57 in
-        Smith & Zaldarriaga.        
+        Smith & Zaldarriaga.
         '''
 
         if self.mc_gt is None:
             return None
-        
-        return np.einsum('ij, ij', alm, self.icov(self.mc_gt.copy()))        
-        
 
+        return np.einsum('ij, ij', alm, self.icov(self.mc_gt.copy()))
+        #_, ms = hp.Alm.getlm(self.data.lmax)
+        #ms = ms.astype(float)
+        #return np.einsum('ij, ij', alm * (-1) ** ms, self.icov(self.mc_gt.copy()))
+        #return np.einsum('ij, ij', np.conj(alm) * (-1) ** ms, self.icov(self.mc_gt.copy()))
+        #return np.einsum('ij, ij', np.conj(alm), self.icov(self.mc_gt.copy()))
