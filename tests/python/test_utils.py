@@ -128,6 +128,52 @@ class TestUtils(unittest.TestCase):
 
         self.assertRaises(ValueError, utils.a_ell_m2alm, arr, **{'out' : alm})
 
+    def test_contract_almxblm(self):
+        
+        alm = np.asarray([1, 1, 1, 1, 2j, 2j, 2j, 3j, 3j, 4j])
+        blm = np.asarray([2, 2, 2, 2, 3, 3, 3, 4j, 4j, 5])
+
+        ans_exp = -40
+
+        ans = utils.contract_almxblm(alm, blm)
+
+        self.assertEqual(ans, ans_exp)
+
+    def test_contract_almxblm_2d(self):
+        
+        alm = np.ones((3, 10), dtype=np.complex128)
+        blm = np.ones((3, 10), dtype=np.complex128)
+
+        alm *= np.asarray([1, 1, 1, 1, 2j, 2j, 2j, 3j, 3j, 4j])
+        blm *= np.asarray([2, 2, 2, 2, 3, 3, 3, 4j, 4j, 5])
+
+        ans_exp = -120
+
+        ans = utils.contract_almxblm(alm, blm)
+
+        self.assertEqual(ans, ans_exp)
+
+    def test_contract_almxblm_3d(self):
+        
+        alm = np.ones((2, 3, 10), dtype=np.complex128)
+        blm = np.ones((2, 3, 10), dtype=np.complex128)
+
+        alm *= np.asarray([1, 1, 1, 1, 2j, 2j, 2j, 3j, 3j, 4j])
+        blm *= np.asarray([2, 2, 2, 2, 3, 3, 3, 4j, 4j, 5])
+
+        ans_exp = -240
+
+        ans = utils.contract_almxblm(alm, blm)
+
+        self.assertEqual(ans, ans_exp)
+
+    def test_contract_almxblm_err(self):
+        
+        alm = np.ones((10), dtype=np.complex128)
+        blm = np.ones((11), dtype=np.complex128)
+
+        self.assertRaises(ValueError, utils.contract_almxblm, alm, blm)
+
     def test_utils_fakempicomm(self):
 
         comm = utils.FakeMPIComm()

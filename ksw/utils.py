@@ -180,6 +180,42 @@ def a_ell_m2alm(arr, out=None):
         
     return out
 
+def contract_almxblm(alm, blm):
+    '''
+    Return sum_lm alm x blm, i.e. the sum of the Hadamard product of two
+    sets of spherical harmonic coefficients corresponding to real fields.
+
+    Parameters
+    ---------
+    alm : (..., nelem) complex array
+        Healpix ordered (m-major) alm array.
+    blm : (..., nelem) complex array
+        Healpix ordered (m-major) alm array.
+
+    Returns
+    -------
+    had_sum : float
+        Sum of Hadamard product (real valued).
+
+    Raises
+    ------
+    ValueError
+        If input arrays have different shapes.
+    '''
+
+    if blm.shape != alm.shape:
+        raise ValueError('Shape alm ({}) != shape blm ({})'.format(alm.shape, blm.shape))
+
+    lmax = hp.Alm.getlmax(alm.shape[-1])
+
+    csum = complex(np.tensordot(alm, blm, axes=alm.ndim))    
+    had_sum = 2 * np.real(csum)
+
+    # We need to subtract the m=0 elements once.
+    had_sum -= np.real(np.sum(alm[...,:lmax+1] * blm[...,:lmax+1]))
+
+    return had_sum    
+ 
 def reduce_array(arr, comm, op=None, root=0):
     '''
     Reduce numpy array to root.

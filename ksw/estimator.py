@@ -165,7 +165,7 @@ class KSW():
                                    flags=('FFTW_MEASURE',), threads=pyfftw.config.NUM_THREADS)
 
         # Reshape to 3d. Can be done without copy. The arrays are aligned in memory, so the 
-        # FFTs work on these reshapes arrays just as well.
+        # FFTs work on these reshaped arrays just as well.
         n_ell_phi = n_ell_phi.reshape((self.data.npol, self.data.lmax + 1, self.nphi))
         m_ell_m = m_ell_m.reshape((self.data.npol, self.data.lmax + 1, (n_ell_phi.shape[-1] // 2 + 1)))
 
