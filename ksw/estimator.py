@@ -313,8 +313,8 @@ class KSW():
 
         if comm.Get_rank() == 0:
             # Correct for -m here. See notes `forward()`.
-            np.conj(grad_t, out=grad_t)
-            grad_t *= m_phase[np.newaxis,np.newaxis,:]
+            #np.conj(grad_t, out=grad_t)
+            #grad_t *= m_phase[np.newaxis,np.newaxis,:]
 
             # Turn back into healpy shape.
             grad_t = utils.a_ell_m2alm(grad_t)
@@ -325,8 +325,7 @@ class KSW():
             else:
                 self.mc_gt += grad_t
 
-            mc_gt_sq = np.einsum('ij, ij', np.conj(grad_t), self.icov(grad_t))
-            print('mc_gt_sq: ', mc_gt_sq)
+            mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(grad_t))
 
             if self.mc_gt_sq is None:
                 self.mc_gt_sq = mc_gt_sq
@@ -529,8 +528,7 @@ class KSW():
             return None
 
         fisher = self.mc_gt_sq
-        print('mc_gt_sq', fisher)
-        fisher -= np.einsum('ij, ij', np.conj(self.mc_gt), self.icov(self.mc_gt.copy()))
+        fisher -= utils.contract_almxblm(self.mc_gt, self.icov(self.mc_gt.copy()))
         fisher /= 3.
 
         return fisher
@@ -558,9 +556,4 @@ class KSW():
         if self.mc_gt is None:
             return None
 
-        return np.einsum('ij, ij', alm, self.icov(self.mc_gt.copy()))
-        #_, ms = hp.Alm.getlm(self.data.lmax)
-        #ms = ms.astype(float)
-        #return np.einsum('ij, ij', alm * (-1) ** ms, self.icov(self.mc_gt.copy()))
-        #return np.einsum('ij, ij', np.conj(alm) * (-1) ** ms, self.icov(self.mc_gt.copy()))
-        #return np.einsum('ij, ij', np.conj(alm), self.icov(self.mc_gt.copy()))
+        return utils.contract_almxblm(alm, self.icov(self.mc_gt.copy()))

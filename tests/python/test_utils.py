@@ -128,7 +128,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertRaises(ValueError, utils.a_ell_m2alm, arr, **{'out' : alm})
 
-    def test_contract_almxblm(self):
+    def test_utils_contract_almxblm(self):
         
         alm = np.asarray([1, 1, 1, 1, 2j, 2j, 2j, 3j, 3j, 4j])
         blm = np.asarray([2, 2, 2, 2, 3, 3, 3, 4j, 4j, 5])
@@ -139,7 +139,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(ans, ans_exp)
 
-    def test_contract_almxblm_2d(self):
+    def test_utils_contract_almxblm_2d(self):
         
         alm = np.ones((3, 10), dtype=np.complex128)
         blm = np.ones((3, 10), dtype=np.complex128)
@@ -153,7 +153,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(ans, ans_exp)
 
-    def test_contract_almxblm_3d(self):
+    def test_utils_contract_almxblm_3d(self):
         
         alm = np.ones((2, 3, 10), dtype=np.complex128)
         blm = np.ones((2, 3, 10), dtype=np.complex128)
@@ -167,7 +167,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(ans, ans_exp)
 
-    def test_contract_almxblm_err(self):
+    def test_utils_contract_almxblm_err(self):
         
         alm = np.ones((10), dtype=np.complex128)
         blm = np.ones((11), dtype=np.complex128)

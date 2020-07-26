@@ -560,16 +560,25 @@ class TestKSW(unittest.TestCase):
         mc_gt = np.ones((data.npol, hp.Alm.getsize(data.lmax)),
                                       dtype=complex)
         mc_gt *= 10
+        mc_gt_sq = 5
+        mc_idx = 4
         estimator.mc_gt = mc_gt
-        estimator.mc_gt_sq = 5
-        estimator.mc_idx = 4
+        estimator.mc_gt_sq = mc_gt_sq
+        estimator.mc_idx = mc_idx
 
         mc_gt_copy = estimator.mc_gt.copy()
         mc_gt_sq_copy = estimator.mc_gt_sq
-        
-        fisher_exp = (1 / 3) * (5 / 4 - np.sum(mc_gt / 4 * icov(mc_gt / 4)))
-        fisher = estimator.compute_fisher()
-        
+
+        # Using Eq. 58 in Smith & Zaldarriaga. 
+        fisher_exp = mc_gt_sq / mc_idx
+        # Following two lines are the sum over the contraction, second line Eq. 58.
+        # See utils.contract_almxblm 
+        fisher_exp -= 2 * np.real(np.sum(mc_gt / mc_idx * icov(mc_gt.copy() / mc_idx)))
+        fisher_exp -= -(np.real(np.sum((mc_gt / mc_idx * icov(mc_gt.copy() / mc_idx))
+                                       [...,:data.lmax+1])))
+        fisher_exp /= 3
+
+        fisher = estimator.compute_fisher()        
         self.assertEqual(fisher, fisher_exp)
 
         # I want internal quantities unchanged.
@@ -593,14 +602,19 @@ class TestKSW(unittest.TestCase):
         
         mc_gt = np.ones_like(alm)
         mc_gt *= 10
+        mc_gt_sq = 5
+        mc_idx = 4
         estimator.mc_gt = mc_gt
-        estimator.mc_gt_sq = 5
-        estimator.mc_idx = 4
+        estimator.mc_gt_sq = mc_gt_sq
+        estimator.mc_idx = mc_idx
 
         mc_gt_copy = estimator.mc_gt.copy()
         mc_gt_sq_copy = estimator.mc_gt_sq
         
-        lin_term_exp = np.sum(alm * icov(mc_gt / 4))
+        # Using second line of Eq. 57.
+        lin_term_exp = 2 * np.real(np.sum(alm * icov(mc_gt.copy() / mc_idx)))
+        lin_term_exp -= np.real(np.sum((alm * icov(mc_gt.copy() / mc_idx))
+                                       [...,:data.lmax+1]))
         lin_term = estimator.compute_linear_term(alm)
         
         self.assertAlmostEqual(lin_term, lin_term_exp)
