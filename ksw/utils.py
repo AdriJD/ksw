@@ -285,7 +285,7 @@ class FakeMPIComm():
 
     Attributes
     ----------
-    size : int    
+    size : int
     rank : int
     '''
     

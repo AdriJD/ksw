@@ -264,14 +264,15 @@ class Cosmology:
         k = self.transfer['k']
         ells_sparse = self.transfer['ells']
 
-        f_k = prim_shape.get_f_k(k)
-        f_k *= 2 * self.camb_params.InitPower.As ** 2
+        f_k = prim_shape.get_f_k(k) 
+        amps = np.asarray(prim_shape.amps)
+        amps *= 2 * self.camb_params.InitPower.As ** 2
 
         # Call C code.
         red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
 
         factors, rule, weights = self._parse_prim_reduced_bispec(
-            red_bisp, radii, prim_shape.rule, prim_shape.amps)
+            red_bisp, radii, prim_shape.rule, amps)
 
         if name is None:
             name = prim_shape.name
@@ -293,7 +294,7 @@ class Cosmology:
         prim_rule : (nprim) sequence of array-like
             Rule to combine factors into primordial shape, see ksw.Shape.
         amps : (nprim) array-like
-            Amplitude for each element in rule, see ksw.Shape.
+            Amplitude for each element in rule.
 
         Returns
         -------
@@ -321,7 +322,16 @@ class Cosmology:
         ridxs = np.arange(nr) # Indices to radii.
         start = 0
         for amp, ru in zip(amps, prim_rule):
-            weights[start:start+nr] = (amp * dr)[:,np.newaxis,np.newaxis]
+            # Note each factor gets 1/3 power of overall amplitude sucht that fl1 * fl2 * fl3
+            # has correct amplitude.
+
+            # If amp * dr is negative you get complex answers to the 3rd root.
+            # To extract the real value of the root (always exists for n=3), we 
+            # take the root of the absolute value and apply the sign afterwards.
+            amp_per_r = (amp * dr)
+            signs = np.sign(amp_per_r)
+            amp_per_r = signs * np.abs(amp_per_r) ** (1 / 3)
+            weights[start:start+nr] = amp_per_r[:,np.newaxis,np.newaxis]
             # Indices into first dim of factors (which is (ncomp, nr)).
             rule[start:start+nr,:] = ridxs[:,np.newaxis] + (np.asarray(ru) * nr)
             start += nr

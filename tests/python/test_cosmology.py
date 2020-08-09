@@ -165,24 +165,25 @@ class TestCosmo(unittest.TestCase):
 
         lmax = 300
         radii = np.asarray([11000., 14000.])
+        dr = ((radii[1] - radii[0]) / 2.)
         pars = camb.CAMBparams(**self.cosmo_opts)
 
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax)
 
-        local = Shape.prim_local(ns=1)
+        prim_shape = Shape.prim_equilateral(ns=1)
 
         self.assertTrue(len(cosmo.red_bispectra) == 0)
-        cosmo.add_prim_reduced_bispectrum(local, radii)
+        cosmo.add_prim_reduced_bispectrum(prim_shape, radii)
         self.assertTrue(len(cosmo.red_bispectra) == 1)
         
         red_bisp = cosmo.red_bispectra[0]
         
         nell = lmax - 1 # Reduced Bispectrum starts from ell=2.
         nr = len(radii)
-        ncomp = len(local.funcs)
+        ncomp = len(prim_shape.funcs)
         npol = 2
-        nfact = nr * len(local.rule)
+        nfact = nr * len(prim_shape.rule)
 
         self.assertEqual(red_bisp.factors.shape,
                          (ncomp * nr, npol, nell))
@@ -197,15 +198,33 @@ class TestCosmo(unittest.TestCase):
         ells = np.arange(2, lmax+1)
         np.testing.assert_equal(red_bisp.ells_full, ells)
 
-        rule_exp = np.asarray([[2, 2, 0], [3, 3, 1]], dtype=int)
+        # Equilateral rule = [(1,1,0), (3,3,3), (1,2,3)].
+        rule_exp = np.asarray([[2, 2, 0], # r[0].
+                               [3, 3, 1], # r[1].
+                               [6, 6, 6],
+                               [7, 7, 7],
+                               [2, 4, 6],
+                               [3, 5, 7]], dtype=int)
         np.testing.assert_array_equal(red_bisp.rule, rule_exp)
-
+        
         weights_exp = np.ones((nfact, 3, npol))
-        weights_exp[0,...] = ((radii[1] - radii[0]) / 2.) * radii[0] ** 2
-        weights_exp[1,...] = ((radii[1] - radii[0]) / 2.) * radii[1] ** 2
-        print(red_bisp.weights)
-        print(weights_exp)
-        np.testing.assert_array_equal(red_bisp.weights, weights_exp)
+        # nfact is ordered like flattened (nprim, radii) array.
+        # I assume equilateral shape here, so nprim = 3. 
+        weights_exp[0,...] = (dr * radii[0] ** 2) ** (1 / 3) 
+        weights_exp[1,...] = (dr * radii[1] ** 2) ** (1 / 3) 
+        weights_exp[2,...] = (dr * radii[0] ** 2) ** (1 / 3) 
+        weights_exp[3,...] = (dr * radii[1] ** 2) ** (1 / 3) 
+        weights_exp[4,...] = (dr * radii[0] ** 2) ** (1 / 3) 
+        weights_exp[5,...] = (dr * radii[1] ** 2) ** (1 / 3) 
+
+        weights_exp *= (2 * cosmo.camb_params.InitPower.As ** 2) ** (1 / 3)
+
+        signs = np.sign(prim_shape.amps)
+        weights_exp[0:2] *= signs[0] * np.abs(prim_shape.amps[0]) ** (1 / 3)
+        weights_exp[2:4] *= signs[1] * np.abs(prim_shape.amps[1]) ** (1 / 3)
+        weights_exp[4:6] *= signs[2] * np.abs(prim_shape.amps[2]) ** (1 / 3)
+
+        np.testing.assert_array_almost_equal(red_bisp.weights, weights_exp)        
         
         # Manually compute reduced bispec factors for given r, ell.
         k = cosmo.transfer['k']
@@ -218,15 +237,13 @@ class TestCosmo(unittest.TestCase):
         ell = ells_sparse[lidx]
         radius = radii[ridx]
         func = k ** -3 # Look at second shape function.
-        cidx = 1
+        cidx = 1 # Second shape function.
 
         integrand = k ** 2 * spherical_jn(ell, radius * k)
         integrand *= tr_ell_k[lidx,:,pidx] * func
         ans_expec = (2 / np.pi) * np.trapz(integrand, k)
-        ans_expec *= 2 * cosmo.camb_params.InitPower.As ** 2
         
         lidx_full = ell - 2
-
         ans = red_bisp.factors[cidx*nr+ridx,pidx,lidx_full]        
         self.assertAlmostEqual(ans, ans_expec, places=6)
 

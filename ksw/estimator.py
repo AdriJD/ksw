@@ -278,11 +278,11 @@ class KSW():
         '''
 
         if comm is None:
-            comm = utils.FakeMPIComm
+            comm = utils.FakeMPIComm()
 
         if alm.shape != (self.data.npol, hp.Alm.getsize(self.data.lmax)):
             raise ValueError('alm shape not understood, expected {}, got {}'.
-                format(alm.shape, (self.data.npol, hp.Alm.getsize(self.data.lmax))))
+                format((self.data.npol, hp.Alm.getsize(self.data.lmax)), alm.shape))
 
         alm = self.icov(alm)
         alm = utils.alm2a_ell_m(alm)
@@ -312,10 +312,6 @@ class KSW():
         grad_t = utils.reduce_array(grad_t, comm)
 
         if comm.Get_rank() == 0:
-            # Correct for -m here. See notes `forward()`.
-            #np.conj(grad_t, out=grad_t)
-            #grad_t *= m_phase[np.newaxis,np.newaxis,:]
-
             # Turn back into healpy shape.
             grad_t = utils.a_ell_m2alm(grad_t)
 
@@ -323,14 +319,14 @@ class KSW():
             if self.mc_gt is None:
                 self.mc_gt = grad_t
             else:
-                self.mc_gt += grad_t
+                self.__mc_gt += grad_t
 
-            mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(grad_t))
+            mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
 
             if self.mc_gt_sq is None:
                 self.mc_gt_sq = mc_gt_sq
             else:
-                self.mc_gt_sq += mc_gt_sq
+                self.__mc_gt_sq += mc_gt_sq
 
         self.mc_idx += 1
 
@@ -359,7 +355,7 @@ class KSW():
         # Similar to step, but only do backward transform, multiply alm with linear term
         # and apply normalization.
         if comm is None:
-            comm = utils.FakeMPIComm
+            comm = utils.FakeMPIComm()
 
         if alm.shape != (self.data.npol, hp.Alm.getsize(self.data.lmax)):
             raise ValueError('alm shape not understood, expected {}, got {}'.
@@ -368,7 +364,7 @@ class KSW():
         t_cubic = 0 # The cubic estimate.
         fisher = self.compute_fisher()
         lin_term = self.compute_linear_term(alm)
-
+        
         alm = self.icov(alm)
         alm = utils.alm2a_ell_m(alm)
         grad_t = np.zeros_like(alm)
@@ -397,9 +393,6 @@ class KSW():
         t_cubic = utils.reduce(t_cubic, comm)
 
         if comm.Get_rank() == 0:
-            print('t_cubic: ', t_cubic)
-            print('lin_term', lin_term)
-            print('fisher', fisher)
             return (t_cubic - lin_term) / fisher
         else:
             return None
@@ -528,7 +521,7 @@ class KSW():
             return None
 
         fisher = self.mc_gt_sq
-        fisher -= utils.contract_almxblm(self.mc_gt, self.icov(self.mc_gt.copy()))
+        fisher -= utils.contract_almxblm(self.mc_gt, self.icov(np.conj(self.mc_gt)))
         fisher /= 3.
 
         return fisher
@@ -556,4 +549,4 @@ class KSW():
         if self.mc_gt is None:
             return None
 
-        return utils.contract_almxblm(alm, self.icov(self.mc_gt.copy()))
+        return utils.contract_almxblm(alm, self.icov(np.conj(self.mc_gt)))

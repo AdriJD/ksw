@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import healpy as hp
 from mpi4py import MPI
 
 from ksw import utils
@@ -167,6 +168,23 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(ans, ans_exp)
 
+    def test_utils_contract_almxblm_cl(self):
+
+        # Check if contraction matches hp.alm2cl.
+        
+        alm = np.ones(10, dtype=np.complex128)
+        alm += 1j * np.ones(10, dtype=np.complex128)
+        alm[:4] = 1
+        lmax = 3
+        ells = np.asarray([0, 1, 2, 3])        
+
+        cl = hp.alm2cl(alm)
+        ans_exp = np.sum(cl * (2 * ells + 1))
+
+        ans = utils.contract_almxblm(alm, np.conj(alm))
+    
+        self.assertEqual(ans, ans_exp)
+        
     def test_utils_contract_almxblm_err(self):
         
         alm = np.ones((10), dtype=np.complex128)
