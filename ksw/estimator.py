@@ -293,7 +293,6 @@ class KSW():
         x_i_phi, y_i_phi, z_i_phi = self._init_rings(red_bisp.nfact)
 
         ms = np.arange(self.data.lmax + 1)
-        m_phase = (-1) ** ms.astype(float)
 
         # Distribute rings over ranks.
         for tidx in range(comm.Get_rank(), len(self.thetas), comm.Get_size()):
