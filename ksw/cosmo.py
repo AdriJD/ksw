@@ -38,7 +38,7 @@ class Cosmology:
         Collection of ReducedBispectrum instances.
     '''
 
-    def __init__(self, camb_params, verbose=True):
+    def __init__(self, camb_params, verbose=False):
 
         if camb_params.validate() is False:
             raise ValueError('Input CAMB params file invalid.')
