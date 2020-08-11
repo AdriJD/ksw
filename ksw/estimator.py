@@ -551,7 +551,7 @@ class KSW():
 
         return utils.contract_almxblm(alm, self.icov(np.conj(self.mc_gt)))
 
-    def compute_fisher_isotropic(self, lensed=False, comm=None):
+    def compute_fisher_isotropic(self, lensed=False, return_matrix=False, comm=None):
         '''
         Return Fisher information assuming diagonal inverse noise + signal
         covariance.
@@ -560,12 +560,16 @@ class KSW():
         ----------
         lensed : bool, optional
             If set, use lensed signal covariance.
+        return_matrix : bool, optonal
+            If set, also return nfact x nfact Fisher matrix.
         comm : MPI communicator, optional        
 
         Returns
         -------
-        fisher : float
-            Fisher information.
+        fisher : float, None
+            Fisher information on root.
+        fisher_nxn : (nfact, nfact) array, None
+            nfact x nfact Fisher matrix on root (only if return_matrix is set).
         '''
         
         if comm is None:
@@ -611,6 +615,9 @@ class KSW():
             fisher = np.sum(fisher_nxn)
         else:
             fisher = None
+
+        if return_matrix:
+            return fisher, fisher_nxn 
 
         return fisher
 

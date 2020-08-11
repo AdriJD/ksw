@@ -2159,7 +2159,7 @@ class TestKSW(unittest.TestCase):
         npol = 2
         data = self.FakeData()
         data.lmax = lmax
-        data.pol = ('T')
+        data.pol = ('T', 'E')
         data.npol = npol
         data.icov_ell_nonlensed = np.ones((3, lmax + 1))
 
@@ -2240,7 +2240,7 @@ class TestKSW(unittest.TestCase):
         npol = 2
         data = self.FakeData()
         data.lmax = lmax
-        data.pol = ('T')
+        data.pol = ('T', 'E')
         data.npol = npol
         data.icov_ell_nonlensed = np.ones((3, lmax + 1))
 
@@ -2450,3 +2450,85 @@ class TestKSW(unittest.TestCase):
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
         self.assertAlmostEqual(fisher, fisher_exp)
+
+    def test_ksw_compute_fisher_isotropic_lens_nonlens(self):
+                
+        lmax = 5
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
+        data.icov_ell_lensed = np.ones((1, lmax + 1)) * 0.5
+
+        # Create a reduced bispectrum that is just b_l1l2l3 = 1.
+        rb = self.FakeReducedBispectrum
+        rb.npol = npol
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3, npol))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            # Correct for 3 powers of beam.
+            return 0.1 ** 3 * 1. 
+            
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+        # Defaults to unlensed.
+        fisher = estimator.compute_fisher_isotropic()
+        self.assertAlmostEqual(fisher, fisher_exp)
+
+        fisher = estimator.compute_fisher_isotropic(lensed=True)
+        self.assertAlmostEqual(fisher, fisher_exp * 0.5 ** 3)
+
+    def test_ksw_compute_fisher_isotropic_matrix(self):
+                
+        lmax = 5
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
+
+        # Create a reduced bispectrum that is just b_l1l2l3 = 1.
+        rb = self.FakeReducedBispectrum
+        rb.npol = npol
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3, npol))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            # Correct for 3 powers of beam.
+            return 0.1 ** 3 * 1. 
+            
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+
+        fisher, fisher_nxn = estimator.compute_fisher_isotropic(return_matrix=True)
+        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, np.sum(fisher_nxn))
+
