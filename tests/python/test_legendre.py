@@ -65,6 +65,29 @@ class TestLegendre(unittest.TestCase):
         self.assertRaises(ValueError, legendre.compute_normalized_associated_legendre,
                           m, thetas, lmax, out=out)
 
+    def test_legendre_normalization(self):
+        
+        # Test if I understand the relation to the regular Legendre polynomials.
+
+        thetas = np.linspace(0, np.pi, 10, endpoint=False)
+        lmax = 2
+
+        P0 = np.ones(thetas.size)
+        P1 = np.cos(thetas)
+        P2 = 0.5 * (3 * np.cos(thetas) ** 2 - 1)
+
+        m = 0
+        out_exp = np.ones((thetas.size, lmax + 1))
+
+        # So Yl0(theta) = sqrt( (2l + 1) / 4pi) Pl(cos(theta)).
+        out_exp[:,0] = np.sqrt(1 / 4. / np.pi) * P0
+        out_exp[:,1] = np.sqrt((2 * 1 + 1) / 4. / np.pi) * P1
+        out_exp[:,2] = np.sqrt((2 * 2 + 1) / 4. / np.pi) * P2
+        
+        out = np.empty_like(out_exp)
+        legendre.compute_normalized_associated_legendre(m, thetas, lmax, out=out)
+        np.testing.assert_array_almost_equal(out, out_exp)        
+
     def test_legendre_normalized_associated_legendre_ms(self):
 
         lmax = 2

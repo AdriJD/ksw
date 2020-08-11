@@ -174,6 +174,67 @@ class TestKSW(unittest.TestCase):
 
             return grad / 2
 
+        def fisher_direct(lmax, npol, red_bisp, icov):
+            '''
+            Calculate fisher information directly.
+
+            Parameters
+            ----------
+            lmax : int
+            npol : int
+            red_bisp : callable
+                Function with ell1, ell2, ell3 arguments returning reduced bispectrum.
+            icov : callable
+                Function with ell, pix1, pidx2 arguments returning inverse covariance.
+
+            Returns
+            -------
+            fisher : float
+            '''
+
+            pols = range(npol)
+
+            pol_indices = []
+            # Get pol combinations.
+            for pidx1 in pols:
+                for pidx2 in pols:
+                    for pidx3 in pols:
+                        for pidx4 in pols:
+                            for pidx5 in pols:
+                                for pidx6 in pols:
+                                    pol_indices.append([pidx1, pidx2, pidx3, 
+                                                        pidx4, pidx5, pidx6])
+                                
+            pol_indices = np.asarray(pol_indices)
+            fisher = 0
+            
+            for ell2 in range(lmax + 1):
+                for ell3 in range(lmax + 1):
+
+                    ells1 = np.arange(abs(ell3 - ell2), ell2 + ell3 + 1)
+
+                    # Get wigner prefactor
+                    wig_000 = camb.mathutils.threej(ell2, ell3, 0, 0)
+
+                    for lidx1, ell1 in enumerate(ells1):
+                        
+                        if ell1 > lmax:
+                            continue
+
+                        prefactor = (2 * ell1 + 1) * (2 * ell2 + 1) * (2 * ell3 + 1)
+                        prefactor /= 4 * np.pi * 6
+
+                        for pidx in range(pol_indices.shape[0]):
+                            pidx1, pidx2, pidx3, pidx4, pidx5, pidx6 = pol_indices[pidx]
+
+                            fisher += wig_000[lidx1] ** 2 * prefactor * \
+                                      red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3) * \
+                                      icov(ell1, pidx1, pidx4) * \
+                                      icov(ell2, pidx2, pidx5) * \
+                                      icov(ell3, pidx3, pidx6) * \
+                                      red_bisp(ell1, ell2, ell3, pidx4, pidx5, pidx6)
+            return fisher
+            
         self.FakeReducedBispectrum = FakeReducedBispectrum
         self.FakeData = FakeData
 
@@ -186,6 +247,7 @@ class TestKSW(unittest.TestCase):
 
         self.cubic_term_direct = cubic_term_direct
         self.grad_direct = grad_direct
+        self.fisher_direct = fisher_direct
 
     def tearDown(self):
         # Is called after each test.
@@ -1527,7 +1589,7 @@ class TestKSW(unittest.TestCase):
         # Create a reduced bispectrum that is sum of 1 for I and 2 for E
         # and 3 for I and 6 for E.
         rb = self.FakeReducedBispectrum
-        rb.npol = 1
+        rb.npol = 2
         rb.nfact = 2
         rb.ells_sparse = np.arange(lmax + 1)
         rb.ells_full = np.arange(lmax + 1)
@@ -1814,3 +1876,577 @@ class TestKSW(unittest.TestCase):
         mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
         
         np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp)
+
+    def test_ksw_compute_fisher_nxn_I(self):
+                
+        npol = 1
+        lmax = 2
+        nfact = 2
+        theta = np.radians(1)
+        icov_ell = np.ones((1, 1, lmax + 1))
+        icov_ell[0,0,0] = 1
+        icov_ell[0,0,1] = 0.5
+        icov_ell[0,0,2] = 0.1
+
+        y_ell_0 = np.ones(lmax + 1)
+        y_ell_0[:] = [self.y00(theta, 0), self.y10(theta, 0), self.y20(theta, 0)]
+
+        x_i_ell = np.ones((nfact, 1, lmax + 1))
+        y_i_ell = np.ones((nfact, 1, lmax + 1))
+        z_i_ell = np.ones((nfact, 1, lmax + 1))
+
+        x_i_ell *= np.random.randn(x_i_ell.size).reshape(x_i_ell.shape)
+        y_i_ell *= np.random.randn(y_i_ell.size).reshape(y_i_ell.shape)
+        z_i_ell *= np.random.randn(z_i_ell.size).reshape(z_i_ell.shape)
+                
+        ans = KSW._compute_fisher_nxn(icov_ell, y_ell_0, x_i_ell, y_i_ell, z_i_ell)
+
+        ans_exp = np.zeros((nfact, nfact))
+        ells = np.arange(lmax + 1)
+        prefactor = y_ell_0 * np.sqrt((2 * ells + 1) / 4 / np.pi) 
+
+        # xx yy zz.
+        ans_exp[0,0] = np.sum(prefactor * x_i_ell[0] * icov_ell * x_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[0])
+
+        ans_exp[0,1] = np.sum(prefactor * x_i_ell[0] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[1])
+
+        ans_exp[1,1] = np.sum(prefactor * x_i_ell[1] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_ell * z_i_ell[1])
+
+        # xz yx zy.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_ell * y_i_ell[1])
+
+        # xy yz zx.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_ell * x_i_ell[1])
+
+        # xx yz zy.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * x_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_ell * y_i_ell[1])
+
+        # xy yx zz.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_ell * x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_ell * z_i_ell[1])
+
+        # xz yy zx.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_ell * y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_ell * x_i_ell[1])
+
+        ans_exp[1,0] = ans_exp[0,1]
+        ans_exp *= 2 * np.pi ** 2 / 9
+
+        np.testing.assert_array_almost_equal(ans, ans_exp)
+        
+    def test_ksw_compute_fisher_nxn_pol(self):
+         
+        np.random.seed(1)
+
+        npol = 2
+        lmax = 2
+        nfact = 2
+        theta = np.radians(1)
+        icov_ell = np.ones((npol, npol, lmax + 1))
+        icov_ell[0,0,0] = 1
+        icov_ell[0,0,1] = 0.5
+        icov_ell[0,0,2] = 0.1
+        icov_ell[0,1] *= 2
+        icov_ell[1,0] *= 2
+        icov_ell[1,1] *= 3
+        
+        y_ell_0 = np.ones(lmax + 1)
+        y_ell_0[:] = [self.y00(theta, 0), self.y10(theta, 0), self.y20(theta, 0)]
+
+        x_i_ell = np.ones((nfact, npol, lmax + 1))
+        y_i_ell = np.ones((nfact, npol, lmax + 1))
+        z_i_ell = np.ones((nfact, npol, lmax + 1))
+
+        x_i_ell *= np.random.randn(x_i_ell.size).reshape(x_i_ell.shape)
+        y_i_ell *= np.random.randn(y_i_ell.size).reshape(y_i_ell.shape)
+        z_i_ell *= np.random.randn(z_i_ell.size).reshape(z_i_ell.shape)
+                
+        ans = KSW._compute_fisher_nxn(icov_ell, y_ell_0, x_i_ell, y_i_ell, z_i_ell)
+
+        ans_exp = np.zeros((nfact, nfact))
+        ells = np.arange(lmax + 1)
+        prefactor = y_ell_0 * np.sqrt((2 * ells + 1) / 4 / np.pi)
+
+        # Compute inverse-covariance weighted versions.
+        icov_x_i_ell = np.zeros_like(x_i_ell)
+        icov_y_i_ell = np.zeros_like(y_i_ell)
+        icov_z_i_ell = np.zeros_like(z_i_ell)
+
+        for fidx in range(nfact):
+            for lidx in range(lmax + 1):
+                icov_x_i_ell[fidx,:,lidx] = np.dot(icov_ell[:,:,lidx], x_i_ell[fidx,:,lidx])
+                icov_y_i_ell[fidx,:,lidx] = np.dot(icov_ell[:,:,lidx], y_i_ell[fidx,:,lidx])
+                icov_z_i_ell[fidx,:,lidx] = np.dot(icov_ell[:,:,lidx], z_i_ell[fidx,:,lidx])
+            
+        # xx yy zz.
+        ans_exp[0,0] = np.sum(prefactor * x_i_ell[0] * icov_x_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[0])
+
+        ans_exp[0,1] = np.sum(prefactor * x_i_ell[0] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[1])
+
+        ans_exp[1,1] = np.sum(prefactor * x_i_ell[1] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_z_i_ell[1])
+
+        # xz yx zy.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_y_i_ell[1])
+
+        # xy yz zx.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_x_i_ell[1])
+
+        # xx yz zy.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_x_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_y_i_ell[1])
+
+        # xy yx zz.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_x_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_z_i_ell[1])
+
+        # xz yy zx.
+        ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[0]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[0]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[0])
+
+        ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[1])
+
+        ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_z_i_ell[1]) * \
+                       np.sum(prefactor * y_i_ell[1] * icov_y_i_ell[1]) * \
+                       np.sum(prefactor * z_i_ell[1] * icov_x_i_ell[1])
+
+        ans_exp[1,0] = ans_exp[0,1]
+        ans_exp *= 2 * np.pi ** 2 / 9
+
+        np.testing.assert_array_almost_equal(ans, ans_exp)
+
+    def test_ksw_compute_fisher_isotropic_I_simple(self):
+                
+        lmax = 5
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
+
+        # Create a reduced bispectrum that is just b_l1l2l3 = 1.
+        rb = self.FakeReducedBispectrum
+        rb.npol = 1
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3, npol))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+        fisher = estimator.compute_fisher_isotropic()
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            # Correct for 3 powers of beam.
+            return 0.1 ** 3 * 1. 
+            
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+
+        self.assertAlmostEqual(fisher, fisher_exp)
+
+    def test_ksw_compute_fisher_isotropic_pol_simple(self):
+                
+        lmax = 5
+        npol = 2
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((3, lmax + 1))
+
+        # Create a reduced bispectrum that is just b_l1l2l3 = 1.
+        rb = self.FakeReducedBispectrum
+        rb.npol = npol
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3, npol))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+        fisher = estimator.compute_fisher_isotropic()
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            # Correct for 3 powers of beam.
+            return 0.1 ** 3 * 1. 
+            
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+
+        self.assertAlmostEqual(fisher, fisher_exp)
+
+    def test_ksw_compute_fisher_isotropic_I_simple_2d(self):
+                
+        # Compare to direct 4 dimensional sum over (l,m).
+        lmax = 5
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
+
+        # Create a reduced bispectrum that is b_l1l2l3 = 1 * 1 * 1 + 2 * 2 * 2.
+        rb = self.FakeReducedBispectrum
+        rb.npol = 1
+        rb.nfact = 2
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+
+        rb.factors = np.ones((2, npol, lmax + 1))
+        rb.factors[1] *= 2
+        rb.rule = np.zeros((2, 3), dtype=int)
+        rb.rule[1] = 1
+        rb.weights = np.ones((2, 3, npol))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+        fisher = estimator.compute_fisher_isotropic()
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            # Correct for 3 powers of beam.
+            return 0.1 ** 3 * (1 * 1 * 1 + 2 * 2 * 2)
+            
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+
+        self.assertAlmostEqual(fisher, fisher_exp)
+
+    def test_ksw_compute_fisher_isotropic_pol_simple_2d(self):
+                
+        # Compare to direct 4 dimensional sum over (l,m).
+        lmax = 5
+        npol = 2
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((3, lmax + 1))
+
+        # Create a reduced bispectrum that is sum of 1 for I and 2 for E
+        # and 3 for I and 6 for E.
+        rb = self.FakeReducedBispectrum
+        rb.npol = npol
+        rb.nfact = 2
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+
+        rb.factors = np.ones((2, npol, lmax + 1))
+        rb.factors[0,1,:] = 2
+        rb.factors[1,0,:] = 3
+        rb.factors[1,1,:] = 6
+        rb.rule = np.zeros((2, 3), dtype=int)
+        rb.rule[1] = 1
+        rb.weights = np.ones((2, 3, npol))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+        fisher = estimator.compute_fisher_isotropic()
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            # Correct for 3 powers of beam.
+            b1_l1 = 2 if pidx1 else 1
+            b1_l2 = 2 if pidx2 else 1
+            b1_l3 = 2 if pidx3 else 1
+
+            b2_l1 = 6 if pidx1 else 3
+            b2_l2 = 6 if pidx2 else 3
+            b2_l3 = 6 if pidx3 else 3
+
+            return 0.1 ** 3 * (b1_l1 * b1_l2 * b1_l3 + b2_l1 * b2_l2 * b2_l3)
+            
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+
+        self.assertAlmostEqual(fisher, fisher_exp)
+
+    def test_ksw_compute_fisher_isotropic_I_local(self):
+
+        lmax_transfer = 300
+        radii = np.asarray([11000., 14000.])
+        dr = ((radii[1] - radii[0]) / 2.)
+        cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
+                               mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
+        pars = camb.CAMBparams(**cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo.compute_transfer(lmax_transfer)
+
+        prim_shape = Shape.prim_local(ns=1)
+
+        self.assertTrue(len(cosmo.red_bispectra) == 0)
+        cosmo.add_prim_reduced_bispectrum(prim_shape, radii)
+        self.assertTrue(len(cosmo.red_bispectra) == 1)
+
+        rb = cosmo.red_bispectra[0]
+
+        # Lmax and pol of data should overrule those of bispectrum.
+        lmax = 5
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
+        data.cosmology = cosmo
+
+        estimator = KSW(data)
+        fisher = estimator.compute_fisher_isotropic()
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            '''
+            b_l1l2l3 = int dr r^2 1/6 (alpha_l1(r) beta_l2(r) beta_l3(r) + 5 symm.)
+            '''
+            # Factors are direct output from radial functional, 
+            # so they do not have the 2 * As^2 factor.
+
+            if ell1 < 2 or ell2 < 2 or ell3 < 2:
+                return 0
+
+            # Determine indices into ell dimension of factors.
+            lidx1 = np.where(rb.ells_full == ell1)[0][0]
+            lidx2 = np.where(rb.ells_full == ell2)[0][0]
+            lidx3 = np.where(rb.ells_full == ell3)[0][0]
+
+            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
+            ret = dr * radii[0] ** 2 * \
+                  (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
+            # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
+            # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
+            
+            # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   (1 / 3) * rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
+            # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
+            # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
+
+            ret *= amp
+
+            # Correct for beam.
+            return ret * (0.1) ** 3
+
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+
+        self.assertAlmostEqual(fisher, fisher_exp)
+
+    def test_ksw_compute_fisher_isotropic_pol_local(self):
+
+        lmax_transfer = 300
+        radii = np.asarray([11000., 14000.])
+        dr = ((radii[1] - radii[0]) / 2.)
+        cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
+                               mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
+        pars = camb.CAMBparams(**cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo.compute_transfer(lmax_transfer)
+
+        prim_shape = Shape.prim_local(ns=1)
+
+        self.assertTrue(len(cosmo.red_bispectra) == 0)
+        cosmo.add_prim_reduced_bispectrum(prim_shape, radii)
+        self.assertTrue(len(cosmo.red_bispectra) == 1)
+
+        rb = cosmo.red_bispectra[0]
+
+        # Lmax and pol of data should overrule those of bispectrum.
+        lmax = 5
+        npol = 2
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T', 'E')
+        data.npol = npol
+        data.icov_ell_nonlensed = np.ones((3, lmax + 1))
+        data.cosmology = cosmo
+
+        estimator = KSW(data)
+        fisher = estimator.compute_fisher_isotropic()
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            '''
+            b^X1X2X3_l1l2l3 = int dr r^2 1/6 (alpha^X1_l1(r) beta^X2_l2(r) beta^X3_l3(r) + 5 symm.)
+            '''
+            # Factors are direct output from radial functional, 
+            # so they do not have the 2 * As^2 factor.
+
+            if ell1 < 2 or ell2 < 2 or ell3 < 2:
+                return 0
+
+            # Determine indices into ell dimension of factors.
+            lidx1 = np.where(rb.ells_full == ell1)[0][0]
+            lidx2 = np.where(rb.ells_full == ell2)[0][0]
+            lidx3 = np.where(rb.ells_full == ell3)[0][0]
+
+            # Note that the symmetrisation below is not needed for the cubic term, but still
+            # formally correct.
+            
+            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
+            ret = dr * radii[0] ** 2 * \
+                  (1 / 3) * rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+            # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+            # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
+            
+            # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   (1 / 3) * rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+            # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+            # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
+
+            ret *= amp
+
+            # Correct for beam.
+            return ret * (0.1) ** 3
+
+        def icov(ell, pidx1, pidx2):
+            return 1.
+
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+
+        self.assertAlmostEqual(fisher, fisher_exp)

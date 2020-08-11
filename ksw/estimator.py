@@ -514,6 +514,7 @@ class KSW():
         Returns
         -------
         fisher : float, None
+            Fisher information.
         '''
 
         if self.mc_gt_sq is None or self.mc_gt is None:
@@ -549,3 +550,131 @@ class KSW():
             return None
 
         return utils.contract_almxblm(alm, self.icov(np.conj(self.mc_gt)))
+
+    def compute_fisher_isotropic(self, lensed=False, comm=None):
+        '''
+        Return Fisher information assuming diagonal inverse noise + signal
+        covariance.
+
+        Parameters
+        ----------
+        lensed : bool, optional
+            If set, use lensed signal covariance.
+        comm : MPI communicator, optional        
+
+        Returns
+        -------
+        fisher : float
+            Fisher information.
+        '''
+        
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        red_bisp = self.cosmology.red_bispectra[0]
+        x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
+
+        if lensed:
+            icov_ell = self.data.icov_ell_lensed
+        else:
+            icov_ell = self.data.icov_ell_nonlensed
+
+        npol = x_i_ell.shape[1]
+        icov_ell_sym = np.zeros((npol, npol, icov_ell.shape[-1]))
+        icov_ell_sym[0,0] = icov_ell[0]
+        if npol == 2:
+            icov_ell_sym[1,0] = icov_ell[1]
+            icov_ell_sym[0,1] = icov_ell[1]
+            icov_ell_sym[1,1] = icov_ell[2]
+        
+        thetas_per_rank = np.array_split(
+            self.thetas, comm.Get_size())[comm.Get_rank()]
+        ct_weights_per_rank = np.array_split(
+            self.theta_weights, comm.Get_size())[comm.Get_rank()]
+        y_theta_ell_0 = legendre.compute_normalized_associated_legendre(
+            0, thetas_per_rank, self.data.lmax)
+        
+        nfact = x_i_ell.shape[0]
+        fisher_nxn = np.zeros((nfact, nfact))
+        for tidx in range(thetas_per_rank.size):
+
+            theta = thetas_per_rank[tidx]
+            ct_weight = ct_weights_per_rank[tidx]
+            y_ell_0 = y_theta_ell_0[tidx,:]
+
+            fisher_nxn += ct_weight * self._compute_fisher_nxn(
+                icov_ell_sym, y_ell_0, x_i_ell, y_i_ell, z_i_ell)
+
+        fisher_nxn = utils.reduce_array(fisher_nxn, comm)
+        
+        if comm.Get_rank() == 0:
+            fisher = np.sum(fisher_nxn)
+        else:
+            fisher = None
+
+        return fisher
+
+    @staticmethod
+    def _compute_fisher_nxn(icov_ell_sym, y_ell_0, x_i_ell, y_i_ell, z_i_ell):
+        '''
+        Return contribution to nfact x nfact Fisher matrix for given theta.
+
+        Arguments
+        ---------
+        icov_ell_sym : (npol, npol, nell) array
+            Inverse S+N covariance matrix diagonal in multipole.
+        y_ell_0 : (nell) array
+            Spherical harmonic (m=0) for each multipole.
+        x_i_ell : (nfact, npol, nell) array
+            Reduced bispectrum factors for ell_1.
+        y_i_ell : (nfact, npol, nell) array
+            Reduced bispectrum factors for ell_2.
+        z_i_ell : (nfact, npol, nell) array
+            Reduced bispectrum factors for ell_3.
+
+        Returns
+        -------
+        fisher_nxn : (nfact, nfact) array
+            nfact x nfact Fisher matrix.
+        '''
+
+        ells = np.arange(x_i_ell.shape[-1], dtype=float)
+        prefactor = y_ell_0 * np.sqrt((2 * ells + 1) / 4 / np.pi) * \
+                    (2 * np.pi ** 2 / 9) ** (1/3)
+        icov_ell_sym = icov_ell_sym * prefactor[np.newaxis,np.newaxis,:]
+
+        op = 'ijk, jlk, mlk -> im'
+
+        fisher_nxn = np.einsum(op, x_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        fisher_nxn *= np.einsum(op , y_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
+        fisher_nxn *= np.einsum(op, z_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+
+        tmp = np.einsum(op, x_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, z_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
+        fisher_nxn += tmp
+
+        tmp = np.einsum(op, x_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
+        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, z_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        fisher_nxn += tmp
+
+        tmp = np.einsum(op, x_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, z_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
+        fisher_nxn += tmp
+
+        tmp = np.einsum(op, x_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
+        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, z_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+        fisher_nxn += tmp
+
+        tmp = np.einsum(op, x_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, y_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, z_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        fisher_nxn += tmp
+
+        return fisher_nxn
+
+
+        

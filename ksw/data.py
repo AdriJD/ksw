@@ -37,7 +37,7 @@ class Data():
     b_ell : (npol, nell) array
         Beam window function for each polarization.
     n_ell : (nspec, nell) array
-        Noise covariance matrix (without beam) in uK^2. Order=TT, (EE, TE).
+        Noise covariance matrix (without beam) in uK^2. Order=TT(, EE, TE).
     cov_ell_lensed : (nspec, nell) array
         Lensed covariance matrix diagonal in multipole.
     cov_ell_nonlensed : (nspec, nell) array
@@ -51,6 +51,10 @@ class Data():
     -----
     Lowering lmax after initiation will truncate all quantities correctly.
     '''
+
+    # Would be nice to add option to interpret n_ell as signal + noise.
+    # You run into issues with lensed and non-lensed then, perhaps fine.
+    # You could make both lensed and nonlensed return the same thing then?
     
     def __init__(self, lmax, n_ell, b_ell, pol, cosmo):
 
