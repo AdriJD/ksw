@@ -19,6 +19,9 @@ class Data():
         Data polarization, e.g. "E", or ["T", "E"]. Order should be T, E.
     cosmo : ksw.Cosmology instance
         Cosmology instance to get Cls.
+    n_is_totcov : bool, optional
+        Intepret n_ell as S+N covariance, so do not use signal Cls from 
+        Cosmology and do not distinguish between lensed and nonlensed.
 
     Raises
     ------
@@ -52,11 +55,9 @@ class Data():
     Lowering lmax after initiation will truncate all quantities correctly.
     '''
 
-    # Would be nice to add option to interpret n_ell as signal + noise.
-    # You run into issues with lensed and non-lensed then, perhaps fine.
-    # You could make both lensed and nonlensed return the same thing then?
-    
-    def __init__(self, lmax, n_ell, b_ell, pol, cosmo):
+    # You could make cosmo optional, but what is default behaviour?
+
+    def __init__(self, lmax, n_ell, b_ell, pol, cosmo, n_is_totcov=False):
 
         self.pol = pol
         self.lmax = lmax
@@ -64,7 +65,7 @@ class Data():
         self.n_ell = n_ell
         self.cosmology = cosmo
 
-        covs = self._compute_totcov_diag()
+        covs = self._compute_totcov_diag(n_is_totcov=n_is_totcov)
         self.cov_ell_lensed = covs[0]
         self.icov_ell_lensed = covs[1]
         self.cov_ell_nonlensed = covs[2]         
@@ -170,9 +171,15 @@ class Data():
     def icov_ell_nonlensed(self, icov):
         self.__icov_ell_nonlensed = icov
         
-    def _compute_totcov_diag(self):
+    def _compute_totcov_diag(self, n_is_totcov=False):
         '''
         Compute data covariance: (Nl + Cl * bl^2) and its inverse.
+
+        Arguments
+        ---------
+        n_is_totcov : bool, optional
+            Do not add signal Cls from cosmology to total covariance.
+            Lensed and nonlensed will be the same.
 
         Raises
         ------
@@ -207,42 +214,47 @@ class Data():
         multiply factors of reduced bispectrum by b_ell.
         '''
         
-        if not hasattr(self.cosmology, 'c_ell'):
+        if not n_is_totcov and not hasattr(self.cosmology, 'c_ell'):
             self.cosmology.compute_c_ell()
 
         ret = []
         for c_ell_type in ['lensed', 'unlensed']:            
             
-            cls_ells = self.cosmology.c_ell[c_ell_type+'_scalar']['ells']
-            c_ell = self.cosmology.c_ell[c_ell_type+'_scalar']['c_ell']
-                  
-            cls_lmax = cls_ells[-1]
+            if not n_is_totcov:
+                cls_ells = self.cosmology.c_ell[c_ell_type+'_scalar']['ells']
+                c_ell = self.cosmology.c_ell[c_ell_type+'_scalar']['c_ell']
 
-            if cls_lmax < self.lmax:
-                raise ValueError('lmax Cls : {} < lmax data : {}'
-                                 .format(cls_lmax, self.lmax))
+                cls_lmax = cls_ells[-1]
 
-            # CAMB Cls are (nell, 4), convert to (4, nell).
-            totcov = c_ell.transpose()[:,:self.lmax+1].copy()
+                if cls_lmax < self.lmax:
+                    raise ValueError('lmax Cls : {} < lmax data : {}'
+                                     .format(cls_lmax, self.lmax))
 
-            # Turn into correct shape and multiply with beam.
-            if self.pol == ('T',):
-                totcov = totcov[0,:]
-                totcov = totcov[np.newaxis,:]
-                totcov *= self.b_ell ** 2
-            elif self.pol == ('E',):
-                totcov = totcov[1,:]
-                totcov = totcov[np.newaxis,:]
-                totcov *= self.b_ell ** 2
-            elif self.pol == ('T', 'E'):
-                polmask = np.ones(4, dtype=bool)
-                polmask[2] = False # Mask B.
-                totcov = totcov[polmask,:]
-                totcov[0] *= self.b_ell[0] ** 2
-                totcov[1] *= self.b_ell[1] ** 2
-                totcov[2] *= self.b_ell[0] * self.b_ell[1]
-            
-            totcov += self.n_ell
+                # CAMB Cls are (nell, 4), convert to (4, nell).
+                totcov = c_ell.transpose()[:,:self.lmax+1].copy()
+
+                # Turn into correct shape and multiply with beam.
+                if self.pol == ('T',):
+                    totcov = totcov[0,:]
+                    totcov = totcov[np.newaxis,:]
+                    totcov *= self.b_ell ** 2
+                elif self.pol == ('E',):
+                    totcov = totcov[1,:]
+                    totcov = totcov[np.newaxis,:]
+                    totcov *= self.b_ell ** 2
+                elif self.pol == ('T', 'E'):
+                    polmask = np.ones(4, dtype=bool)
+                    polmask[2] = False # Mask B.
+                    totcov = totcov[polmask,:]
+                    totcov[0] *= self.b_ell[0] ** 2
+                    totcov[1] *= self.b_ell[1] ** 2
+                    totcov[2] *= self.b_ell[0] * self.b_ell[1]
+
+                totcov += self.n_ell
+                
+            else:
+                totcov = self.n_ell.copy()
+
             totcov = np.ascontiguousarray(totcov)
             inv_totcov = self._invert_cov_diag(totcov)
 

@@ -506,6 +506,93 @@ class TestData(unittest.TestCase):
         self.assertRaises(IndexError, getattr, data, 'cov_ell_nonlensed')
         self.assertRaises(IndexError, getattr, data, 'icov_ell_nonlensed')
 
+    def test_data_n_is_totcov_I(self):
         
+        pol = ['T']
+        cosmo = self.FakeCosmology()
+        n_ell_T = self.n_ell_T + 1 # To make well conditioned.
+
+        data = Data(self.lmax, n_ell_T, self.b_ell_T, pol, cosmo, n_is_totcov=True)
+
+        cov_ell_exp = np.zeros((1, self.nell))
+        cov_ell_exp[0] = n_ell_T
+        print(n_ell_T)
+        np.testing.assert_almost_equal(data.cov_ell_nonlensed,
+                                       cov_ell_exp)
+        # Test if inverse is also computed correctly.
+        np.testing.assert_almost_equal(data.icov_ell_nonlensed,
+                                       1 / cov_ell_exp)
+
+        # Again with lensing power. This should be the same.
+        cov_ell_exp[0] = n_ell_T 
+        np.testing.assert_almost_equal(data.cov_ell_lensed,
+                                       cov_ell_exp)
+        # Test if inverse is also computed correctly.
+        np.testing.assert_almost_equal(data.icov_ell_lensed,
+                                       1 / cov_ell_exp)
+                
+    def test_data_n_is_totcov_E(self):
+
+        cosmo = self.FakeCosmology()
+        pol = ['E']
+        n_ell_T = self.n_ell_T + 1 # To make well conditioned.
+        data = Data(self.lmax, n_ell_T, self.b_ell_T, pol, cosmo, 
+                    n_is_totcov=True)
+
+        cov_ell_exp = np.zeros((1, self.nell))
+        cov_ell_exp[0] = n_ell_T
+        np.testing.assert_almost_equal(data.cov_ell_nonlensed,
+                                       cov_ell_exp)
+        # Test if inverse is also computed correctly.
+        np.testing.assert_almost_equal(data.icov_ell_nonlensed,
+                                       1 / cov_ell_exp)
+
+        # Again with lensing power. This should be the same.
+        cov_ell_exp[0] = n_ell_T
+        np.testing.assert_almost_equal(data.cov_ell_lensed,
+                                       cov_ell_exp)
+        # Test if inverse is also computed correctly.
+        np.testing.assert_almost_equal(data.icov_ell_lensed,
+                                       1 / cov_ell_exp)
+
+    def test_data_n_is_totcov_pol(self):
+
+        cosmo = self.FakeCosmology()
+        pol = ['T', 'E']
+        n_ell_TplusE = self.n_ell_TplusE + 1
+        print(n_ell_TplusE)
+        data = Data(self.lmax, n_ell_TplusE, self.b_ell_TplusE, pol, cosmo,
+                    n_is_totcov=True)        
+
+        expec_totcov = np.zeros((3, self.nell))
+        expec_totcov[0] = n_ell_TplusE[0]
+        expec_totcov[1] = n_ell_TplusE[1]
+        expec_totcov[2] = n_ell_TplusE[2]
+        np.testing.assert_almost_equal(data.cov_ell_nonlensed, expec_totcov)
+
+        # Test if inverse is also computed correctly.
+        expec_inv_totcov = np.zeros_like(expec_totcov)
+
+        # Inverse of [[a,b],[b,d]] = [[d,-b],[-b,a]] / (ad - bb).
+        expec_inv_totcov[0] = expec_totcov[1]
+        expec_inv_totcov[1] = expec_totcov[0]
+        expec_inv_totcov[2] = -expec_totcov[2]
+        det = expec_totcov[0] * expec_totcov[1] - expec_totcov[2] ** 2
+        expec_inv_totcov /= det
+        np.testing.assert_almost_equal(data.icov_ell_nonlensed, expec_inv_totcov)
+
+        # With lensing power.
+        expec_totcov = np.zeros((3, self.nell))
+        expec_totcov[0] = n_ell_TplusE[0]
+        expec_totcov[1] = n_ell_TplusE[1]
+        expec_totcov[2] = n_ell_TplusE[2]
+        np.testing.assert_almost_equal(data.cov_ell_lensed, expec_totcov)
         
-        
+        expec_inv_totcov = np.zeros_like(expec_totcov)
+
+        expec_inv_totcov[0] = expec_totcov[1]
+        expec_inv_totcov[1] = expec_totcov[0]
+        expec_inv_totcov[2] = -expec_totcov[2]
+        det = expec_totcov[0] * expec_totcov[1] - expec_totcov[2] ** 2
+        expec_inv_totcov /= det
+        np.testing.assert_almost_equal(data.icov_ell_lensed, expec_inv_totcov)

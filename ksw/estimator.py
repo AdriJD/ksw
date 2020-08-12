@@ -33,7 +33,7 @@ class KSW():
     mc_gt : (npol, nelem) complex array, None
         Current <grad T (C^-1 a)> Monte Carlo estimate (eq 60 Smith Zaldarriaga).
     mc_gt_sq : float, None
-        Current <grad T (C^-1 a) C^-1 grad T(C^-1 a)> Monte Carlo
+        Current <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*> Monte Carlo
         estimate (eq 61 Smith Zaldarriaga).
     thetas : (ntheta) array
         Coordinates of isolatitude rings.
@@ -262,7 +262,7 @@ class KSW():
 
     def step(self, alm, comm=None):
         '''
-        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)>
+        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
         and <grad T (C^-1 a)> Monte Carlo estimates.
 
         Parameters
@@ -507,6 +507,7 @@ class KSW():
         # Result must be added to a_ell_m.
         a_ell_m += self.m_ell_m[:,:,:self.data.lmax+1]
 
+    # Add cubic-only kwarg.
     def compute_fisher(self):
         '''
         Return Fisher information at current iteration.
@@ -522,6 +523,7 @@ class KSW():
 
         fisher = self.mc_gt_sq
         fisher -= utils.contract_almxblm(self.mc_gt, self.icov(np.conj(self.mc_gt)))
+        #fisher += 2 * utils.contract_almxblm(self.mc_gt, self.icov(np.conj(self.mc_gt)))
         fisher /= 3.
 
         return fisher
@@ -682,6 +684,9 @@ class KSW():
         fisher_nxn += tmp
 
         return fisher_nxn
-
-
+        
+# staticmethod
+# check_alm(alm, npol, lmax)
+# raises ValueError if shape is wrong
+# returns 1, nelem if nelem is given and npol = 1.
         
