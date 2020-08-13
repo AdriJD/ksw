@@ -589,9 +589,9 @@ class KSW():
         icov_ell_sym = np.zeros((npol, npol, icov_ell.shape[-1]))
         icov_ell_sym[0,0] = icov_ell[0]
         if npol == 2:
-            icov_ell_sym[1,0] = icov_ell[1]
-            icov_ell_sym[0,1] = icov_ell[1]
-            icov_ell_sym[1,1] = icov_ell[2]
+            icov_ell_sym[1,0] = icov_ell[2]
+            icov_ell_sym[0,1] = icov_ell[2]
+            icov_ell_sym[1,1] = icov_ell[1]
         
         thetas_per_rank = np.array_split(
             self.thetas, comm.Get_size())[comm.Get_rank()]
