@@ -23,13 +23,16 @@ class Shape:
 
     Notes
     -----
-    We parameterize the primordial 3-point function as follows:
+    We parameterize the primordial 3-point function in the same way as Planck.
 
-    <zeta_k1, zeta_k2, zeta_k3> = (2pi)^3 delta(k1+k2+k3) * B(k1, k2, k3),
+    <Phi_k1, Phi_k2, Phi_k3> = (2pi)^3 delta(k1+k2+k3) * B(k1, k2, k3),
 
     with B parameterized in terms of the shape f as follows:
 
-    B(k1, k2, k3)  = 2 * fNL * A_s^2 * f(k1, k2, k3).
+    B(k1, k2, k3)  = 2 * fNL * A_phi^2 * f(k1, k2, k3).
+
+    Here, phi is the Bardeen potential. Internally, see cosmo.py, we use the
+    curvature perturbation zeta instead of phi. 
 
     Examples
     --------

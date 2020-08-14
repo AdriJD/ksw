@@ -179,9 +179,8 @@ class Cosmology:
 
         # Copy in resulting transfer functions (fast).
         tr = data.get_cmb_transfer_data('scalar')
-        # Modify scalar E-mode and tensor I transfer functions, see
-        # Zaldarriaga 1997 eq. 18 and 39. (CAMB applies these factors
-        # at a later stage).
+        # Modify scalar E-mode, see Zaldarriaga 1997 Eqs. 18 and 39.
+        # (CAMB applies these factors at a later stage).
         try:
             # CAMB changes this at least one time.
             # See Nov 19 CAMB commit: Formatting; py 3.8 test.
@@ -258,6 +257,31 @@ class Cosmology:
         name : str, optional
             Name to identify reduced bispectrum, defaults to name
             attribute of primordial shape.
+
+        Notes
+        -----
+        We need to correct of the fact that the radiation transfer functions we
+        extract from CAMB are for the curvature perturbation zeta instead of the
+        Bardeen potential phi (see shape.py, we use phi to match the Planck 
+        conventions). We also have to take into account that the scalar amplitude
+        As extracted from CAMB is different than the value A in the Planck convention.
+
+        During matter domination on superhorizon scales we have for adiabatic 
+        perturbations: zeta = (5 / 3) phi. 
+
+        Planck defines A as <phi_k1 phik_2> = (2pi)^3 delta(k12) A / k^3.
+        CAMB defines As as <zeta_k2 zeta_k2> = (2pi)^3 delta(k12) 2 * pi^2 As / k^3.
+        So A = (3/5)^2 * 2 * pi^2 As.
+
+        The radiation transfer functions have to be multiplied by (5/3) to intepret
+        them as phi transfer functions. So the 3 factors of (5/3) from thr 3 transfer
+        functions in b_l1l2l3 partly cancel with the 4 factors of (3/5) from A^2.
+
+        So finally, to get the 2 A_phi^2 amplitude specified in shape.py and convert
+        zeta to phi we need to multiply our templates by:
+        
+        2 * (2 * pi^2)^2 * A_s^2 * (3/5)
+        
         '''
 
         tr_ell_k = self.transfer['tr_ell_k']
@@ -266,7 +290,7 @@ class Cosmology:
 
         f_k = prim_shape.get_f_k(k) 
         amps = np.asarray(prim_shape.amps)
-        amps *= 2 * self.camb_params.InitPower.As ** 2
+        amps *= 2 * (2 * np.pi ** 2 * self.camb_params.InitPower.As) ** 2 * (3 / 5)
 
         # Call C code.
         red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)

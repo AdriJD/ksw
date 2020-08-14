@@ -1238,7 +1238,7 @@ class TestKSW(unittest.TestCase):
             # Note that the symmetrisation below is not needed for the cubic term, but still
             # formally correct.
             
-            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
                   (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
@@ -1335,7 +1335,7 @@ class TestKSW(unittest.TestCase):
             # Note that the symmetrisation below is not needed for the cubic term, but still
             # formally correct.
             
-            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
                   (1 / 3) * rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
@@ -1713,7 +1713,7 @@ class TestKSW(unittest.TestCase):
             lidx2 = np.where(rb.ells_full == ell2)[0][0]
             lidx3 = np.where(rb.ells_full == ell3)[0][0]
 
-            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
                   (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
@@ -1811,7 +1811,7 @@ class TestKSW(unittest.TestCase):
             # Note that the symmetrisation below is not needed for the cubic term, but still
             # formally correct.
             
-            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
                   (1 / 3) * rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
@@ -2334,7 +2334,7 @@ class TestKSW(unittest.TestCase):
             lidx2 = np.where(rb.ells_full == ell2)[0][0]
             lidx3 = np.where(rb.ells_full == ell3)[0][0]
 
-            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
                   (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
@@ -2418,7 +2418,7 @@ class TestKSW(unittest.TestCase):
             # Note that the symmetrisation below is not needed for the cubic term, but still
             # formally correct.
             
-            amp = 2 * cosmo.camb_params.InitPower.As ** 2
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
                   (1 / 3) * rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]

@@ -257,7 +257,8 @@ class TestCosmo(unittest.TestCase):
         weights_exp[4,...] = (dr * radii[0] ** 2) ** (1 / 3)
         weights_exp[5,...] = (dr * radii[1] ** 2) ** (1 / 3)
 
-        weights_exp *= (2 * cosmo.camb_params.InitPower.As ** 2) ** (1 / 3)
+        weights_exp *= (2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 \
+                        * (3 / 5)) ** (1 / 3)
 
         signs = np.sign(prim_shape.amps)
         weights_exp[0:2] *= signs[0] * np.abs(prim_shape.amps[0]) ** (1 / 3)
