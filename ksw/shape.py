@@ -2,8 +2,7 @@ import numpy as np
 
 class Shape:
     '''
-    A shape represents a f(k1, k2, k3) primordial shape
-    function.
+    A shape represents a f(k1, k2, k3) primordial shape function.
 
     Parameters
     ---------
@@ -104,14 +103,16 @@ class Shape:
         return f_k
 
     @staticmethod
-    def _power_law(exponent):
+    def _power_law(exponent, amp=1):
         '''
-        Create a power law function f(k) = k^exponent.
+        Create a power law function f(k) = amp * k^exponent.
 
         Parameters
         ----------
         exponent : float
             Exponent of the power law.
+        amp : float, optional
+            Amplitude.
 
         Returns
         -------
@@ -120,11 +121,11 @@ class Shape:
         '''
 
         def f(k):
-            return k ** exponent
+            return amp * k ** exponent
         return f
 
     @staticmethod
-    def prim_local(ns=1, name='local'):
+    def prim_local(ns=1, pivot=0.05, name='local'):
         '''
         Return instance of Shape for the Local model.
 
@@ -132,16 +133,22 @@ class Shape:
         ----------
         ns : float, optional
             Scalar spectral index.
+        pivot : float, optional
+            Scalar pivot scale k0 in 1/Mpc.
         name : str
             Name used to identify shape.
 
         Returns
         -------
         local : ksw.Shape instance
+
+        Notes
+        -----
+        f(k1, k2, k3) = [(k1^(4-ns) k2^(4-ns) k0^(2 (ns-1)))^-1  + 2 cycl.]
         '''
 
-        f1 = Shape._power_law(0)       # Alpha.
-        f2 = Shape._power_law(-4 + ns) # Beta.
+        f1 = Shape._power_law(0)                                # Alpha.
+        f2 = Shape._power_law(-4 + ns, amp=pivot ** (1 - ns))   # Beta.
         
         funcs = [f1, f2]
         rule = [(1,1,0)]
@@ -150,7 +157,7 @@ class Shape:
         return Shape(funcs, rule, amps, name)
 
     @staticmethod
-    def prim_equilateral(ns=1, name='equilateral'):
+    def prim_equilateral(ns=1, pivot=0.05, name='equilateral'):
         '''
         Return instance of Shape for the Equilateral model.
 
@@ -158,18 +165,28 @@ class Shape:
         ----------
         ns : float, optional
             Scalar spectral index.
+        pivot : float, optional
+            Scalar pivot scale k0 in 1/Mpc.
         name : str
             Name used to identify shape.
 
         Returns
         -------
         equilateral : ksw.Shape instance
+
+        Notes
+        -----
+        f(k1,k2,k3) = [-3 / (k1^(4-ns) k2^(4-ns) k0^(2 (ns-1)))  - 2 cycl.
+                       -6 / ((k1 k2 k3)^(2 (4-ns)/2) k0^(2 (ns-1))
+                       +3 / (k1^((4-ns)/3) k2^(2(4-ns)/3) k3^(4-ns) k0^(2 (ns-1)) + 5 perm.]
         '''
 
-        f1 = Shape._power_law(0)                  # Alpha.
-        f2 = Shape._power_law(-4 + ns)            # Beta.
-        f3 = Shape._power_law((-4 + ns) / 3.)     # Gamma.
-        f4 = Shape._power_law(2 * (-4 + ns) / 3.) # Delta.
+        f1 = Shape._power_law(0)                               # Alpha.
+        f2 = Shape._power_law(-4 + ns, amp=pivot ** (1 - ns))  # Beta.
+        f3 = Shape._power_law((-4 + ns) / 3, 
+                              amp=pivot ** ((1 - ns) / 3))     # Gamma.
+        f4 = Shape._power_law(2 * (-4 + ns) / 3,
+                              amp=pivot ** (2 * (1 - ns) / 3)) # Delta.
         
         funcs = [f1, f2, f3, f4]
         rule = [(1,1,0), (3,3,3), (1,2,3)]
@@ -178,7 +195,7 @@ class Shape:
         return Shape(funcs, rule, amps, name)
 
     @staticmethod
-    def prim_orthogonal(ns=1, name='orthogonal'):
+    def prim_orthogonal(ns=1, pivot=0.05, name='orthogonal'):
         '''
         Return instance of Shape for the Orthogonal model.
 
@@ -186,18 +203,28 @@ class Shape:
         ----------
         ns : float, optional
             Scalar spectral index.
+        pivot : float, optional
+            Scalar pivot scale k0 in 1/Mpc.
         name : str
             Name used to identify shape.
 
         Returns
         -------
         orthogonal : ksw.Shape instance
+
+        Notes
+        -----
+        f(k1,k2,k3) = [-3 / (k1^(4-ns) k2^(4-ns) k0^(2 (ns-1)))  - 2 cycl.
+                       -6 / ((k1 k2 k3)^(2 (4-ns)/2) k0^(2 (ns-1))
+                       +3 / (k1^((4-ns)/3) k2^(2(4-ns)/3) k3^(4-ns) k0^(2 (ns-1)) + 5 perm.]
         '''
 
-        f1 = Shape._power_law(0)                  # Alpha.
-        f2 = Shape._power_law(-4 + ns)            # Beta.
-        f3 = Shape._power_law((-4 + ns) / 3.)     # Gamma.
-        f4 = Shape._power_law(2 * (-4 + ns) / 3.) # Delta.
+        f1 = Shape._power_law(0)                               # Alpha.
+        f2 = Shape._power_law(-4 + ns, amp=pivot ** (1 - ns))  # Beta.
+        f3 = Shape._power_law((-4 + ns) / 3, 
+                              amp=pivot ** ((1 - ns) / 3))     # Gamma.
+        f4 = Shape._power_law(2 * (-4 + ns) / 3,
+                              amp=pivot ** (2 * (1 - ns) / 3)) # Delta.
         
         funcs = [f1, f2, f3, f4]
         rule = [(1,1,0), (3,3,3), (1,2,3)]

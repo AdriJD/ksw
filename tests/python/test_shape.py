@@ -81,6 +81,15 @@ class TestShape(unittest.TestCase):
 
         np.testing.assert_almost_equal(f(k), k ** exponent)
 
+    def test_shape_power_law_amp(self):
+
+        exponent = -2.5
+        amp = 10
+        f = Shape._power_law(exponent, amp=amp)
+        k = np.arange(1, 10, dtype=float)
+
+        np.testing.assert_almost_equal(f(k), amp * k ** exponent)
+
     def test_shape_prim_local(self):
 
         local = Shape.prim_local()
@@ -101,7 +110,25 @@ class TestShape(unittest.TestCase):
         def f1(k):
             return k ** 0
         def f2(k):
-            return k ** -(4-ns)
+            pivot = 0.05
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -3
+
+        funcs_expec = [f1, f2]
+
+        k = np.arange(1, 10, dtype=float)
+        for f, f_expect in zip(local.funcs, funcs_expec):
+            np.testing.assert_almost_equal(f(k), f_expect(k))
+
+    def test_shape_prim_local_ns_pivot(self):
+
+        ns = 0.5
+        pivot = 0.1
+        local = Shape.prim_local(ns=ns, pivot=pivot)
+
+        def f1(k):
+            return k ** 0
+        def f2(k):
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -3
 
         funcs_expec = [f1, f2]
 
@@ -123,11 +150,14 @@ class TestShape(unittest.TestCase):
         def f1(k):
             return k ** 0
         def f2(k):
-            return k ** -(4 - ns)
+            pivot = 0.05
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -3
         def f3(k):
-            return k ** -((4 - ns) / 3.)
+            pivot = 0.05
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -1
         def f4(k):
-            return k ** -(2 * (4 - ns) / 3)
+            pivot = 0.05
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -2
 
         funcs_expec = [f1, f2, f3, f4]
 
@@ -155,11 +185,14 @@ class TestShape(unittest.TestCase):
         def f1(k):
             return k ** 0
         def f2(k):
-            return k ** -(4 - ns)
+            pivot = 0.05
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -3
         def f3(k):
-            return k ** -((4 - ns) / 3.)
+            pivot = 0.05
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -1
         def f4(k):
-            return k ** -(2 * (4 - ns) / 3.)
+            pivot = 0.05
+            return (k * (pivot / k) ** ((ns - 1) / 3)) ** -2
 
         funcs_expec = [f1, f2, f3, f4]
 

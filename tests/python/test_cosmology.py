@@ -201,6 +201,52 @@ class TestCosmo(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(c_ell, c_ell_exp)
 
+    def test_cosmology_compute_transfer_power_ns(self):
+
+        # Check if transfer functions obey Eq. C5 in the BTT paper.
+        # Add ns. 
+
+        ns = 0.6
+        pivot = 0.05
+
+        lmax = 300
+        pars = camb.CAMBparams(**self.cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo._setattr_camb('ns', ns, subclass='InitPower')
+        cosmo._setattr_camb('pivot_scalar', pivot, subclass='InitPower')
+        cosmo.compute_transfer(lmax)
+        cosmo.compute_c_ell()
+
+        ells = cosmo.transfer['ells']
+        k = cosmo.transfer['k']
+        tr = cosmo.transfer['tr_ell_k']
+
+        p_k = 2 * np.pi ** 2 * cosmo.camb_params.InitPower.As \
+              * k ** (-3) * (k / pivot) ** (ns - 1)
+
+        c_ell = np.zeros((ells.size, 4))
+        
+        for lidx in range(ells.size):
+            
+            # TT.
+            c_ell[lidx,0] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
+
+            # EE.
+            c_ell[lidx,1]  = np.trapz(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
+
+            # TE.
+            c_ell[lidx,3] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
+
+        c_ell *= (2 / np.pi)
+
+        ells_unlensed = cosmo.c_ell['unlensed_scalar']['ells']
+        c_ell_nonlensed = cosmo.c_ell['unlensed_scalar']['c_ell']
+        lmin = ells_unlensed[0]
+        c_ell_exp = c_ell_nonlensed[ells-lmin,:]
+
+        np.testing.assert_array_almost_equal(c_ell, c_ell_exp)
+
     def test_cosmology_add_prim_reduced_bispectrum(self):
 
         lmax = 300
