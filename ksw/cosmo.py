@@ -280,8 +280,7 @@ class Cosmology:
         So finally, to get the 2 A_phi^2 amplitude specified in shape.py and convert
         zeta to phi we need to multiply our templates by:
         
-        2 * (2 * pi^2)^2 * A_s^2 * (3/5)
-        
+        2 * (2 * pi^2)^2 * A_s^2 * (3/5)        
         '''
 
         tr_ell_k = self.transfer['tr_ell_k']
@@ -346,13 +345,19 @@ class Cosmology:
         ridxs = np.arange(nr) # Indices to radii.
         start = 0
         for amp, ru in zip(amps, prim_rule):
-            # Note each factor gets 1/3 power of overall amplitude sucht that fl1 * fl2 * fl3
-            # has correct amplitude.
+
+            # Note, each term needs to be multiplied by number of distinct 
+            # permutations in rule, so e.g. 3 for local. 
+            nperm = self.num_permutations(ru)
+            amp_per_r = (amp * dr * nperm)
+
+            # Note each factor gets 1/3 power of overall amplitude sucht that 
+            # fl1 * fl2 * fl3 has correct amplitude.
 
             # If amp * dr is negative you get complex answers to the 3rd root.
             # To extract the real value of the root (always exists for n=3), we 
             # take the root of the absolute value and apply the sign afterwards.
-            amp_per_r = (amp * dr)
+
             signs = np.sign(amp_per_r)
             amp_per_r = signs * np.abs(amp_per_r) ** (1 / 3)
             weights[start:start+nr] = amp_per_r[:,np.newaxis,np.newaxis]
@@ -361,6 +366,33 @@ class Cosmology:
             start += nr
 
         return factors, rule, weights
+
+    @staticmethod
+    def num_permutations(rule):
+        '''
+        Return number of distinct permulations of rule.
+
+        Parameters
+        ----------
+        rule : (3,) array-like
+            
+        Returns
+        -------
+        n_perm : int
+            1 if XXX, 3 if e.g. YXX, 6 if e.g. XYZ.
+
+        Raises
+        ------
+        ValueError
+            If rule has wrong length.
+        '''
+
+        if len(rule) != 3:
+            raise ValueError('Length input rule must be 3, got {}'.format(len(rule)))
+
+        n_uni = np.unique(rule).size
+
+        return (n_uni ** 2 + n_uni) // 2
 
     def add_reduced_bispectrum_from_file(self, filename):
         '''
@@ -497,12 +529,13 @@ class ReducedBispectrum:
     that consists of a sum of terms that are each seperable in
     the l1, l2, l3 multipoles:
 
-    b_l1_l2_l3 = sum_i^nfact X(i)_l1 Y(i)_l1 Z(i)_l1.
+    b_l1_l2_l3 = (1/6) sum_i^nfact X(i)_l1 Y(i)_l1 Z(i)_l1 + 5 perm.
 
     Parameters
     ----------
     factors = (n, npol, nell_sparse)
-        Unique f_ells that make up the bispectrum.
+        Unique f_ells (e.g. X(i)_ell, Y(i)_elll) that make up the reduced 
+        bispectrum.
     rule : (nfact, 3) int array
         Indices to first dimension of unique factors array that
         create the (nfact, 3, npol, nell) reduced bispectrum.

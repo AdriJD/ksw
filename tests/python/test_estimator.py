@@ -1241,23 +1241,23 @@ class TestKSW(unittest.TestCase):
             amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
+                  rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
             # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
+                   rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
             # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
+                   rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
             
             # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
             # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
             # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
 
             ret *= amp
 
@@ -1338,23 +1338,23 @@ class TestKSW(unittest.TestCase):
             amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+                  rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
             # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+                   rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
             # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
+                   rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
             
             # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+                   rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
             # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+                   rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
             # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
+                   rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
 
             ret *= amp
 
@@ -1452,69 +1452,69 @@ class TestKSW(unittest.TestCase):
 
             # First -3 alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = -3 * dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
+                  rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
             # -3 beta_l1(r1) alpha_l2(r1) beta_l3(r1).
             ret -= 3 * dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
+                  rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
             # -3 beta_l1(r1) beta_l2(r1) alpha_l3(r1).
             ret -= 3 * dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
+                  rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
             
             # Then -6 delta_l1(r1) delta_l2(r1) delta_l3(r1).
             ret -= 6 * dr * radii[0] ** 2 * \
-                  rb.factors[6,0,lidx1] * rb.factors[6,0,lidx2] * rb.factors[6,0,lidx3]
+                   rb.factors[6,0,lidx1] * rb.factors[6,0,lidx2] * rb.factors[6,0,lidx3]
 
             # Then +3 beta_l1(r1) gamma_l2(r1) delta_l3(r1).
             ret += 3 * dr * radii[0] ** 2 * \
-                   (1 / 6) * rb.factors[2,0,lidx1] * rb.factors[4,0,lidx2] * rb.factors[6,0,lidx3]
+                   rb.factors[2,0,lidx1] * rb.factors[4,0,lidx2] * rb.factors[6,0,lidx3]
             # +3 delta_l1(r1) beta_l2(r1) gamma_l3(r1).
             ret += 3 * dr * radii[0] ** 2 * \
-                   (1 / 6) * rb.factors[6,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[4,0,lidx3]
+                   rb.factors[6,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[4,0,lidx3]
             # +3 gamma_l1(r1) delta_l2(r1) beta_l3(r1).
             ret += 3 * dr * radii[0] ** 2 * \
-                   (1 / 6) * rb.factors[4,0,lidx1] * rb.factors[6,0,lidx2] * rb.factors[2,0,lidx3]
+                   rb.factors[4,0,lidx1] * rb.factors[6,0,lidx2] * rb.factors[2,0,lidx3]
             # +3 beta_l1(r1) delta_l2(r1) gamma_l3(r1).
             ret += 3 * dr * radii[0] ** 2 * \
-                   (1 / 6) * rb.factors[2,0,lidx1] * rb.factors[6,0,lidx2] * rb.factors[4,0,lidx3]
+                   rb.factors[2,0,lidx1] * rb.factors[6,0,lidx2] * rb.factors[4,0,lidx3]
             # +3 gamma_l1(r1) beta_l2(r1) delta_l3(r1).
             ret += 3 * dr * radii[0] ** 2 * \
-                   (1 / 6) * rb.factors[4,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[6,0,lidx3]
+                   rb.factors[4,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[6,0,lidx3]
             # +3 delta_l1(r1) gamma_l2(r1) beta_l3(r1).
             ret += 3 * dr * radii[0] ** 2 * \
-                   (1 / 6) * rb.factors[6,0,lidx1] * rb.factors[4,0,lidx2] * rb.factors[2,0,lidx3]
+                   rb.factors[6,0,lidx1] * rb.factors[4,0,lidx2] * rb.factors[2,0,lidx3]
 
             # Then, the same for r2: -3 alpha_l1(r2) beta_l2(r2) beta_l3(r2).
             ret -= 3 * dr * radii[1] ** 2 * \
-                  (1 / 3) * rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
             # -3 beta_l1(r2) alpha_l2(r2) beta_l3(r2).
             ret -= 3 * dr * radii[1] ** 2 * \
-                  (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
             # -3 beta_l1(r2) beta_l2(r2) alpha_l3(r2).
             ret -= 3 * dr * radii[1] ** 2 * \
-                  (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
             
             # Then -6 delta_l1(r2) delta_l2(r2) delta_l3(r2).
             ret -= 6 * dr * radii[1] ** 2 * \
-                  rb.factors[7,0,lidx1] * rb.factors[7,0,lidx2] * rb.factors[7,0,lidx3]
+                   rb.factors[7,0,lidx1] * rb.factors[7,0,lidx2] * rb.factors[7,0,lidx3]
 
             # Then +3 beta_l1(r2) gamma_l2(r2) delta_l3(r2).
             ret += 3 * dr * radii[1] ** 2 * \
-                   (1 / 6) * rb.factors[3,0,lidx1] * rb.factors[5,0,lidx2] * rb.factors[7,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[5,0,lidx2] * rb.factors[7,0,lidx3]
             # +3 delta_l1(r2) beta_l2(r2) gamma_l3(r2).
             ret += 3 * dr * radii[1] ** 2 * \
-                   (1 / 6) * rb.factors[7,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[5,0,lidx3]
+                   rb.factors[7,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[5,0,lidx3]
             # +3 gamma_l1(r2) delta_l2(r2) beta_l3(r2).
             ret += 3 * dr * radii[1] ** 2 * \
-                   (1 / 6) * rb.factors[5,0,lidx1] * rb.factors[7,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[5,0,lidx1] * rb.factors[7,0,lidx2] * rb.factors[3,0,lidx3]
             # +3 beta_l1(r2) delta_l2(r2) gamma_l3(r2).
             ret += 3 * dr * radii[1] ** 2 * \
-                   (1 / 6) * rb.factors[3,0,lidx1] * rb.factors[7,0,lidx2] * rb.factors[5,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[7,0,lidx2] * rb.factors[5,0,lidx3]
             # +3 gamma_l1(r2) beta_l2(r2) delta_l3(r2).
             ret += 3 * dr * radii[1] ** 2 * \
-                   (1 / 6) * rb.factors[5,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[7,0,lidx3]
+                   rb.factors[5,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[7,0,lidx3]
             # +3 delta_l1(r2) gamma_l2(r2) beta_l3(r2).
             ret += 3 * dr * radii[1] ** 2 * \
-                   (1 / 6) * rb.factors[7,0,lidx1] * rb.factors[5,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[7,0,lidx1] * rb.factors[5,0,lidx2] * rb.factors[3,0,lidx3]
 
             ret *= amp
 
@@ -1858,23 +1858,23 @@ class TestKSW(unittest.TestCase):
             amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
+                  rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
             # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
+                  rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
             # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
+                  rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
             
             # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
             # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
             # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
 
             ret *= amp
 
@@ -1956,23 +1956,23 @@ class TestKSW(unittest.TestCase):
             amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+                  rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
             # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+                   rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
             # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
+                   rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
             
             # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+                   rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
             # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+                   rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
             # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
+                   rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
 
             ret *= amp
 
@@ -2062,68 +2062,68 @@ class TestKSW(unittest.TestCase):
 
         # xz yx zy.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_ell * x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_ell * y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_ell * x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_ell * y_i_ell[1])
 
         # xy yz zx.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_ell * x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_ell * z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_ell * x_i_ell[1])
 
         # xx yz zy.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * x_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * x_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * y_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * x_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_ell * y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_ell * z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_ell * y_i_ell[1])
 
         # xy yx zz.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * z_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_ell * x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_ell * z_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_ell * x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_ell * z_i_ell[1])
 
         # xz yy zx.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_ell * y_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_ell * x_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_ell * z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_ell * y_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_ell * x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_ell * y_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_ell * x_i_ell[1])
 
         ans_exp[1,0] = ans_exp[0,1]
         ans_exp *= 2 * np.pi ** 2 / 9
@@ -2189,68 +2189,68 @@ class TestKSW(unittest.TestCase):
 
         # xz yx zy.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_y_i_ell[1])
 
         # xy yz zx.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_x_i_ell[1])
 
         # xx yz zy.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_x_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_x_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_y_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_x_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_y_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_z_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_y_i_ell[1])
 
         # xy yx zz.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_z_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_y_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_x_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_z_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_x_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_z_i_ell[1])
 
         # xz yy zx.
         ans_exp[0,0] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[0]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[0]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[0])
+                        np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[0]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[0])
 
         ans_exp[0,1] += np.sum(prefactor * x_i_ell[0] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[0] * icov_y_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[0] * icov_x_i_ell[1])
 
         ans_exp[1,1] += np.sum(prefactor * x_i_ell[1] * icov_z_i_ell[1]) * \
-                       np.sum(prefactor * y_i_ell[1] * icov_y_i_ell[1]) * \
-                       np.sum(prefactor * z_i_ell[1] * icov_x_i_ell[1])
+                        np.sum(prefactor * y_i_ell[1] * icov_y_i_ell[1]) * \
+                        np.sum(prefactor * z_i_ell[1] * icov_x_i_ell[1])
 
         ans_exp[1,0] = ans_exp[0,1]
         ans_exp *= 2 * np.pi ** 2 / 9
@@ -2479,23 +2479,23 @@ class TestKSW(unittest.TestCase):
             amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
+                  rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
             # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
+                   rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
             # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
+                   rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
             
             # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
             # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
             # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
+                   rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
 
             ret *= amp
 
@@ -2563,23 +2563,23 @@ class TestKSW(unittest.TestCase):
             amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
             # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
             ret = dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+                  rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
             # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+                   rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
             # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
             ret += dr * radii[0] ** 2 * \
-                  (1 / 3) * rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
+                   rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
             
             # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+                   rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
             # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+                   rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
             # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
             ret += dr * radii[1] ** 2 * \
-                   (1 / 3) * rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
+                   rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
 
             ret *= amp
 

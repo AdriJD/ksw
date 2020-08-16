@@ -296,12 +296,12 @@ class TestCosmo(unittest.TestCase):
         weights_exp = np.ones((nfact, 3, npol))
         # nfact is ordered like flattened (nprim, radii) array.
         # I assume equilateral shape here, so nprim = 3.
-        weights_exp[0,...] = (dr * radii[0] ** 2) ** (1 / 3)
-        weights_exp[1,...] = (dr * radii[1] ** 2) ** (1 / 3)
-        weights_exp[2,...] = (dr * radii[0] ** 2) ** (1 / 3)
-        weights_exp[3,...] = (dr * radii[1] ** 2) ** (1 / 3)
-        weights_exp[4,...] = (dr * radii[0] ** 2) ** (1 / 3)
-        weights_exp[5,...] = (dr * radii[1] ** 2) ** (1 / 3)
+        weights_exp[0,...] = (dr * radii[0] ** 2 * 3) ** (1 / 3)
+        weights_exp[1,...] = (dr * radii[1] ** 2 * 3) ** (1 / 3)
+        weights_exp[2,...] = (dr * radii[0] ** 2 * 1) ** (1 / 3)
+        weights_exp[3,...] = (dr * radii[1] ** 2 * 1) ** (1 / 3)
+        weights_exp[4,...] = (dr * radii[0] ** 2 * 6) ** (1 / 3)
+        weights_exp[5,...] = (dr * radii[1] ** 2 * 6) ** (1 / 3)
 
         weights_exp *= (2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 \
                         * (3 / 5)) ** (1 / 3)
@@ -311,6 +311,8 @@ class TestCosmo(unittest.TestCase):
         weights_exp[2:4] *= signs[1] * np.abs(prim_shape.amps[1]) ** (1 / 3)
         weights_exp[4:6] *= signs[2] * np.abs(prim_shape.amps[2]) ** (1 / 3)
 
+        print(red_bisp.weights)
+        print(weights_exp)
         np.testing.assert_array_almost_equal(red_bisp.weights, weights_exp)
 
         # Manually compute reduced bispec factors for given r, ell.
@@ -333,6 +335,22 @@ class TestCosmo(unittest.TestCase):
         lidx_full = ell - 2
         ans = red_bisp.factors[cidx*nr+ridx,pidx,lidx_full]
         self.assertAlmostEqual(ans, ans_expec, places=6)
+
+    def test_cosmology_num_permutations(self):
+
+        rule = [3, 3, 3]
+        self.assertEqual(Cosmology.num_permutations(rule), 1)
+
+        rule = [3, 3, 2]
+        self.assertEqual(Cosmology.num_permutations(rule), 3)
+
+        rule = [3, 4, 2]
+        self.assertEqual(Cosmology.num_permutations(rule), 6)
+
+    def test_cosmology_num_permutations_err(self):
+
+        rule = [3, 3]
+        self.assertRaises(ValueError, Cosmology.num_permutations, rule)
 
 class TestCosmoIO(unittest.TestCase):
 

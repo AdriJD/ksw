@@ -2,14 +2,15 @@ import numpy as np
 
 class Shape:
     '''
-    A shape represents a f(k1, k2, k3) primordial shape function.
+    A shape represents an f(k1, k2, k3) primordial shape function.
 
     Parameters
     ---------
     funcs : (ncomp) sequence of callable func
         Functions needed for primordial shape.
     rule : (nprim) sequence of array-like
-        Rule to combine functions into primordial shape.
+        Rule to combine functions into primordial shape. Permutations
+        of the functions are taken into account automatically. 
     amps : (nprim) array-like
         Amplitude for each element in rule.
     name : str
@@ -214,9 +215,9 @@ class Shape:
 
         Notes
         -----
-        f(k1,k2,k3) = [-3 / (k1^(4-ns) k2^(4-ns) k0^(2 (ns-1)))  - 2 cycl.
-                       -6 / ((k1 k2 k3)^(2 (4-ns)/2) k0^(2 (ns-1))
-                       +3 / (k1^((4-ns)/3) k2^(2(4-ns)/3) k3^(4-ns) k0^(2 (ns-1)) + 5 perm.]
+        f(k1,k2,k3) = [-9 / (k1^(4-ns) k2^(4-ns) k0^(2 (ns-1)))  - 2 cycl.
+                       -24 / ((k1 k2 k3)^(2 (4-ns)/2) k0^(2 (ns-1))
+                       +9 / (k1^((4-ns)/3) k2^(2(4-ns)/3) k3^(4-ns) k0^(2 (ns-1)) + 5 perm.]
         '''
 
         f1 = Shape._power_law(0)                               # Alpha.
