@@ -192,6 +192,53 @@ class TestUtils(unittest.TestCase):
 
         self.assertRaises(ValueError, utils.contract_almxblm, alm, blm)
 
+    def test_utils_alm_return_2d_1d(self):
+
+        npol = 1
+        lmax = 5
+        alm = np.ones(hp.Alm.getsize(lmax), dtype=np.complex128)
+
+        alm_out = utils.alm_return_2d(alm, npol, lmax)        
+        
+        self.assertEqual(alm_out.shape, (1, hp.Alm.getsize(lmax)))
+        self.assertTrue(np.shares_memory(alm, alm_out))
+
+    def test_utils_alm_return_2d_2d(self):
+
+        npol = 1
+        lmax = 5
+        alm = np.ones((1, hp.Alm.getsize(lmax)), dtype=np.complex128)
+
+        alm_out = utils.alm_return_2d(alm, npol, lmax)        
+        
+        self.assertEqual(alm_out.shape, (1, hp.Alm.getsize(lmax)))
+        self.assertTrue(np.shares_memory(alm, alm_out))
+
+    def test_utils_alm_return_2d_2d_pol(self):
+
+        npol = 2
+        lmax = 5
+        alm = np.ones((npol, hp.Alm.getsize(lmax)), dtype=np.complex128)
+
+        alm_out = utils.alm_return_2d(alm, npol, lmax)        
+        
+        self.assertEqual(alm_out.shape, (2, hp.Alm.getsize(lmax)))
+        self.assertTrue(np.shares_memory(alm, alm_out))
+
+    def test_utils_alm_return_2d_err(self):
+
+        npol = 2
+        lmax = 5
+        alm = np.ones((npol + 1, hp.Alm.getsize(lmax)), dtype=np.complex128)
+
+        self.assertRaises(ValueError, utils.alm_return_2d, alm, npol, lmax)
+
+        npol = 2
+        lmax = 5
+        alm = np.ones((npol, hp.Alm.getsize(lmax) + 1), dtype=np.complex128)
+
+        self.assertRaises(ValueError, utils.alm_return_2d, alm, npol, lmax)
+
     def test_utils_fakempicomm(self):
 
         comm = utils.FakeMPIComm()

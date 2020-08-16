@@ -311,8 +311,6 @@ class TestCosmo(unittest.TestCase):
         weights_exp[2:4] *= signs[1] * np.abs(prim_shape.amps[1]) ** (1 / 3)
         weights_exp[4:6] *= signs[2] * np.abs(prim_shape.amps[2]) ** (1 / 3)
 
-        print(red_bisp.weights)
-        print(weights_exp)
         np.testing.assert_array_almost_equal(red_bisp.weights, weights_exp)
 
         # Manually compute reduced bispec factors for given r, ell.

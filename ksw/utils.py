@@ -215,6 +215,47 @@ def contract_almxblm(alm, blm):
     had_sum -= np.real(np.sum(alm[...,:lmax+1] * blm[...,:lmax+1]))
 
     return had_sum    
+
+def alm_return_2d(alm, npol, lmax):
+    '''
+    Check shape of alm array and return 2d view of input.
+
+    Parameters
+    ----------
+    alm : (nelem) or (n, nelem) array
+        Healpix-ordered array to be checked.
+    npol : int
+        Number of expected polarization dimensions.
+    lmax : int
+        Expected maximumm multipole.
+
+    Returns
+    -------
+    alm : array
+        2d view of input, so (1, nelem) if input was 1d.
+
+    Raises
+    ------
+    ValueError
+        If input shapes differs from expected.
+    '''
+
+    ndim_in = alm.ndim
+    if ndim_in == 1:
+        alm = alm[np.newaxis,:]
+    if alm.ndim != 2:
+        raise ValueError('Expected 1d or 2d alm array, got dim = {}'.
+                         format(ndim_in))
+
+    npol_in = alm.shape[0]
+    if npol_in != npol:
+        raise ValueError('Expected alm npol = {}, got {}'.format(npol, npol_in))
+
+    lmax_in = hp.Alm.getlmax(alm.shape[1])
+    if lmax_in != lmax:
+        raise ValueError('Expected alm lmax = {}, got {}'.format(lmax_in, lmax))
+
+    return alm
  
 def reduce_array(arr, comm, op=None, root=0):
     '''

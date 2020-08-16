@@ -825,6 +825,48 @@ class TestKSW(unittest.TestCase):
         self.assertEqual(estimator.mc_gt_sq, mc_gt_sq_copy)
         np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy)
 
+    def test_ksw_compute_linear_term_1d(self):
+
+        # Check if still works with (nelem) input array.
+
+        data = self.FakeData()
+        data.pol = ('T')
+        data.npol = 1
+        estimator = KSW(data)
+        def icov(alm):
+            alm *= 2
+            return alm
+        estimator.icov = icov
+
+        alm = np.zeros(hp.Alm.getsize(data.lmax),
+                      dtype=complex)
+        alm[:] += np.arange(alm.size, dtype=alm.dtype).reshape(alm.shape)
+
+        self.assertIs(estimator.compute_linear_term(alm), None)
+
+        mc_gt = np.ones((1, hp.Alm.getsize(data.lmax)), dtype=alm.dtype)
+        mc_gt *= 10
+        mc_gt_sq = 5
+        mc_idx = 4
+        estimator.mc_gt = mc_gt
+        estimator.mc_gt_sq = mc_gt_sq
+        estimator.mc_idx = mc_idx
+
+        mc_gt_copy = estimator.mc_gt.copy()
+        mc_gt_sq_copy = estimator.mc_gt_sq
+
+        # Using second line of Eq. 57.
+        lin_term_exp = 2 * np.real(np.sum(alm * icov(mc_gt.copy() / mc_idx)))
+        lin_term_exp -= np.real(np.sum((alm * icov(mc_gt.copy() / mc_idx))
+                                       [...,:data.lmax+1]))
+        lin_term = estimator.compute_linear_term(alm)
+
+        self.assertAlmostEqual(lin_term, lin_term_exp)
+
+        # I want internal quantities unchanged.
+        self.assertEqual(estimator.mc_gt_sq, mc_gt_sq_copy)
+        np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy)
+
     def test_ksw_compute_estimate_decomposed(self):
 
         lmax = 2
@@ -911,6 +953,47 @@ class TestKSW(unittest.TestCase):
 
             # Test einsum ans
             self.assertAlmostEqual(t_a, np.sum(x_i_phi_exp.real ** 3))
+
+    def test_ksw_compute_estimate_cubic_err(self):
+
+        lmax = 5
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+
+        rb = self.FakeReducedBispectrum
+        rb.lmax = lmax
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3, npol))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+        estimator.mc_idx = 1
+        estimator.mc_gt_sq = 1.
+
+        alm = np.zeros(hp.Alm.getsize(lmax), dtype=np.complex128) 
+        estimator.mc_gt = np.zeros((1, hp.Alm.getsize(lmax)), dtype=np.complex128) 
+        # No error here, even though alm is (nelem) shaped.
+        estimate = estimator.compute_estimate(alm.copy())
+
+        alm = np.zeros(hp.Alm.getsize(lmax + 1), dtype=np.complex128) # Note lmax+1
+        self.assertRaises(ValueError, estimator.step, alm.copy())
+
+        alm = np.zeros((2, hp.Alm.getsize(lmax + 1)), dtype=np.complex128) # npol=2.
+        self.assertRaises(ValueError, estimator.step, alm.copy())
+
+        estimator.data.pol = ['T', 'E']
+        alm = np.zeros((1, hp.Alm.getsize(lmax + 1)), dtype=np.complex128) # npol=1.
+        self.assertRaises(ValueError, estimator.step, alm.copy())
 
     def test_ksw_compute_estimate_cubic_I_simple(self):
 
@@ -1524,6 +1607,42 @@ class TestKSW(unittest.TestCase):
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
         self.assertAlmostEqual(estimate, estimate_exp)
+
+    def test_ksw_step_err(self):
+
+        lmax = 5
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        rb = self.FakeReducedBispectrum
+        rb.lmax = lmax
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3, npol))
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data)
+
+        alm = np.zeros(hp.Alm.getsize(lmax), dtype=np.complex128) 
+        # No error here, even though alm is (nelem) shaped.
+        estimator.step(alm.copy())
+
+        alm = np.zeros(hp.Alm.getsize(lmax + 1), dtype=np.complex128) # Note lmax+1
+        self.assertRaises(ValueError, estimator.step, alm.copy())
+
+        alm = np.zeros((2, hp.Alm.getsize(lmax + 1)), dtype=np.complex128) # npol=2.
+        self.assertRaises(ValueError, estimator.step, alm.copy())
+
+        estimator.data.pol = ['T', 'E']
+        alm = np.zeros((1, hp.Alm.getsize(lmax + 1)), dtype=np.complex128) # npol=1.
+        self.assertRaises(ValueError, estimator.step, alm.copy())
 
     def test_ksw_step_I_simple(self):
 

@@ -267,7 +267,7 @@ class KSW():
 
         Parameters
         ----------
-        alm : (npol, nelem) array
+        alm : (nelem) or (npol, nelem) array
             Healpix-ordered unfiltered alm array. Will be overwritten!
         comm : MPI communicator, optional
 
@@ -280,9 +280,7 @@ class KSW():
         if comm is None:
             comm = utils.FakeMPIComm()
 
-        if alm.shape != (self.data.npol, hp.Alm.getsize(self.data.lmax)):
-            raise ValueError('alm shape not understood, expected {}, got {}'.
-                format((self.data.npol, hp.Alm.getsize(self.data.lmax)), alm.shape))
+        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
 
         alm = self.icov(alm)
         alm = utils.alm2a_ell_m(alm)
@@ -356,9 +354,7 @@ class KSW():
         if comm is None:
             comm = utils.FakeMPIComm()
 
-        if alm.shape != (self.data.npol, hp.Alm.getsize(self.data.lmax)):
-            raise ValueError('alm shape not understood, expected {}, got {}'.
-                format(alm.shape, (self.data.npol, hp.Alm.getsize(self.data.lmax))))
+        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
 
         t_cubic = 0 # The cubic estimate.
         fisher = self.compute_fisher()
@@ -551,6 +547,7 @@ class KSW():
         if self.mc_gt is None:
             return None
 
+        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
         return utils.contract_almxblm(alm, self.icov(np.conj(self.mc_gt)))
 
     def compute_fisher_isotropic(self, lensed=False, return_matrix=False, comm=None):
@@ -683,10 +680,4 @@ class KSW():
         tmp *= np.einsum(op, z_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
         fisher_nxn += tmp
 
-        return fisher_nxn
-        
-# staticmethod
-# check_alm(alm, npol, lmax)
-# raises ValueError if shape is wrong
-# returns 1, nelem if nelem is given and npol = 1.
-        
+        return fisher_nxn        

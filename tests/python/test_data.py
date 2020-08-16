@@ -516,7 +516,6 @@ class TestData(unittest.TestCase):
 
         cov_ell_exp = np.zeros((1, self.nell))
         cov_ell_exp[0] = n_ell_T
-        print(n_ell_T)
         np.testing.assert_almost_equal(data.cov_ell_nonlensed,
                                        cov_ell_exp)
         # Test if inverse is also computed correctly.
@@ -560,7 +559,6 @@ class TestData(unittest.TestCase):
         cosmo = self.FakeCosmology()
         pol = ['T', 'E']
         n_ell_TplusE = self.n_ell_TplusE + 1
-        print(n_ell_TplusE)
         data = Data(self.lmax, n_ell_TplusE, self.b_ell_TplusE, pol, cosmo,
                     n_is_totcov=True)        
 
