@@ -10,7 +10,12 @@ from ksw import Shape
 from ksw import legendre
 from ksw import utils
 
-class TestKSW(unittest.TestCase):
+class TestKSW_64(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.precision = 'double'
+        cls.decimal = 7
 
     def setUp(self):
         # Is called before each test.
@@ -256,7 +261,7 @@ class TestKSW(unittest.TestCase):
     def test_ksw_init(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         self.assertIs(estimator.data, data)
         self.assertIs(estimator.cosmology, data.cosmology)
@@ -278,7 +283,7 @@ class TestKSW(unittest.TestCase):
     def test_ksw_mc_gt_sq(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         self.assertIs(estimator.mc_gt_sq, None)
 
@@ -294,7 +299,7 @@ class TestKSW(unittest.TestCase):
     def test_ksw_mc_gt(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         self.assertIs(estimator.mc_gt, None)
 
@@ -303,16 +308,18 @@ class TestKSW(unittest.TestCase):
         estimator.mc_gt = mc_gt.copy() * 10
         estimator.mc_idx = 1
 
-        np.testing.assert_almost_equal(estimator.mc_gt, mc_gt * 10)
+        np.testing.assert_almost_equal(estimator.mc_gt, mc_gt * 10, 
+                                       decimal=self.decimal)
 
         estimator.mc_idx = 3
 
-        np.testing.assert_almost_equal(estimator.mc_gt, 10 * mc_gt / 3.)
+        np.testing.assert_almost_equal(estimator.mc_gt, 10 * mc_gt / 3.,
+                                       decimal=self.decimal)
 
     def test_ksw_get_coords(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         self.assertEqual(estimator.thetas.size, (3 * data.lmax) // 2 + 1)
         self.assertTrue(np.all(0 <= estimator.thetas))
@@ -332,7 +339,7 @@ class TestKSW(unittest.TestCase):
         # Verify that I understand the fft normalization.
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         # Forward.
         phis = np.linspace(0, 2 * np.pi, estimator.nphi, endpoint=False)
@@ -344,8 +351,8 @@ class TestKSW(unittest.TestCase):
         amp_exp = phis.size / 2.
         m_ell_m_exp = np.zeros_like(estimator.m_ell_m)
         m_ell_m_exp[:,:,m] = amp_exp
-
-        np.testing.assert_array_almost_equal(estimator.m_ell_m, m_ell_m_exp)
+        np.testing.assert_array_almost_equal(estimator.m_ell_m, m_ell_m_exp, 
+                            decimal=self.decimal-1) # -1 is needed for 32 bit.
 
         # Now the backward transform.
         estimator.m_ell_m *= 0
@@ -356,14 +363,15 @@ class TestKSW(unittest.TestCase):
                                    dtype=np.float64)
         n_ell_phi_exp[:,:,:] *= np.cos(m * phis) * 2 / estimator.nphi
 
-        np.testing.assert_array_almost_equal(estimator.n_ell_phi, n_ell_phi_exp)
+        np.testing.assert_array_almost_equal(estimator.n_ell_phi, n_ell_phi_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_sht_monopole(self):
 
         # Test round-trip of SHT transforms for monopole alm input.
         data = self.FakeData()
         data.lmax = 50
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         # SHT backward: alm2map.
         ms = np.arange(data.lmax + 1)
@@ -381,7 +389,7 @@ class TestKSW(unittest.TestCase):
         ring = np.sum(estimator.n_ell_phi[0], axis=0) # Sum over ells.
 
         ring_exp = np.ones(estimator.nphi) * 1 / np.sqrt(4 * np.pi)
-        np.testing.assert_array_almost_equal(ring, ring_exp)
+        np.testing.assert_array_almost_equal(ring, ring_exp, decimal=self.decimal)
 
         # Forwards: map2alm.
         alm_exp = np.zeros_like(estimator.m_ell_m)
@@ -394,13 +402,13 @@ class TestKSW(unittest.TestCase):
                 estimator.m_ell_m[:,:data.lmax+1,:data.lmax+1] * \
                 (2 * np.pi / estimator.nphi) * ylm
 
-        np.testing.assert_array_almost_equal(alm, alm_exp)
+        np.testing.assert_array_almost_equal(alm, alm_exp, decimal=self.decimal)
 
     def test_ksw_sht(self):
 
         data = self.FakeData()
         data.lmax = 150
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         # SHT backward: alm2map.
         ms = np.arange(data.lmax + 1)
@@ -441,7 +449,7 @@ class TestKSW(unittest.TestCase):
                 + 1 / np.sqrt(4 * np.pi) + \
                 -2 * np.sqrt(15 / 8 / np.pi) * np.sin(theta) * np.cos(theta) * np.cos(phis)
 
-            np.testing.assert_array_almost_equal(rings[tidx], ring_exp)
+            np.testing.assert_array_almost_equal(rings[tidx], ring_exp, decimal=self.decimal)
 
         # Forward: map2alm.
         alm_exp = np.zeros_like(estimator.m_ell_m)
@@ -461,12 +469,12 @@ class TestKSW(unittest.TestCase):
                 estimator.m_ell_m[:,:data.lmax+1,:data.lmax+1] * \
                 (2 * np.pi / estimator.nphi) * ylm
 
-        np.testing.assert_array_almost_equal(alm, alm_exp)
+        np.testing.assert_array_almost_equal(alm, alm_exp, decimal=self.decimal)
 
     def test_ksw_init_reduced_bispectrum_err(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         # Data bisp lmax is smaller than data lmax.
         self.assertRaises(ValueError, estimator._init_reduced_bispectrum,
@@ -476,7 +484,7 @@ class TestKSW(unittest.TestCase):
 
         data = self.FakeData()
         data.lmax = 6
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         rb = estimator.cosmology.red_bispectra[0]
         nell = rb.factors.shape[-1]
@@ -513,15 +521,19 @@ class TestKSW(unittest.TestCase):
 
         # Do some spot checks.
         # Shape (nfact, npol, data.nell).
-        self.assertEqual(x_i_ell[0,0,0], 0) # Because lmin bisp = 2.
+        self.assertAlmostEqual(x_i_ell[0,0,0], 0) # Because lmin bisp = 2.
         # Factor 0.1 is for the beam.
-        self.assertEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0,0] * 0.1)
+        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0,0] * 0.1,
+                               places=self.decimal)
 
-        self.assertEqual(x_i_ell[3,1,6], rb.factors[0,1,4] * rb.weights[3,0,1] * 0.1)
+        self.assertAlmostEqual(x_i_ell[3,1,6], rb.factors[0,1,4] * rb.weights[3,0,1] * 0.1, 
+                               places=self.decimal)
 
-        self.assertEqual(y_i_ell[2,1,4], rb.factors[2,1,2] * rb.weights[2,1,1] * 0.1)
+        self.assertAlmostEqual(y_i_ell[2,1,4], rb.factors[2,1,2] * rb.weights[2,1,1] * 0.1, 
+                               places=self.decimal)
 
-        self.assertEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2,0] * 0.1)
+        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2,0] * 0.1, 
+                               places=self.decimal)
 
     def test_ksw_init_reduced_bispectrum_I(self):
 
@@ -529,7 +541,7 @@ class TestKSW(unittest.TestCase):
         data.pol = ['T']
         data.npol = 1
         data.lmax = 6
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         rb = estimator.cosmology.red_bispectra[0]
         nell = rb.factors.shape[-1]
@@ -566,15 +578,19 @@ class TestKSW(unittest.TestCase):
 
         # Do some spot checks.
         # Shape (nfact, npol, data.nell).
-        self.assertEqual(x_i_ell[0,0,0], 0) # Because lmin bisp = 2.
+        self.assertAlmostEqual(x_i_ell[0,0,0], 0, places=self.decimal) # Because lmin bisp = 2.
         # Factor 0.1 is for the beam.
-        self.assertEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0,0] * 0.1)
+        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0,0] * 0.1,
+                               places=self.decimal)
 
-        self.assertEqual(x_i_ell[3,0,6], rb.factors[0,0,4] * rb.weights[3,0,0] * 0.1)
+        self.assertAlmostEqual(x_i_ell[3,0,6], rb.factors[0,0,4] * rb.weights[3,0,0] * 0.1,
+                               places=self.decimal)
 
-        self.assertEqual(y_i_ell[2,0,4], rb.factors[2,0,2] * rb.weights[2,1,0] * 0.1)
+        self.assertAlmostEqual(y_i_ell[2,0,4], rb.factors[2,0,2] * rb.weights[2,1,0] * 0.1
+                               , places=self.decimal)
 
-        self.assertEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2,0] * 0.1)
+        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2,0] * 0.1, 
+                               places=self.decimal)
 
     def test_ksw_init_reduced_bispectrum_E(self):
 
@@ -582,7 +598,7 @@ class TestKSW(unittest.TestCase):
         data.pol = ['E']
         data.npol = 1
         data.lmax = 6
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         rb = estimator.cosmology.red_bispectra[0]
         nell = rb.factors.shape[-1]
@@ -619,20 +635,24 @@ class TestKSW(unittest.TestCase):
 
         # Do some spot checks.
         # Shape (nfact, npol, data.nell).
-        self.assertEqual(x_i_ell[0,0,0], 0) # Because lmin bisp = 2.
+        self.assertAlmostEqual(x_i_ell[0,0,0], 0) # Because lmin bisp = 2.
         # Factor 0.1 is for the beam.
-        self.assertEqual(x_i_ell[0,0,2], rb.factors[0,1,0] * rb.weights[0,0,1] * 0.1)
+        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,1,0] * rb.weights[0,0,1] * 0.1, 
+                               places=self.decimal)
 
-        self.assertEqual(x_i_ell[3,0,6], rb.factors[0,1,4] * rb.weights[3,0,1] * 0.1)
+        self.assertAlmostEqual(x_i_ell[3,0,6], rb.factors[0,1,4] * rb.weights[3,0,1] * 0.1,
+                               places=self.decimal)
 
-        self.assertEqual(y_i_ell[2,0,4], rb.factors[2,1,2] * rb.weights[2,1,1] * 0.1)
+        self.assertAlmostEqual(y_i_ell[2,0,4], rb.factors[2,1,2] * rb.weights[2,1,1] * 0.1, 
+                               places=self.decimal)
 
-        self.assertEqual(z_i_ell[2,0,5], rb.factors[2,1,3] * rb.weights[2,2,1] * 0.1)
+        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,1,3] * rb.weights[2,2,1] * 0.1, 
+                               places=self.decimal)
 
     def test_ksw_init_rings(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         nfact = 12
 
@@ -647,7 +667,7 @@ class TestKSW(unittest.TestCase):
 
         data = self.FakeData()
         data.lmax = 350
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         rb = estimator.cosmology.red_bispectra[0]
         theta = 0.1
         phis = np.linspace(0, 2 * np.pi, estimator.nphi, endpoint=False)
@@ -675,16 +695,15 @@ class TestKSW(unittest.TestCase):
         estimator.backward(a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                            x_i_phi, y_i_phi, z_i_phi, y_ell_m)
 
-        decimal = 10
-        np.testing.assert_almost_equal(x_i_phi, x_i_phi_exp, decimal=decimal)
-        np.testing.assert_almost_equal(y_i_phi, y_i_phi_exp, decimal=decimal)
-        np.testing.assert_almost_equal(z_i_phi, z_i_phi_exp, decimal=decimal)
+        np.testing.assert_almost_equal(x_i_phi, x_i_phi_exp, decimal=self.decimal)
+        np.testing.assert_almost_equal(y_i_phi, y_i_phi_exp, decimal=self.decimal)
+        np.testing.assert_almost_equal(z_i_phi, z_i_phi_exp, decimal=self.decimal)
 
     def test_ksw_forward(self):
 
         data = self.FakeData()
         data.lmax = 350
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         rb = estimator.cosmology.red_bispectra[0]
         theta = 0.1
         ct_weight = 0.1
@@ -710,7 +729,7 @@ class TestKSW(unittest.TestCase):
         estimator.forward(a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                           x_i_phi, y_i_phi, z_i_phi, y_ell_m, ct_weight)
 
-        np.testing.assert_array_almost_equal(a_ell_m, a_ell_m_exp)
+        np.testing.assert_array_almost_equal(a_ell_m, a_ell_m_exp, decimal=self.decimal)
 
     def test_ksw_forward_add(self):
 
@@ -718,7 +737,7 @@ class TestKSW(unittest.TestCase):
 
         data = self.FakeData()
         data.lmax = 350
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         rb = estimator.cosmology.red_bispectra[0]
         theta = 0.1
         ct_weight = 0.1
@@ -746,12 +765,12 @@ class TestKSW(unittest.TestCase):
         estimator.forward(a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                           x_i_phi, y_i_phi, z_i_phi, y_ell_m, ct_weight)
 
-        np.testing.assert_array_almost_equal(a_ell_m, a_ell_m_exp)
+        np.testing.assert_array_almost_equal(a_ell_m, a_ell_m_exp, decimal=self.decimal)
 
     def test_ksw_compute_fisher(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         def icov(alm):
             alm *= 2
             return alm
@@ -781,16 +800,17 @@ class TestKSW(unittest.TestCase):
         fisher_exp /= 3
 
         fisher = estimator.compute_fisher()
-        self.assertEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
         # I want internal quantities unchanged.
         self.assertEqual(estimator.mc_gt_sq, mc_gt_sq_copy)
-        np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy)
+        np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy, 
+                                             decimal=self.decimal)
 
     def test_ksw_compute_linear_term(self):
 
         data = self.FakeData()
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         def icov(alm):
             alm *= 2
             return alm
@@ -819,11 +839,12 @@ class TestKSW(unittest.TestCase):
                                        [...,:data.lmax+1]))
         lin_term = estimator.compute_linear_term(alm)
 
-        self.assertAlmostEqual(lin_term, lin_term_exp)
+        self.assertAlmostEqual(lin_term, lin_term_exp, places=self.decimal)
 
         # I want internal quantities unchanged.
         self.assertEqual(estimator.mc_gt_sq, mc_gt_sq_copy)
-        np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy)
+        np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy, 
+                                             decimal=self.decimal)
 
     def test_ksw_compute_linear_term_1d(self):
 
@@ -832,7 +853,7 @@ class TestKSW(unittest.TestCase):
         data = self.FakeData()
         data.pol = ('T')
         data.npol = 1
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         def icov(alm):
             alm *= 2
             return alm
@@ -861,11 +882,12 @@ class TestKSW(unittest.TestCase):
                                        [...,:data.lmax+1]))
         lin_term = estimator.compute_linear_term(alm)
 
-        self.assertAlmostEqual(lin_term, lin_term_exp)
+        self.assertAlmostEqual(lin_term, lin_term_exp, places=self.decimal)
 
         # I want internal quantities unchanged.
         self.assertEqual(estimator.mc_gt_sq, mc_gt_sq_copy)
-        np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy)
+        np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy,
+                                             decimal=self.decimal)
 
     def test_ksw_compute_estimate_decomposed(self):
 
@@ -893,7 +915,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -922,11 +944,11 @@ class TestKSW(unittest.TestCase):
             estimator.backward(alm, x_i_ell, y_i_ell, z_i_ell,
                           x_i_phi, y_i_phi, z_i_phi, ylm)
 
-            np.testing.assert_array_almost_equal(x_i_ell, y_i_ell)
-            np.testing.assert_array_almost_equal(x_i_ell, z_i_ell)
+            np.testing.assert_array_almost_equal(x_i_ell, y_i_ell, decimal=self.decimal)
+            np.testing.assert_array_almost_equal(x_i_ell, z_i_ell, decimal=self.decimal)
 
-            np.testing.assert_array_almost_equal(x_i_phi, y_i_phi)
-            np.testing.assert_array_almost_equal(x_i_phi, z_i_phi)
+            np.testing.assert_array_almost_equal(x_i_phi, y_i_phi, decimal=self.decimal)
+            np.testing.assert_array_almost_equal(x_i_phi, z_i_phi, decimal=self.decimal)
 
             x_i_phi_exp = np.zeros((1, estimator.nphi), dtype=np.complex128) # nfact, nphi.
 
@@ -947,12 +969,12 @@ class TestKSW(unittest.TestCase):
 
             x_i_phi_exp *= 0.1 # Multiply by beam.
 
-            np.testing.assert_array_almost_equal(x_i_phi, x_i_phi_exp)
+            np.testing.assert_array_almost_equal(x_i_phi, x_i_phi_exp, decimal=self.decimal)
 
             t_a = np.einsum('ij, ij, ij', x_i_phi, y_i_phi, z_i_phi, optimize=True)
 
             # Test einsum ans
-            self.assertAlmostEqual(t_a, np.sum(x_i_phi_exp.real ** 3))
+            self.assertAlmostEqual(t_a, np.sum(x_i_phi_exp.real ** 3), places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_err(self):
 
@@ -976,7 +998,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
         estimator.mc_gt_sq = 1.
 
@@ -1026,7 +1048,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1044,7 +1066,7 @@ class TestKSW(unittest.TestCase):
         alm = hp.almxfl(alm[0], data.b_ell[0])
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
-        self.assertAlmostEqual(estimate, estimate_exp)
+        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_pol_simple(self):
 
@@ -1077,7 +1099,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1117,7 +1139,7 @@ class TestKSW(unittest.TestCase):
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_I, red_bisp_EEI)
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_E, red_bisp_EEE)
 
-        self.assertAlmostEqual(estimate, estimate_exp)
+        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_I_2d(self):
 
@@ -1154,7 +1176,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1172,7 +1194,7 @@ class TestKSW(unittest.TestCase):
         alm = hp.almxfl(alm[0], data.b_ell[0])
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
-        self.assertAlmostEqual(estimate, estimate_exp)
+        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_pol_2d(self):
 
@@ -1211,7 +1233,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1251,7 +1273,7 @@ class TestKSW(unittest.TestCase):
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_I, red_bisp_EEI)
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_E, red_bisp_EEE)
 
-        self.assertAlmostEqual(estimate, estimate_exp)
+        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_local_I(self):
 
@@ -1291,7 +1313,7 @@ class TestKSW(unittest.TestCase):
         data.npol = npol
         data.cosmology = cosmo
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1349,7 +1371,7 @@ class TestKSW(unittest.TestCase):
         alm = hp.almxfl(alm[0], data.b_ell[0])
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
-        self.assertAlmostEqual(estimate, estimate_exp)
+        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_local_pol(self):
 
@@ -1388,7 +1410,7 @@ class TestKSW(unittest.TestCase):
         data.npol = npol
         data.cosmology = cosmo
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1464,7 +1486,7 @@ class TestKSW(unittest.TestCase):
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_I, red_bisp_EEI)
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_E, red_bisp_EEE)
 
-        self.assertAlmostEqual(estimate, estimate_exp)
+        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_equilateral_I(self):
 
@@ -1504,7 +1526,7 @@ class TestKSW(unittest.TestCase):
         data.npol = npol
         data.cosmology = cosmo
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1606,7 +1628,7 @@ class TestKSW(unittest.TestCase):
         alm = hp.almxfl(alm[0], data.b_ell[0])
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
-        self.assertAlmostEqual(estimate, estimate_exp)
+        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
     def test_ksw_step_err(self):
 
@@ -1628,7 +1650,7 @@ class TestKSW(unittest.TestCase):
         rb.weights = np.ones((1, 3, npol))
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         alm = np.zeros(hp.Alm.getsize(lmax), dtype=np.complex128) 
         # No error here, even though alm is (nelem) shaped.
@@ -1676,7 +1698,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
@@ -1688,12 +1710,14 @@ class TestKSW(unittest.TestCase):
         # add one term for fair comparison.
         grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
 
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
+                                             decimal=self.decimal)
 
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
         mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_step_pol_simple(self):
 
@@ -1726,7 +1750,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
@@ -1765,8 +1789,10 @@ class TestKSW(unittest.TestCase):
         grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
         grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
 
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I)
-        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I, 
+                                             decimal=self.decimal)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
+                                             decimal=self.decimal)
 
         # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp_I * np.conj(grad_exp_I)))
@@ -1775,7 +1801,8 @@ class TestKSW(unittest.TestCase):
         mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
         mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_step_I_simple_2d(self):
 
@@ -1812,7 +1839,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
@@ -1824,12 +1851,14 @@ class TestKSW(unittest.TestCase):
         # add one term for fair comparison.
         grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
 
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
+                                             decimal=self.decimal)
 
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
         mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_step_pol_simple_2d(self):
 
@@ -1867,7 +1896,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
@@ -1906,8 +1935,10 @@ class TestKSW(unittest.TestCase):
         grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
         grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
 
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I)
-        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I,
+                                             decimal=self.decimal)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
+                                             decimal=self.decimal)
 
         # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp_I * np.conj(grad_exp_I)))
@@ -1916,7 +1947,8 @@ class TestKSW(unittest.TestCase):
         mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
         mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_step_local_I(self):
 
@@ -1956,7 +1988,7 @@ class TestKSW(unittest.TestCase):
         data.npol = npol
         data.cosmology = cosmo
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
@@ -2005,12 +2037,14 @@ class TestKSW(unittest.TestCase):
         # add one term for fair comparison.
         grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
 
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
+                                             decimal=self.decimal)
 
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
         mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_step_local_pol(self):
 
@@ -2051,7 +2085,7 @@ class TestKSW(unittest.TestCase):
         data.npol = npol
         data.cosmology = cosmo
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2126,8 +2160,10 @@ class TestKSW(unittest.TestCase):
         grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
         grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
 
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I)
-        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I, 
+                                             decimal=self.decimal)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
+                                             decimal=self.decimal)
 
         # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp_I * np.conj(grad_exp_I)))
@@ -2136,7 +2172,8 @@ class TestKSW(unittest.TestCase):
         mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
         mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp)
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_compute_fisher_nxn_I(self):
                 
@@ -2247,7 +2284,8 @@ class TestKSW(unittest.TestCase):
         ans_exp[1,0] = ans_exp[0,1]
         ans_exp *= 2 * np.pi ** 2 / 9
 
-        np.testing.assert_array_almost_equal(ans, ans_exp)
+        np.testing.assert_array_almost_equal(ans, ans_exp, 
+                                             decimal=self.decimal)
         
     def test_ksw_compute_fisher_nxn_pol(self):
          
@@ -2374,7 +2412,8 @@ class TestKSW(unittest.TestCase):
         ans_exp[1,0] = ans_exp[0,1]
         ans_exp *= 2 * np.pi ** 2 / 9
 
-        np.testing.assert_array_almost_equal(ans, ans_exp)
+        np.testing.assert_array_almost_equal(ans, ans_exp, 
+                                             decimal=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_I_simple(self):
                 
@@ -2400,7 +2439,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         fisher = estimator.compute_fisher_isotropic()
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2412,7 +2451,7 @@ class TestKSW(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_pol_simple(self):
                 
@@ -2438,7 +2477,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         fisher = estimator.compute_fisher_isotropic()
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2450,7 +2489,7 @@ class TestKSW(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_I_simple_2d(self):
                 
@@ -2480,7 +2519,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         fisher = estimator.compute_fisher_isotropic()
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2492,7 +2531,7 @@ class TestKSW(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_pol_simple_2d(self):
                 
@@ -2525,7 +2564,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         fisher = estimator.compute_fisher_isotropic()
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2545,7 +2584,7 @@ class TestKSW(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_I_local(self):
 
@@ -2577,7 +2616,7 @@ class TestKSW(unittest.TestCase):
         data.icov_ell_nonlensed = np.ones((1, lmax + 1))
         data.cosmology = cosmo
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         fisher = estimator.compute_fisher_isotropic()
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2626,7 +2665,7 @@ class TestKSW(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_pol_local(self):
 
@@ -2658,7 +2697,7 @@ class TestKSW(unittest.TestCase):
         data.icov_ell_nonlensed = np.ones((3, lmax + 1))
         data.cosmology = cosmo
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
         fisher = estimator.compute_fisher_isotropic()
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2710,7 +2749,7 @@ class TestKSW(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_lens_nonlens(self):
                 
@@ -2737,7 +2776,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             # Correct for 3 powers of beam.
@@ -2749,10 +2788,10 @@ class TestKSW(unittest.TestCase):
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
         # Defaults to unlensed.
         fisher = estimator.compute_fisher_isotropic()
-        self.assertAlmostEqual(fisher, fisher_exp)
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
         fisher = estimator.compute_fisher_isotropic(lensed=True)
-        self.assertAlmostEqual(fisher, fisher_exp * 0.5 ** 3)
+        self.assertAlmostEqual(fisher, fisher_exp * 0.5 ** 3, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_matrix(self):
                 
@@ -2778,7 +2817,7 @@ class TestKSW(unittest.TestCase):
 
         data.cosmology.red_bispectra[0] = rb
 
-        estimator = KSW(data)
+        estimator = KSW(data, precision=self.precision)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             # Correct for 3 powers of beam.
@@ -2790,6 +2829,12 @@ class TestKSW(unittest.TestCase):
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
         fisher, fisher_nxn = estimator.compute_fisher_isotropic(return_matrix=True)
-        self.assertAlmostEqual(fisher, fisher_exp)
-        self.assertAlmostEqual(fisher, np.sum(fisher_nxn))
+        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
+        self.assertAlmostEqual(fisher, np.sum(fisher_nxn), places=self.decimal)
 
+class TestKSW_32(TestKSW_64):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.precision = 'single'
+        cls.decimal = 5

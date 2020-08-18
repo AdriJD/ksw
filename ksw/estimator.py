@@ -19,6 +19,9 @@ class KSW():
         Function takes (npol, nelem) alm-like complex array
         and returns the inverse-variance-weighted version of
         that array. Defaults to diagonal weighting.
+    precision : str, optional
+        Use either "single" precision or "double" precision data types 
+        for internal calculations.
 
     Attributes
     ----------
@@ -51,7 +54,7 @@ class KSW():
         The FFT from n_ell_phi to m_ell_m.
     '''
 
-    def __init__(self, data, icov=None):
+    def __init__(self, data, icov=None, precision='single'):
 
         self.data = data
         self.cosmology = data.cosmology
@@ -61,6 +64,15 @@ class KSW():
         self.mc_idx = 0
         self.mc_gt = None
         self.mc_gt_sq = None
+
+        if precision == 'single':
+            self.dtype = np.float32
+            self.cdtype = np.complex64
+        elif precision == 'double':
+            self.dtype = np.float64
+            self.cdtype = np.complex128
+        else:
+            raise ValueError('precision {} not understtood'.format(precision))
 
         if len(self.cosmology.red_bispectra) > 1:
             raise NotImplementedError('no joint estimation for now.')
@@ -149,12 +161,18 @@ class KSW():
         # Allocate 2d arrays here and reshape to 3d after ffts are initialized.
         # Reason is that the intel MLK backend of FFTW does not allow 1d ffts over
         # 3d arrays, but it does allow 2d arrays.
+        #n_ell_phi = pyfftw.empty_aligned(
+        #    (self.data.npol * (self.data.lmax + 1), self.nphi),
+        #    dtype=np.float64)
         n_ell_phi = pyfftw.empty_aligned(
             (self.data.npol * (self.data.lmax + 1), self.nphi),
-            dtype=np.float64)
+            dtype=self.dtype)
+        #m_ell_m = pyfftw.empty_aligned(
+        #    (self.data.npol * (self.data.lmax + 1), (n_ell_phi.shape[-1] // 2 + 1)),
+        #    dtype=np.complex128)
         m_ell_m = pyfftw.empty_aligned(
             (self.data.npol * (self.data.lmax + 1), (n_ell_phi.shape[-1] // 2 + 1)),
-            dtype=np.complex128)
+            dtype=self.cdtype)
 
         n_ell_phi[:] = 0
         m_ell_m[:] = 0
@@ -200,7 +218,8 @@ class KSW():
             raise ValueError('lmax bispectrum ({}) < lmax data ({})'.format(
                 red_bisp.lmax, self.data.lmax))
 
-        x_i_ell = np.zeros((red_bisp.nfact, self.data.npol, self.data.lmax + 1))
+        x_i_ell = np.zeros((red_bisp.nfact, self.data.npol, self.data.lmax + 1),
+                           dtype=self.dtype)
         y_i_ell = np.zeros_like(x_i_ell)
         z_i_ell = np.zeros_like(x_i_ell)
 
@@ -254,12 +273,13 @@ class KSW():
             Factors on isolatitude ring corresponding to ell_3.
         '''
 
-        x_i_phi = np.zeros((nfact, self.nphi))
+        x_i_phi = np.zeros((nfact, self.nphi), dtype=self.dtype)
         y_i_phi = np.zeros_like(x_i_phi)
         z_i_phi = np.zeros_like(x_i_phi)
 
         return x_i_phi, y_i_phi, z_i_phi
         
+    #@profile
     def step(self, alm, comm=None):
         '''
         Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
@@ -310,7 +330,7 @@ class KSW():
 
         if comm.Get_rank() == 0:
             # Turn back into healpy shape.
-            grad_t = utils.a_ell_m2alm(grad_t)
+            grad_t = utils.a_ell_m2alm(grad_t).astype(np.complex128)
 
             # Add to Monte Carlo estimates.
             if self.mc_gt is None:
@@ -375,6 +395,7 @@ class KSW():
 
             theta = self.thetas[tidx]
             ct_weight = self.theta_weights[tidx]
+
             ylm = np.ascontiguousarray(np.transpose(
                 legendre.normalized_associated_legendre_ms(ms, theta, self.data.lmax)))
 
@@ -384,7 +405,7 @@ class KSW():
             t_a = np.einsum('ij, ij, ij', x_i_phi, y_i_phi, z_i_phi, optimize=True)
             t_a *= np.pi * ct_weight / 3 / self.nphi
             t_cubic += t_a
-
+            
         t_cubic = utils.reduce(t_cubic, comm)
 
         if comm.Get_rank() == 0:
@@ -392,6 +413,7 @@ class KSW():
         else:
             return None
 
+    #@profile
     def backward(self, a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                  x_i_phi, y_i_phi, z_i_phi, y_ell_m):
         '''
@@ -427,6 +449,7 @@ class KSW():
         y_i_phi[:] = np.tensordot(y_i_ell, self.n_ell_phi, axes=[[1,2], [0,1]])
         z_i_phi[:] = np.tensordot(z_i_ell, self.n_ell_phi, axes=[[1,2], [0,1]])
 
+    #@profile
     def forward(self, a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                  x_i_phi, y_i_phi, z_i_phi, y_ell_m, ct_weight):
         '''
