@@ -259,7 +259,7 @@ class KSW():
         z_i_phi = np.zeros_like(x_i_phi)
 
         return x_i_phi, y_i_phi, z_i_phi
-
+        
     def step(self, alm, comm=None):
         '''
         Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
@@ -423,12 +423,9 @@ class KSW():
         self.fft_backward()
         self.n_ell_phi *= self.nphi # Correct for FFT normalization.
 
-        np.einsum('ijk, jkm -> im', x_i_ell, self.n_ell_phi,
-                  optimize='optimal', out=x_i_phi)
-        np.einsum('ijk, jkm -> im', y_i_ell, self.n_ell_phi,
-                  optimize='optimal', out=y_i_phi)
-        np.einsum('ijk, jkm -> im', z_i_ell, self.n_ell_phi,
-                  optimize='optimal', out=z_i_phi)
+        x_i_phi[:] = np.tensordot(x_i_ell, self.n_ell_phi, axes=[[1,2], [0,1]])
+        y_i_phi[:] = np.tensordot(y_i_ell, self.n_ell_phi, axes=[[1,2], [0,1]])
+        z_i_phi[:] = np.tensordot(z_i_ell, self.n_ell_phi, axes=[[1,2], [0,1]])
 
     def forward(self, a_ell_m, x_i_ell, y_i_ell, z_i_ell,
                  x_i_phi, y_i_phi, z_i_phi, y_ell_m, ct_weight):
@@ -478,19 +475,9 @@ class KSW():
         z_i_phi *= y_i_phi_tmp
 
         # Fill dT/dN (Eq. 77).
-        n_ell_phi_tmp = np.zeros_like(self.n_ell_phi)
-
-        np.einsum('ijk, il -> jkl', x_i_ell, x_i_phi, out=n_ell_phi_tmp,
-                  optimize='optimal')
-        self.n_ell_phi[:] = n_ell_phi_tmp
-
-        np.einsum('ijk, il -> jkl', y_i_ell, y_i_phi, out=n_ell_phi_tmp,
-                  optimize='optimal')
-        self.n_ell_phi[:] += n_ell_phi_tmp
-
-        np.einsum('ijk, il -> jkl', z_i_ell, z_i_phi, out=n_ell_phi_tmp,
-                  optimize='optimal')
-        self.n_ell_phi[:] += n_ell_phi_tmp
+        self.n_ell_phi[:] = np.tensordot(x_i_ell, x_i_phi, axes=[[0], [0]])
+        self.n_ell_phi[:] += np.tensordot(y_i_ell, y_i_phi, axes=[[0], [0]])
+        self.n_ell_phi[:] += np.tensordot(z_i_ell, z_i_phi, axes=[[0], [0]])
 
         # Multiply dT/dN with weight.
         weight = np.pi * ct_weight / 3 / self.nphi
