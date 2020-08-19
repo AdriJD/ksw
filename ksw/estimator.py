@@ -161,15 +161,9 @@ class KSW():
         # Allocate 2d arrays here and reshape to 3d after ffts are initialized.
         # Reason is that the intel MLK backend of FFTW does not allow 1d ffts over
         # 3d arrays, but it does allow 2d arrays.
-        #n_ell_phi = pyfftw.empty_aligned(
-        #    (self.data.npol * (self.data.lmax + 1), self.nphi),
-        #    dtype=np.float64)
         n_ell_phi = pyfftw.empty_aligned(
             (self.data.npol * (self.data.lmax + 1), self.nphi),
             dtype=self.dtype)
-        #m_ell_m = pyfftw.empty_aligned(
-        #    (self.data.npol * (self.data.lmax + 1), (n_ell_phi.shape[-1] // 2 + 1)),
-        #    dtype=np.complex128)
         m_ell_m = pyfftw.empty_aligned(
             (self.data.npol * (self.data.lmax + 1), (n_ell_phi.shape[-1] // 2 + 1)),
             dtype=self.cdtype)
