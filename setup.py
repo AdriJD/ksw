@@ -14,7 +14,8 @@ compile_opts = {
     'extra_compile_args': ['-shared', '-std=gnu99',
                            '-fopenmp',
                            '-Wno-strict-aliasing',
-                           '-g']}
+                           '-g'],
+    'extra_link_args' : ['-Wl,-rpath,' + opj(path, 'lib')]}
 
 compiler_directives = {'language_level' : 3}
 
@@ -24,7 +25,6 @@ ext_modules = [Extension('ksw.radial_functional',
                          library_dirs=[opj(path, 'lib')],
                          include_dirs=[opj(path, 'include'),
                                        np.get_include()],
-                         runtime_library_dirs=[opj(path, 'lib')],
                          **compile_opts),
                Extension('ksw.legendre',
                          [opj(path, 'cython', 'legendre.pyx'),

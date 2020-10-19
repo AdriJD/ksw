@@ -72,7 +72,7 @@ class KSW():
             self.dtype = np.float64
             self.cdtype = np.complex128
         else:
-            raise ValueError('precision {} not understtood'.format(precision))
+            raise ValueError('precision {} not understood'.format(precision))
 
         if len(self.cosmology.red_bispectra) > 1:
             raise NotImplementedError('no joint estimation for now.')
