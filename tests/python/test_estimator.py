@@ -435,7 +435,7 @@ class TestKSW_64(unittest.TestCase):
         alm[hp.Alm.getidx(data.lmax, 0, 0)] = 1
         alm[hp.Alm.getidx(data.lmax, 1, 1)] = 1j
         alm[hp.Alm.getidx(data.lmax, 2, 1)] = 1
-        map_hp = hp.alm2map(alm, nside)
+        map_hp = hp.alm2map(alm, nside, verbose=False)
 
         phis = np.linspace(0, 2 * np.pi, estimator.nphi, endpoint=False)
 
