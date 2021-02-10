@@ -182,7 +182,7 @@ class Cosmology:
         # Modify scalar E-mode, see Zaldarriaga 1997 Eqs. 18 and 39.
         # (CAMB applies these factors at a later stage).
         try:
-            # CAMB changes this at least one time.
+            # CAMB changed this at least one time.
             # See Nov 19 CAMB commit: Formatting; py 3.8 test.
             ells = tr.L
         except AttributeError:
@@ -274,7 +274,7 @@ class Cosmology:
         So A = (3/5)^2 * 2 * pi^2 As.
 
         The radiation transfer functions have to be multiplied by (5/3) to intepret
-        them as phi transfer functions. So the 3 factors of (5/3) from thr 3 transfer
+        them as phi transfer functions. So the 3 factors of (5/3) from the 3 transfer
         functions in b_l1l2l3 partly cancel with the 4 factors of (3/5) from A^2.
 
         So finally, to get the 2 A_phi^2 amplitude specified in shape.py and convert

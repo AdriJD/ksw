@@ -1,16 +1,22 @@
 # ksw
 
+An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern CMB data.
+
 ### Dependencies
 
 - Python>=3.4
-- gcc (other C compilers should also work but have not been tested)
-- [camb](https://camb.readthedocs.io/en/latest/)
+- a C compiler (tested with gcc and icc)
+- [numpy](https://pypi.org/project/numpy/)
+- [scipy](https://pypi.org/project/scipy/)
+- [cython](https://pypi.org/project/Cython/)
 - [pytest](https://pypi.org/project/pytest/)
 - [mpi4py](https://pypi.org/project/mpi4py/)
 - [pyfftw](https://pypi.org/project/pyFFTW/)
+- [h5py](https://pypi.org/project/h5py/)
+- [healpy](https://pypi.org/project/healpy/)
+- [camb](https://camb.readthedocs.io/en/latest/)
 
 ### Installation
-
 
 ```
 $ make
