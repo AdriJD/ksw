@@ -28,6 +28,7 @@ EST_OBJECTS = $(ODIR)/estimator.o
 
 TEST_OBJECTS = $(TDIR)/obj/seatest.o \
                $(TDIR)/obj/test_radial_functional.o \
+               $(TDIR)/obj/test_estimator.o \
                $(TDIR)/obj/run_tests.o
 
 LINK_COMMON = -lm
@@ -69,8 +70,8 @@ check_c: $(TDIR)/bin/run_tests
 check_python:
 	cd $(TDIR); python -m pytest python/
 
-$(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(RF_OBJECTS) $(LDIR)/libradial_functional.so
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -lm -lgomp -Wl,-rpath,$(LDIR)
+$(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(RF_OBJECTS) $(LDIR)/libradial_functional.so $(LDIR)/libksw_estimator.so
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -lksw_estimator $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp -Wl,-rpath,$(LDIR)
 
 $(TDIR)/obj/run_tests.o: $(TDIR)/src/run_tests.c $(TDIR)/include/seatest.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include -I$(IDIR)
@@ -79,6 +80,9 @@ $(TDIR)/obj/seatest.o: $(TDIR)/src/seatest.c $(TDIR)/include/seatest.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include
 
 $(TDIR)/obj/test_radial_functional.o: $(TDIR)/src/test_radial_functional.c $(IDIR)/*.h
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
+
+$(TDIR)/obj/test_estimator.o: $(TDIR)/src/test_estimator.c $(IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
 
 clean:

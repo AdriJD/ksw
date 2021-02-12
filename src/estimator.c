@@ -1,6 +1,7 @@
 #include <ksw_estimator.h>
 
 // nufact = (ncomp * nr)
+// nrule = nfact
 
 // rule : (nfact, 3)
 // f_i_phi : (nufact, nphi)
@@ -42,10 +43,10 @@ float t_cubic_on_ring_sp(int *rule, float *f_i_phi, int nrule, int nphi){
  *
  * Arguments
  * ---------
- * f_i_ell   : (nufact * npol, * nell) array with unique factors.
+ * f_i_ell   : (nufact * npol * nell) array with unique factors.
  * a_m_ell   : (npol * nell * nell) complex array with ell-major alms.
  * y_m_ell   : (nell * nell) array with ell-major Ylms.
- * m_ell_m   : (npol * nell * nm) complex array as input for ring fft.
+ * m_ell_m   : (npol * nell * nm) complex array as input for ring fft, nm = nphi / 2 + 1.
  * n_ell_phi : (npol * nell * nphi) array as output for ring fft.
  * plan_c2r  : fftw plan for ring complex2real fft.
  * f_i_phi   : (nufact * nphi) array for output unique factors on ring.
@@ -61,7 +62,7 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
 
     int nm = nphi / 2 + 1;
 
-    // Place alm * Ylm into Mlm and correct for nphi.
+    // Place alm * Ylm into Mlm.
     for (int pidx=0; pidx<npol; pidx++){
 	for (int lidx=0; lidx<nell; lidx++){
 	    for (int midx=0; midx<nm; midx++){
@@ -69,22 +70,24 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
 		complex double tmp;
 
 		if (midx < nell){
-		    tmp = (complex double) a_m_ell[pidx*npol*nell*nm+lidx*nell*nell+midx]
-			* (complex double) y_m_ell[lidx*nell*nell+midx] * nphi;
+		    tmp = (complex double) a_m_ell[pidx*nell*nm+lidx*nell+midx]
+			* (complex double) y_m_ell[lidx*nell+midx];
 		} else{
 		    // Needed because m_ell_m array can be larger than alm.
 		    tmp = 0. + 0.*I;
 		}
-
-		m_ell_m[pidx*npol*nell*nm+lidx*nell*nm+midx] = (complex float) tmp;
+		m_ell_m[pidx*nell*nm+lidx*nm+midx] = (complex float) tmp;
 
 	    }
 	}
     }
 
-    // Backward fft.
+    // Backward fft. Note that fftw has no normalization for backward
+    // or forward. Unlike numpy and pyfftw which apply 1/nphi during 
+    // backward (c2r). So in python version I multiply the result of 
+    // the fft by nphi to compensate for that factor. Here it's not needed.
     fftwf_execute(plan_c2r);
-        
+
     // f_i_ell @ n_ell_phi -> f_i_phi.
     cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 		nufact, nphi, npol * nell,
@@ -152,9 +155,9 @@ float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y
     
     fftwf_plan plan_c2r =  fftwf_plan_many_dft_c2r(1, nffts, npol * nell,
 						   m_ell_m, NULL,
-						   1, npol * nell,
+						   1, nm,
 						   n_ell_phi, NULL,
-						   1, npol * nell,
+						   1, nphi,
 						   FFTW_ESTIMATE);
     						 
     
@@ -176,8 +179,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y
     fftwf_free(n_ell_phi);
     fftwf_free(f_i_ell);
     fftwf_free(f_i_phi);
-    
-    
+        
     // End parallel region
     
     return t_cubic;
