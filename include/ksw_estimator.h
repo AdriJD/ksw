@@ -5,3 +5,4 @@
 #include <fftw3.h>
 #include <mkl_cblas.h>
 
+#define PI 3.14159265358979323846

@@ -164,7 +164,8 @@ float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y
 		    m_ell_m, n_ell_phi, plan_c2r,
 		    f_i_phi, nell, npol, nufact, nphi);
 	
-	t_cubic += t_cubic_on_ring_sp(rule, f_i_phi, nrule, nphi);		
+	t_cubic += t_cubic_on_ring_sp(rule, f_i_phi, nrule, nphi) 
+	    * PI * ct_weights[tidx] / 3. / nphi;
     }
     
     // Free plan.
