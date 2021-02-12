@@ -50,7 +50,6 @@ float t_cubic_on_ring_sp(int *rule, float *f_i_phi, int nrule, int nphi){
  * plan_c2r  : fftw plan for ring complex2real fft.
  * f_i_phi   : (nufact * nphi) array for output unique factors on ring.
  * nell      : Number of multipoles.
- * nm        : Number of m-modes used for fft (may exceed nell!).
  * npol      : Number of polarization dimensions.
  * nufact    : Number of unique factors.
  * nphi      : Number of phi per ring.
@@ -58,7 +57,9 @@ float t_cubic_on_ring_sp(int *rule, float *f_i_phi, int nrule, int nphi){
 
 void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
 		 float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_c2r,
-		 float *f_i_phi, int nell, int nm,  int npol, int nufact, int nphi){
+		 float *f_i_phi, int nell, int npol, int nufact, int nphi){
+
+    int nm = nphi / 2 + 1;
 
     // Place alm * Ylm into Mlm and correct for nphi.
     for (int pidx=0; pidx<npol; pidx++){
@@ -110,15 +111,15 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * ntheta     : number of thetas (rings).
  * nrule      : number of rules.
  * nell       : Number of multipoles.
- * nm         : Number of m-modes used for fft (may exceed nell!).
  * npol       : Number of polarization dimensions.
  * nufact     : Number of unique factors.
  * nphi       : Number of phi per ring.
  */
 
 float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y_m_ell,
-		 int ntheta, int nrule, int nell, int nm, int npol, int nufact, int nphi){
+		 int ntheta, int nrule, int nell, int npol, int nufact, int nphi){
 
+    int nm = nphi / 2 + 1;
     float t_cubic = 0.0;
 
     // Parallel region
@@ -130,6 +131,8 @@ float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y
     //* f_i_ell   : (nufact * npol, * nell) array with unique factors.
     //* f_i_phi   : (nufact * nphi) array for output unique factors on ring.
     
+    int nffts[1] = {nphi};
+
     float complex *m_ell_m = fftwf_malloc(sizeof *m_ell_m * npol * nell * nm);
     float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
 
@@ -146,18 +149,26 @@ float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y
 	
     // create plan
     //* plan_c2r  : fftw plan for ring complex2real fft.
-
-    /*
+    
+    fftwf_plan plan_c2r =  fftwf_plan_many_dft_c2r(1, nffts, npol * nell,
+						   m_ell_m, NULL,
+						   1, npol * nell,
+						   n_ell_phi, NULL,
+						   1, npol * nell,
+						   FFTW_ESTIMATE);
+    						 
+    
     for (int tidx=0; tidx<ntheta; tidx++){
 
 	backward_sp(f_i_ell, a_m_ell, y_m_ell,
 		    m_ell_m, n_ell_phi, plan_c2r,
-		    f_i_phi, nell, nm, npol, nufact, nphi);
+		    f_i_phi, nell, npol, nufact, nphi);
 	
 	t_cubic += t_cubic_on_ring_sp(rule, f_i_phi, nrule, nphi);		
     }
-    */
+    
     // Free plan.
+    fftwf_destroy_plan(plan_c2r);
 
     // Free arrays    
     fftwf_free(m_ell_m);
