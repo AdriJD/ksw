@@ -158,8 +158,7 @@ void test_t_cubic_sp(void){
     t_cubic = t_cubic_sp(ct_weights, rule, f_i_ell, a_m_ell, y_m_ell,
 			 ntheta, nrule, nell, npol, nufact, nphi);
 
-    exp_ans = 2 * 80 * 80 * 80 * 5 * (1. + 16.) * PI / 3. / nphi;    
-    
+    exp_ans = 2 * 80 * 80 * 80 * 5 * (1. + 16.) * PI / 3. / (float)nphi;    
     assert_float_equal(exp_ans, t_cubic, delta);
 
     free(ct_weights);

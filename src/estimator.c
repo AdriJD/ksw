@@ -127,32 +127,32 @@ float t_cubic_sp(float *ct_weights, int *rule, float *f_i_ell, float complex *a_
     int nm = nphi / 2 + 1;
     float t_cubic = 0.0;
 
-    // Parallel region
+    #pragma omp parallel 
+    {
         
+    fftwf_plan plan_c2r;
     int nffts[1] = {nphi};
 
     float complex *m_ell_m = fftwf_malloc(sizeof *m_ell_m * npol * nell * nm);
     float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
     float *f_i_phi = fftwf_malloc(sizeof *f_i_phi * nufact * nphi);
-    
+
     if (m_ell_m == NULL || n_ell_phi == NULL || f_i_phi == NULL){
 	fftwf_free(m_ell_m);
 	fftwf_free(n_ell_phi);
 	fftwf_free(f_i_phi);
 	exit(1);
     }
-	
-    // create plan
-    //* plan_c2r  : fftw plan for ring complex2real fft.
-    
-    fftwf_plan plan_c2r =  fftwf_plan_many_dft_c2r(1, nffts, npol * nell,
-						   m_ell_m, NULL,
-						   1, nm,
-						   n_ell_phi, NULL,
-						   1, nphi,
-						   FFTW_ESTIMATE);
-    						 
-    
+
+    #pragma omp critical
+    plan_c2r = fftwf_plan_many_dft_c2r(1, nffts, npol * nell,
+				       m_ell_m, NULL,
+				       1, nm,
+				       n_ell_phi, NULL,
+				       1, nphi,
+				       FFTW_ESTIMATE);
+
+    #pragma omp for reduction (+:t_cubic)
     for (int tidx=0; tidx<ntheta; tidx++){
 
 	backward_sp(f_i_ell, a_m_ell, y_m_ell + tidx * nell * nell,
@@ -160,18 +160,17 @@ float t_cubic_sp(float *ct_weights, int *rule, float *f_i_ell, float complex *a_
 		    f_i_phi, nell, npol, nufact, nphi);
 	
 	t_cubic += t_cubic_on_ring_sp(rule, f_i_phi, nrule, nphi) 
-	    * PI * ct_weights[tidx] / 3. / nphi;
+	    * PI * ct_weights[tidx] / 3. / (float)nphi;
     }
-    
-    // Free plan.
+
     fftwf_destroy_plan(plan_c2r);
 
-    // Free arrays    
     fftwf_free(m_ell_m);
     fftwf_free(n_ell_phi);
     fftwf_free(f_i_phi);
-        
+
     // End parallel region
+    }
     
     return t_cubic;
 }
