@@ -90,6 +90,12 @@ void test_backward_sp(void){
     assert_float_equal(80., f_i_phi[7], delta);
     assert_float_equal(80., f_i_phi[8], delta);
     assert_float_equal(80., f_i_phi[9], delta);
+    assert_float_equal(80., f_i_phi[10], delta);
+    assert_float_equal(80., f_i_phi[11], delta);
+    assert_float_equal(80., f_i_phi[12], delta);
+    assert_float_equal(80., f_i_phi[13], delta);
+    assert_float_equal(80., f_i_phi[14], delta);
+    assert_float_equal(80., f_i_phi[15], delta);
 
     fftwf_destroy_plan(plan_c2r);
     free(f_i_ell);
@@ -100,12 +106,76 @@ void test_backward_sp(void){
     fftwf_free(n_ell_phi);
 }
 
+void test_t_cubic_sp(void){
+
+    float t_cubic;
+    int nrule = 2;
+    int nufact = 4;
+    int npol = 2;
+    int nell = 3;
+    int nphi = 5;
+    int ntheta = 2;    
+
+    float delta = 1e-6;
+    float exp_ans;
+
+    float *ct_weights = malloc(sizeof ct_weights * ntheta);
+    int *rule = malloc(sizeof rule * nrule * 3);
+    float *f_i_ell = malloc(sizeof f_i_ell * nufact * npol * nell);
+    complex float *a_m_ell = malloc(sizeof a_m_ell * npol * nell * nell);
+    double *y_m_ell = malloc(sizeof y_m_ell * ntheta * nell * nell);
+
+    ct_weights[0] = 1.;
+    ct_weights[1] = 2.;
+    
+    rule[0] = 0;
+    rule[1] = 0;
+    rule[2] = 0;
+    rule[3] = 0;
+    rule[4] = 1;
+    rule[5] = 2;
+
+    // Set all f_i_ells to 1.
+    for (int i=0; i<nufact*npol*nell; i++){
+	f_i_ell[i] = 1.;
+    }
+
+    for (int i=0; i<npol*nell*nell; i++){
+	a_m_ell[i] = 0.;
+    }
+    // Set ell=2, m=0 elements for both polarizations.
+    a_m_ell[6] = 1.;
+    a_m_ell[15] = 7.;
+
+    for (int i=0; i<ntheta*nell*nell; i++){
+	y_m_ell[i] = 0.;
+    }
+    // Set ell=2, m=0 elements.
+    y_m_ell[6] = 10.;
+    y_m_ell[nell*nell+6] = 20.;
+
+
+    t_cubic = t_cubic_sp(ct_weights, rule, f_i_ell, a_m_ell, y_m_ell,
+			 ntheta, nrule, nell, npol, nufact, nphi);
+
+    exp_ans = 2 * 80 * 80 * 80 * 5 * (1. + 16.) * PI / 3. / nphi;    
+    
+    assert_float_equal(exp_ans, t_cubic, delta);
+
+    free(ct_weights);
+    free(rule);
+    free(f_i_ell);
+    free(a_m_ell);
+    free(y_m_ell);
+}
+
 void test_fixture_estimator(void){
 
   test_fixture_start();
 
   run_test(test_t_cubic_on_ring_sp);
   run_test(test_backward_sp);
+  run_test(test_t_cubic_sp);
 
   test_fixture_end();
 }

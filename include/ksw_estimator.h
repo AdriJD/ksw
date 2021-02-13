@@ -25,3 +25,7 @@ float t_cubic_on_ring_sp(int *rule, float *f_i_phi, int nrule, int nphi);
 void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
 		 float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_c2r,
 		 float *f_i_phi, int nell, int npol, int nufact, int nphi);
+
+float t_cubic_sp(float *ct_weights, int *rule, float *f_i_ell, float complex *a_m_ell, 
+		 double *y_m_ell, int ntheta, int nrule, int nell, int npol, int nufact,
+		 int nphi);

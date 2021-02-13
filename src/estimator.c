@@ -109,8 +109,9 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * ---------
  * ct_weights : (ntheta) array of quadruture weights for cos(theta).
  * rule       : (nrule, 3) array
+ * f_i_ell    : (nufact * npol * nell) array with unique factors.
  * a_m_ell    : (npol * nell * nell) complex array with ell-major alms.
- * y_m_ell    : (nell * nell) array with ell-major Ylms.
+ * y_m_ell    : (ntheta * nell * nell) array with ell-major Ylms for each ring.
  * ntheta     : number of thetas (rings).
  * nrule      : number of rules.
  * nell       : Number of multipoles.
@@ -119,33 +120,24 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * nphi       : Number of phi per ring.
  */
 
-float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y_m_ell,
-		 int ntheta, int nrule, int nell, int npol, int nufact, int nphi){
+float t_cubic_sp(float *ct_weights, int *rule, float *f_i_ell, float complex *a_m_ell, 
+		 double *y_m_ell, int ntheta, int nrule, int nell, int npol, int nufact,
+		 int nphi){
 
     int nm = nphi / 2 + 1;
     float t_cubic = 0.0;
 
     // Parallel region
-    
-    // allocate m_ell_m, n_ell_phi, f_i_ell, f_i_phi arrays, then start a parallel loop
-    
-    // * m_ell_m   : (npol * nell * nm) complex array as input for ring fft.
-    // * n_ell_phi : (npol * nell * nphi) array as output for ring fft.
-    //* f_i_ell   : (nufact * npol, * nell) array with unique factors.
-    //* f_i_phi   : (nufact * nphi) array for output unique factors on ring.
-    
+        
     int nffts[1] = {nphi};
 
     float complex *m_ell_m = fftwf_malloc(sizeof *m_ell_m * npol * nell * nm);
     float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
-
-    float *f_i_ell = fftwf_malloc(sizeof *f_i_ell * nufact * npol * nell);
     float *f_i_phi = fftwf_malloc(sizeof *f_i_phi * nufact * nphi);
     
-    if (m_ell_m == NULL || n_ell_phi == NULL || f_i_ell == NULL || f_i_phi == NULL){
+    if (m_ell_m == NULL || n_ell_phi == NULL || f_i_phi == NULL){
 	fftwf_free(m_ell_m);
 	fftwf_free(n_ell_phi);
-	fftwf_free(f_i_ell);
 	fftwf_free(f_i_phi);
 	exit(1);
     }
@@ -163,7 +155,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y
     
     for (int tidx=0; tidx<ntheta; tidx++){
 
-	backward_sp(f_i_ell, a_m_ell, y_m_ell,
+	backward_sp(f_i_ell, a_m_ell, y_m_ell + tidx * nell * nell,
 		    m_ell_m, n_ell_phi, plan_c2r,
 		    f_i_phi, nell, npol, nufact, nphi);
 	
@@ -177,7 +169,6 @@ float t_cubic_sp(float *ct_weights, int *rule, float complex *a_m_ell, double *y
     // Free arrays    
     fftwf_free(m_ell_m);
     fftwf_free(n_ell_phi);
-    fftwf_free(f_i_ell);
     fftwf_free(f_i_phi);
         
     // End parallel region
