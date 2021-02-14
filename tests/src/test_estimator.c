@@ -186,6 +186,70 @@ void test_t_cubic_sp(void){
     free(y_m_ell);
 }
 
+void test_get_forward_array_size(void){
+
+    int array_size;
+    int nrule = 1;
+    int *rule = malloc(sizeof rule * nrule * 3);
+
+    rule[0] = 0;
+    rule[1] = 0;
+    rule[2] = 0;
+
+    array_size = get_forward_array_size(rule, nrule);
+    assert_int_equal(1, array_size);
+
+    rule[0] = 0;
+    rule[1] = 0;
+    rule[2] = 1;
+
+    array_size = get_forward_array_size(rule, nrule);
+    assert_int_equal(2, array_size);
+
+    rule[0] = 0;
+    rule[1] = 1;
+    rule[2] = 0;
+
+    array_size = get_forward_array_size(rule, nrule);
+    assert_int_equal(2, array_size);
+
+    rule[0] = 1;
+    rule[1] = 0;
+    rule[2] = 0;
+
+    array_size = get_forward_array_size(rule, nrule);
+    assert_int_equal(2, array_size);
+
+    rule[0] = 0;
+    rule[1] = 1;
+    rule[2] = 2;
+
+    array_size = get_forward_array_size(rule, nrule);
+    assert_int_equal(3, array_size);
+
+    free(rule);
+
+    nrule = 3;
+    rule = malloc(sizeof rule * nrule * 3);
+
+    rule[0] = 0;
+    rule[1] = 0;
+    rule[2] = 0;
+
+    rule[3] = 0;
+    rule[4] = 0;
+    rule[5] = 1;
+
+    rule[6] = 0;
+    rule[7] = 1;
+    rule[8] = 2;
+
+    array_size = get_forward_array_size(rule, nrule);
+    assert_int_equal(6, array_size);
+
+    free(rule);
+}
+
 void test_fixture_estimator(void){
 
   test_fixture_start();
@@ -193,6 +257,7 @@ void test_fixture_estimator(void){
   run_test(test_t_cubic_on_ring_sp);
   run_test(test_backward_sp);
   run_test(test_t_cubic_sp);
+  run_test(test_get_forward_array_size);
 
   test_fixture_end();
 }

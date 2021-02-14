@@ -68,6 +68,28 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
 		0.0, f_i_phi, nphi);    
 }
 
+int get_forward_array_size(int *rule, int nrule){
+
+    int array_size = 0;
+
+    for (int ridx=0; ridx<nrule; ridx++){
+
+	int rx = rule[ridx*3];
+	int ry = rule[ridx*3+1];
+	int rz = rule[ridx*3+2];
+
+	array_size += 1;
+	
+	if (ry != rx){
+	    array_size += 1;
+	}
+	if (ry != rz && rx != rz){
+	    array_size += 1;
+	}
+    }
+    return array_size;
+}
+
 void forward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
 		float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_r2c,
 		float *f_i_phi, float *x_i_ell, float *y_i_ell, float *z_i_ell,

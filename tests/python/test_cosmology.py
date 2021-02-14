@@ -495,7 +495,11 @@ class TestCosmoIO(unittest.TestCase):
         ells_full = np.arange(3, 16)
 
         weights = np.ones((nfact, 3))
-        rule = np.ones((nfact, 3), dtype=int)
+        rule = np.zeros((nfact, 3), dtype=int)
+        rule[0] = [0, 0, 0]
+        rule[1] = [0, 0, 1]
+        rule[2] = [0, 1, 1]
+        rule[3] = [1, 1, 1]
         factors = np.ones((n_unique, npol, ells_sparse.size))
         name = 'test_bispec'
 

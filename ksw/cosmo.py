@@ -578,6 +578,7 @@ class ReducedBispectrum:
         If name is not an identifiable string.
     TypeError
         If rule is not an array of integers.
+        If rule contains repeated triplets.
     '''
 
     def __init__(self, factors, rule, weights, ells, name):
@@ -628,6 +629,8 @@ class ReducedBispectrum:
         if rule.max() >= self.factors.shape[0]:
             raise ValueError('Rule points to at least one index that is '
                              'out of bounds.')
+        if np.unique(np.sort(rule, axis=1), axis=0).size != rule.size:
+            raise ValueError('Rule cannot contain multiple equivalent triplets.')
         self.__rule = rule
 
     @property

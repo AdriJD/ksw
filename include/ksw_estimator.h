@@ -67,3 +67,17 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
 float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
 		 float complex *a_m_ell, double *y_m_ell, int ntheta, int nrule,
 		 int nell, int npol, int nufact, int nphi);
+
+/*
+ * Compute the number of elements needed for the arrays in the forward function.
+ * The idea is that if rule = [[0, 0, 0]], i.e. X_ell = Y_ell = Z_ell, you also
+ * have dT/dX_phi = dT/dY_phi= dT/dZ_phi, see Smith Eq. 76, 77. Therefore you 
+ * can simply do 3 * X_ell dT/dX_ell to get dT/dN.
+ *
+ * Arguments
+ * ---------
+ * ct_weights : (ntheta) array of quadruture weights for cos(theta).
+ * rule       : (nrule, 3) array
+ */
+
+int get_forward_array_size(int *rule, int nrule);

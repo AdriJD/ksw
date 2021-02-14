@@ -17,7 +17,10 @@ class TestReducedBispectrum(unittest.TestCase):
 
         factors = np.ones((n_unique, npol, nell))
         weights = np.ones((nfact, 3))
-        rule = np.ones((nfact, 3), dtype=int)
+        rule = np.zeros((nfact, 3), dtype=int)
+        rule[0] = [0, 0, 0]
+        rule[1] = [0, 0, 1]
+        rule[2] = [0, 1, 1]
         ells = np.arange(nell)
         name = 'test_bispec'
 
@@ -139,7 +142,10 @@ class TestReducedBispectrum(unittest.TestCase):
 
         factors = np.ones((n_unique, npol, nell))
         weights = np.ones((nfact, 3))
-        rule = np.ones((nfact, 3), dtype=int)
+        rule = np.zeros((nfact, 3), dtype=int)
+        rule[0] = [0, 0, 0]
+        rule[1] = [0, 0, 1]
+        rule[2] = [0, 1, 1]
         ells = np.arange(nell)
         name = 'test'
 
@@ -159,7 +165,10 @@ class TestReducedBispectrum(unittest.TestCase):
         ells_sparse = np.asarray([3, 4, 5, 7, 10, 13, 15])
         
         weights = np.ones((nfact, 3))
-        rule = np.ones((nfact, 3), dtype=int)
+        rule = np.zeros((nfact, 3), dtype=int)
+        rule[0] = [0, 0, 0]
+        rule[1] = [0, 0, 1]
+
         name = 'test_bispec'
 
         factors = np.ones((n_unique, npol, nell_sparse))
@@ -197,7 +206,12 @@ class TestReducedBispectrumIO(unittest.TestCase):
         ells_full = np.arange(3, 16)
         
         weights = np.ones((nfact, 3))
-        rule = np.ones((nfact, 3), dtype=int)
+        rule = np.zeros((nfact, 3), dtype=int)
+        rule[0] = [0, 0, 0]
+        rule[1] = [0, 0, 1]
+        rule[2] = [0, 1, 1]
+        rule[3] = [1, 1, 1]
+
         factors = np.ones((n_unique, npol, ells_sparse.size))
         name = 'test_bispec'
 
