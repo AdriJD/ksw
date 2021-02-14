@@ -278,7 +278,7 @@ class TestCosmo(unittest.TestCase):
         self.assertEqual(red_bisp.rule.shape, (nfact, 3))
         self.assertEqual(red_bisp.rule.dtype, int)
 
-        self.assertEqual(red_bisp.weights.shape, (nfact, 3, npol))
+        self.assertEqual(red_bisp.weights.shape, (nfact, 3))
         self.assertEqual(red_bisp.weights.dtype, float)
 
         ells = np.arange(2, lmax+1)
@@ -293,7 +293,7 @@ class TestCosmo(unittest.TestCase):
                                [3, 5, 7]], dtype=int)
         np.testing.assert_array_equal(red_bisp.rule, rule_exp)
 
-        weights_exp = np.ones((nfact, 3, npol))
+        weights_exp = np.ones((nfact, 3))
         # nfact is ordered like flattened (nprim, radii) array.
         # I assume equilateral shape here, so nprim = 3.
         weights_exp[0,...] = (dr * radii[0] ** 2 * 3) ** (1 / 3)
@@ -494,7 +494,7 @@ class TestCosmoIO(unittest.TestCase):
         ells_sparse = np.asarray([3, 5, 7, 10, 13, 15])
         ells_full = np.arange(3, 16)
 
-        weights = np.ones((nfact, 3, npol))
+        weights = np.ones((nfact, 3))
         rule = np.ones((nfact, 3), dtype=int)
         factors = np.ones((n_unique, npol, ells_sparse.size))
         name = 'test_bispec'

@@ -233,17 +233,17 @@ class KSW():
 
         x_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[red_bisp.rule[:,0],pslice,:end_ells_full]
-        x_i_ell *= (red_bisp.weights[:,0,:])[:,pslice,np.newaxis]
+        x_i_ell *= (red_bisp.weights[:,0])[:,np.newaxis,np.newaxis]
         x_i_ell *= self.data.b_ell
 
         y_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[red_bisp.rule[:,1],pslice,:end_ells_full]
-        y_i_ell *= (red_bisp.weights[:,1,:])[:,pslice,np.newaxis]
+        y_i_ell *= (red_bisp.weights[:,1])[:,np.newaxis,np.newaxis]
         y_i_ell *= self.data.b_ell
 
         z_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[red_bisp.rule[:,2],pslice,:end_ells_full]
-        z_i_ell *= (red_bisp.weights[:,2,:])[:,pslice,np.newaxis]
+        z_i_ell *= (red_bisp.weights[:,2])[:,np.newaxis,np.newaxis]
         z_i_ell *= self.data.b_ell
 
         return x_i_ell, y_i_ell, z_i_ell

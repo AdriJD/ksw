@@ -30,7 +30,7 @@ class TestKSW_64(unittest.TestCase):
                 self.ells_full = np.arange(2, 10)
                 self.factors = np.ones((3, self.npol, len(self.ells_full)))
                 self.rule = np.ones((self.nfact, 3), dtype=int)
-                self.weights = np.ones((self.nfact, 3, self.npol))
+                self.weights = np.ones((self.nfact, 3))
                 self.name = 'test'
 
                 self.lmax = self.ells_full[-1]
@@ -504,12 +504,9 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[3] = [0, 1, 2]
 
         # Shape = (nfact, 3, npol).
-        rb.weights[:,0,0] = 1
-        rb.weights[:,0,1] = 0.1
-        rb.weights[:,0,0] = 2
-        rb.weights[:,0,1] = 0.2
-        rb.weights[:,0,0] = 3
-        rb.weights[:,0,1] = 0.3
+        rb.weights[:,0] = 1
+        rb.weights[:,1] = 2
+        rb.weights[:,2] = 3
 
         x_i_ell, y_i_ell, z_i_ell = estimator._init_reduced_bispectrum(
             estimator.cosmology.red_bispectra[0])
@@ -523,16 +520,16 @@ class TestKSW_64(unittest.TestCase):
         # Shape (nfact, npol, data.nell).
         self.assertAlmostEqual(x_i_ell[0,0,0], 0) # Because lmin bisp = 2.
         # Factor 0.1 is for the beam.
-        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0,0] * 0.1,
+        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0] * 0.1,
                                places=self.decimal)
 
-        self.assertAlmostEqual(x_i_ell[3,1,6], rb.factors[0,1,4] * rb.weights[3,0,1] * 0.1, 
+        self.assertAlmostEqual(x_i_ell[3,1,6], rb.factors[0,1,4] * rb.weights[3,0] * 0.1, 
                                places=self.decimal)
 
-        self.assertAlmostEqual(y_i_ell[2,1,4], rb.factors[2,1,2] * rb.weights[2,1,1] * 0.1, 
+        self.assertAlmostEqual(y_i_ell[2,1,4], rb.factors[2,1,2] * rb.weights[2,1] * 0.1, 
                                places=self.decimal)
 
-        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2,0] * 0.1, 
+        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2] * 0.1, 
                                places=self.decimal)
 
     def test_ksw_init_reduced_bispectrum_I(self):
@@ -561,12 +558,9 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[3] = [0, 1, 2]
 
         # Shape = (nfact, 3, npol).
-        rb.weights[:,0,0] = 1
-        rb.weights[:,0,1] = 0.1
-        rb.weights[:,0,0] = 2
-        rb.weights[:,0,1] = 0.2
-        rb.weights[:,0,0] = 3
-        rb.weights[:,0,1] = 0.3
+        rb.weights[:,0] = 1
+        rb.weights[:,1] = 2
+        rb.weights[:,2] = 3
 
         x_i_ell, y_i_ell, z_i_ell = estimator._init_reduced_bispectrum(
             estimator.cosmology.red_bispectra[0])
@@ -580,16 +574,16 @@ class TestKSW_64(unittest.TestCase):
         # Shape (nfact, npol, data.nell).
         self.assertAlmostEqual(x_i_ell[0,0,0], 0, places=self.decimal) # Because lmin bisp = 2.
         # Factor 0.1 is for the beam.
-        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0,0] * 0.1,
+        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,0,0] * rb.weights[0,0] * 0.1,
                                places=self.decimal)
 
-        self.assertAlmostEqual(x_i_ell[3,0,6], rb.factors[0,0,4] * rb.weights[3,0,0] * 0.1,
+        self.assertAlmostEqual(x_i_ell[3,0,6], rb.factors[0,0,4] * rb.weights[3,0] * 0.1,
                                places=self.decimal)
 
-        self.assertAlmostEqual(y_i_ell[2,0,4], rb.factors[2,0,2] * rb.weights[2,1,0] * 0.1
+        self.assertAlmostEqual(y_i_ell[2,0,4], rb.factors[2,0,2] * rb.weights[2,1] * 0.1
                                , places=self.decimal)
 
-        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2,0] * 0.1, 
+        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,0,3] * rb.weights[2,2] * 0.1, 
                                places=self.decimal)
 
     def test_ksw_init_reduced_bispectrum_E(self):
@@ -618,12 +612,9 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[3] = [0, 1, 2]
 
         # Shape = (nfact, 3, npol).
-        rb.weights[:,0,0] = 1
-        rb.weights[:,0,1] = 0.1
-        rb.weights[:,0,0] = 2
-        rb.weights[:,0,1] = 0.2
-        rb.weights[:,0,0] = 3
-        rb.weights[:,0,1] = 0.3
+        rb.weights[:,0] = 1
+        rb.weights[:,1] = 2
+        rb.weights[:,2] = 3
 
         x_i_ell, y_i_ell, z_i_ell = estimator._init_reduced_bispectrum(
             estimator.cosmology.red_bispectra[0])
@@ -637,16 +628,16 @@ class TestKSW_64(unittest.TestCase):
         # Shape (nfact, npol, data.nell).
         self.assertAlmostEqual(x_i_ell[0,0,0], 0) # Because lmin bisp = 2.
         # Factor 0.1 is for the beam.
-        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,1,0] * rb.weights[0,0,1] * 0.1, 
+        self.assertAlmostEqual(x_i_ell[0,0,2], rb.factors[0,1,0] * rb.weights[0,0] * 0.1, 
                                places=self.decimal)
 
-        self.assertAlmostEqual(x_i_ell[3,0,6], rb.factors[0,1,4] * rb.weights[3,0,1] * 0.1,
+        self.assertAlmostEqual(x_i_ell[3,0,6], rb.factors[0,1,4] * rb.weights[3,0] * 0.1,
                                places=self.decimal)
 
-        self.assertAlmostEqual(y_i_ell[2,0,4], rb.factors[2,1,2] * rb.weights[2,1,1] * 0.1, 
+        self.assertAlmostEqual(y_i_ell[2,0,4], rb.factors[2,1,2] * rb.weights[2,1] * 0.1, 
                                places=self.decimal)
 
-        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,1,3] * rb.weights[2,2,1] * 0.1, 
+        self.assertAlmostEqual(z_i_ell[2,0,5], rb.factors[2,1,3] * rb.weights[2,2] * 0.1, 
                                places=self.decimal)
 
     def test_ksw_init_rings(self):
@@ -911,7 +902,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((3, npol, lmax + 1))
         rb.rule = np.ones((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, 1))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -994,7 +985,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1044,7 +1035,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1095,7 +1086,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.factors[:,1,:] = 2
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1172,7 +1163,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors[1] *= 2
         rb.rule = np.zeros((2, 3), dtype=int)
         rb.rule[1] = 1
-        rb.weights = np.ones((2, 3, npol))
+        rb.weights = np.ones((2, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1229,7 +1220,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors[1,1,:] = 6
         rb.rule = np.zeros((2, 3), dtype=int)
         rb.rule[1] = 1
-        rb.weights = np.ones((2, 3, npol))
+        rb.weights = np.ones((2, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1647,7 +1638,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
@@ -1694,7 +1685,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1746,7 +1737,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.factors[:,1,:] = 2
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1835,7 +1826,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors[1] *= 2
         rb.rule = np.zeros((2, 3), dtype=int)
         rb.rule[1] = 1
-        rb.weights = np.ones((2, 3, npol))
+        rb.weights = np.ones((2, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -1892,7 +1883,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors[1,1,:] = 6
         rb.rule = np.zeros((2, 3), dtype=int)
         rb.rule[1] = 1
-        rb.weights = np.ones((2, 3, npol))
+        rb.weights = np.ones((2, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -2435,7 +2426,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -2473,7 +2464,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -2515,7 +2506,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors[1] *= 2
         rb.rule = np.zeros((2, 3), dtype=int)
         rb.rule[1] = 1
-        rb.weights = np.ones((2, 3, npol))
+        rb.weights = np.ones((2, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -2560,7 +2551,7 @@ class TestKSW_64(unittest.TestCase):
         rb.factors[1,1,:] = 6
         rb.rule = np.zeros((2, 3), dtype=int)
         rb.rule[1] = 1
-        rb.weights = np.ones((2, 3, npol))
+        rb.weights = np.ones((2, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -2772,7 +2763,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 
@@ -2813,7 +2804,7 @@ class TestKSW_64(unittest.TestCase):
         rb.lmin = 0
         rb.factors = np.ones((1, npol, lmax + 1))
         rb.rule = np.zeros((1, 3), dtype=int)
-        rb.weights = np.ones((1, 3, npol))
+        rb.weights = np.ones((1, 3))
 
         data.cosmology.red_bispectra[0] = rb
 

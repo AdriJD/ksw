@@ -326,7 +326,7 @@ class Cosmology:
         rule : (nfact, 3) int array
             Array of indices to first dimension of factors that form the
             reduced bispectrum.
-        weights : (nfact, 3, npol) float array
+        weights : (nfact, 3) float array
             (nprim * nr) weights (amp * r^2 dr) for each element in rule.
         '''
 
@@ -337,8 +337,8 @@ class Cosmology:
         factors = np.ascontiguousarray(np.transpose(red_bisp, (3, 0, 2, 1)))
         factors = factors.reshape((ncomp * nr, npol, nell), order='C')
 
-        # For primordial bispectra the last two dims of weights are constant.
-        weights = np.ones((nfact, 3, npol))
+        # For primordial bispectra the last dim of weights is constant.
+        weights = np.ones((nfact, 3))
         rule = np.ones((nfact, 3), dtype=int)
 
         dr = utils.get_trapz_weights(radii) * radii ** 2
@@ -360,7 +360,7 @@ class Cosmology:
 
             signs = np.sign(amp_per_r)
             amp_per_r = signs * np.abs(amp_per_r) ** (1 / 3)
-            weights[start:start+nr] = amp_per_r[:,np.newaxis,np.newaxis]
+            weights[start:start+nr] = amp_per_r[:,np.newaxis]
             # Indices into first dim of factors (which is (ncomp, nr)).
             rule[start:start+nr,:] = ridxs[:,np.newaxis] + (np.asarray(ru) * nr)
             start += nr
@@ -539,7 +539,7 @@ class ReducedBispectrum:
     rule : (nfact, 3) int array
         Indices to first dimension of unique factors array that
         create the (nfact, 3, npol, nell) reduced bispectrum.
-    weights : (nfact, 3, npol) float array
+    weights : (nfact, 3) float array
         Weights for each element in rule.
     ells : (nell_sparse) array
         Possibily sparse array of monotonicially increasing
@@ -554,7 +554,7 @@ class ReducedBispectrum:
     rule : (nfact, 3) int array
         Indices to first dimension of unique factors array that
         create the (nfact, 3, npol, nell) reduced bispectrum.
-    weights : (nfact, 3, npol) float array
+    weights : (nfact, 3) float array
         Weights for each element in rule.
     ells_sparse : (nell_sparse) int array
         Possibily sparse array of monotonicially increasing
@@ -638,9 +638,9 @@ class ReducedBispectrum:
     def weights(self, weights):
         '''Check shape.'''
 
-        if weights.shape[1:] != (3, self.npol):
-            raise ValueError('Shape[1:] of weights is {}, expected {}.'
-                             .format(weights.shape[1:], (3, self.npol)))
+        if weights.shape[1:] != (3,):
+            raise ValueError('Shape[1:] of weights is {}, expected (3,).'
+                             .format(weights.shape[1:]))
         self.__weights = weights
 
     @property
