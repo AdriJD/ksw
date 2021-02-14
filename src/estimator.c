@@ -6,7 +6,7 @@
 // rule : (nfact, 3)
 // f_i_phi : (nufact, nphi)
 
-float t_cubic_on_ring_sp(int *rule, float *f_i_phi, int nrule, int nphi){
+float t_cubic_on_ring_sp(int *rule, float *weights, float *f_i_phi, int nrule, int nphi){
 
     float t_cubic = 0.0;
 
@@ -16,8 +16,13 @@ float t_cubic_on_ring_sp(int *rule, float *f_i_phi, int nrule, int nphi){
 	int ry = rule[ridx*3+1];
 	int rz = rule[ridx*3+2];
 
+	int wx = weights[ridx*3];
+	int wy = weights[ridx*3+1];
+	int wz = weights[ridx*3+2];
+
 	for (int pidx=0; pidx<nphi; pidx++){
-	    t_cubic += f_i_phi[rx*nphi+pidx] * f_i_phi[ry*nphi+pidx] * f_i_phi[rz*nphi+pidx];
+	    t_cubic += wx * wy * wz * f_i_phi[rx*nphi+pidx] * f_i_phi[ry*nphi+pidx]
+		       * f_i_phi[rz*nphi+pidx];
 	}
     }
     return t_cubic;
@@ -82,9 +87,9 @@ void forward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
     }
 }
 
-float t_cubic_sp(float *ct_weights, int *rule, float *f_i_ell, float complex *a_m_ell, 
-		 double *y_m_ell, int ntheta, int nrule, int nell, int npol, int nufact,
-		 int nphi){
+float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell, 
+		 float complex *a_m_ell, double *y_m_ell, int ntheta, int nrule,
+		 int nell, int npol, int nufact, int nphi){
 
     int nm = nphi / 2 + 1;
     float t_cubic = 0.0;
@@ -127,7 +132,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float *f_i_ell, float complex *a_
 		    m_ell_m, n_ell_phi, plan_c2r,
 		    f_i_phi, nell, npol, nufact, nphi);
 	
-	t_cubic += t_cubic_on_ring_sp(rule, f_i_phi, nrule, nphi) 
+	t_cubic += t_cubic_on_ring_sp(rule, weights, f_i_phi, nrule, nphi) 
 	    * PI * ct_weights[tidx] / 3. / (float)nphi;
     }
 

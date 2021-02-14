@@ -10,6 +10,7 @@ void test_t_cubic_on_ring_sp(void){
     float delta = 1e-6;
 
     int *rule = malloc(sizeof rule * nrule * 3);
+    float *weights = malloc(sizeof weights * nrule * 3);
     float *f_i_phi = malloc(sizeof f_i_phi * nufact * nphi);
 
     rule[0] = 0;
@@ -19,15 +20,23 @@ void test_t_cubic_on_ring_sp(void){
     rule[4] = 1;
     rule[5] = 2;
 
+    weights[0] = 1.;
+    weights[1] = 1.;
+    weights[2] = 1.;
+    weights[3] = 2.;
+    weights[4] = 2.;
+    weights[5] = 2.;
+
     for (int i=0; i<nufact*nphi; i++){
 	f_i_phi[i] = (float) i;
     }
     
-    t_cubic = t_cubic_on_ring_sp(rule, f_i_phi, nrule, nphi);
+    t_cubic = t_cubic_on_ring_sp(rule, weights, f_i_phi, nrule, nphi);
 
-    assert_float_equal(432., t_cubic, delta);
+    assert_float_equal(3204., t_cubic, delta);
 
     free(rule);
+    free(weights);
     free(f_i_phi);
 }
 
@@ -121,6 +130,7 @@ void test_t_cubic_sp(void){
 
     float *ct_weights = malloc(sizeof ct_weights * ntheta);
     int *rule = malloc(sizeof rule * nrule * 3);
+    float *weights = malloc(sizeof weights * nrule * 3);
     float *f_i_ell = malloc(sizeof f_i_ell * nufact * npol * nell);
     complex float *a_m_ell = malloc(sizeof a_m_ell * npol * nell * nell);
     double *y_m_ell = malloc(sizeof y_m_ell * ntheta * nell * nell);
@@ -134,6 +144,13 @@ void test_t_cubic_sp(void){
     rule[3] = 0;
     rule[4] = 1;
     rule[5] = 2;
+
+    weights[0] = 1.;
+    weights[1] = 1.;
+    weights[2] = 1.;
+    weights[3] = 1.;
+    weights[4] = 1.;
+    weights[5] = 1.;
 
     // Set all f_i_ells to 1.
     for (int i=0; i<nufact*npol*nell; i++){
@@ -155,7 +172,7 @@ void test_t_cubic_sp(void){
     y_m_ell[nell*nell+6] = 20.;
 
 
-    t_cubic = t_cubic_sp(ct_weights, rule, f_i_ell, a_m_ell, y_m_ell,
+    t_cubic = t_cubic_sp(ct_weights, rule, weights, f_i_ell, a_m_ell, y_m_ell,
 			 ntheta, nrule, nell, npol, nufact, nphi);
 
     exp_ans = 2 * 80 * 80 * 80 * 5 * (1. + 16.) * PI / 3. / (float)nphi;    
@@ -163,6 +180,7 @@ void test_t_cubic_sp(void){
 
     free(ct_weights);
     free(rule);
+    free(weights);
     free(f_i_ell);
     free(a_m_ell);
     free(y_m_ell);

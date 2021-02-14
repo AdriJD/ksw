@@ -13,13 +13,15 @@
  * Arguments
  * ---------
  * rule    : (nrule, 3) array of indices into f_i_phi that give X_i Y_i Z_i.
+ * weights : (nrule, 3) array of weights for X_i Y_i Z_i.
  * f_i_phi : (nufact, nphi) array of unique factors on ring.
  * nrule   : Number of rules. 
  * nphi    : Number phi elements on ring.
  *
  */
 
-float t_cubic_on_ring_sp(int *rule, float *f_i_phi, int nrule, int nphi);
+float t_cubic_on_ring_sp(int *rule, float * weights, float *f_i_phi, int nrule,
+			 int nphi);
 
 /*
  * Convolve a single ring of the map with all unique bispectrum factors.
@@ -50,6 +52,7 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * ---------
  * ct_weights : (ntheta) array of quadruture weights for cos(theta).
  * rule       : (nrule, 3) array
+ * weights    : (nrule, 3) array of weights for X_i Y_i Z_i.
  * f_i_ell    : (nufact * npol * nell) array with unique factors.
  * a_m_ell    : (npol * nell * nell) complex array with ell-major alms.
  * y_m_ell    : (ntheta * nell * nell) array with ell-major Ylms for each ring.
@@ -61,6 +64,6 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * nphi       : Number of phi per ring.
  */
 
-float t_cubic_sp(float *ct_weights, int *rule, float *f_i_ell, float complex *a_m_ell, 
-		 double *y_m_ell, int ntheta, int nrule, int nell, int npol, int nufact,
-		 int nphi);
+float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
+		 float complex *a_m_ell, double *y_m_ell, int ntheta, int nrule,
+		 int nell, int npol, int nufact, int nphi);
