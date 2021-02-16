@@ -29,7 +29,7 @@ float t_cubic_on_ring_sp(int *rule, float * weights, float *f_i_phi, int nrule,
  * Arguments
  * ---------
  * f_i_ell   : (nufact * npol * nell) array with unique factors.
- * a_m_ell   : (npol * nell * nell) complex array with ell-major alms.
+ * a_ell_m   : (npol * nell * nell) complex array with ell-major alms.
  * y_m_ell   : (nell * nell) array with ell-major Ylms.
  * m_ell_m   : (npol * nell * nm) complex array as input for ring fft, nm = nphi / 2 + 1.
  * n_ell_phi : (npol * nell * nphi) array as output for ring fft.
@@ -41,7 +41,7 @@ float t_cubic_on_ring_sp(int *rule, float * weights, float *f_i_phi, int nrule,
  * nphi      : Number of phi per ring.
  */
 
-void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
+void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
 		 float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_c2r,
 		 float *f_i_phi, int nell, int npol, int nufact, int nphi);
 
@@ -51,7 +51,7 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * Arguments
  * ---------
  * f_i_ell    : (nufact * npol * nell) array with unique factors.
- * a_m_ell    : (npol * nell * nell) complex array with ell-major alms.
+ * a_ell_m    : (npol * nell * nell) complex array with ell-major alms.
  * y_m_ell    : (nell * nell) array with ell-major Ylms.
  * m_ell_m    : (npol * nell * nm) complex array as input for ring fft, nm = nphi / 2 + 1.
  * n_ell_phi  : (npol * nell * nphi) array as output for ring fft.
@@ -61,7 +61,7 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * work_i_phi : (nw, nphi) array for internal dT/dX_i_phi, dT/dY_i_phi, dT/dZ_i_phi calulations.
  * rule       : (nrule, 3) array of indices into f_i_phi that give X_i Y_i Z_i.
  * weights    : (nrule, 3) array of weights for X_i Y_i Z_i.
- * ct_weights : (ntheta) array of quadruture weights for cos(theta).
+ * ct_weight  : Single quadruture weight (for cos(theta)) for this ring.
  * nrule      : Number of rules.
  * nw         : Number of elements in work arrays, see get_forward_array_size.
  * nell       : Number of multipoles.
@@ -69,7 +69,7 @@ void backward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * nphi       : Number of phi per ring.
  */
 
-void forward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
+void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
 		float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_r2c,
 		float *f_i_phi, float *work_i_ell, float *work_i_phi,  int *rule,
 		float *weights, float ct_weight, int nrule, int nw, int nell, int npol,
@@ -84,7 +84,7 @@ void forward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  * rule       : (nrule, 3) array
  * weights    : (nrule, 3) array of weights for X_i Y_i Z_i.
  * f_i_ell    : (nufact * npol * nell) array with unique factors.
- * a_m_ell    : (npol * nell * nell) complex array with ell-major alms.
+ * a_ell_m    : (npol * nell * nell) complex array with ell-major alms.
  * y_m_ell    : (ntheta * nell * nell) array with ell-major Ylms for each ring.
  * ntheta     : Number of thetas (rings).
  * nrule      : Number of rules.
@@ -95,7 +95,7 @@ void forward_sp(float *f_i_ell, float complex *a_m_ell, double *y_m_ell,
  */
 
 float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
-		 float complex *a_m_ell, double *y_m_ell, int ntheta, int nrule,
+		 float complex *a_ell_m, double *y_m_ell, int ntheta, int nrule,
 		 int nell, int npol, int nufact, int nphi);
 
 /*
@@ -107,7 +107,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
  * rule       : (nrule, 3) array
  * weights    : (nrule, 3) array of weights for X_i Y_i Z_i.
  * f_i_ell    : (nufact * npol * nell) array with unique factors.
- * a_m_ell    : (npol * nell * nell) complex array with ell-major alms.
+ * a_ell_m    : (npol * nell * nell) complex array with ell-major alms.
  * y_m_ell    : (ntheta * nell * nell) array with ell-major Ylms for each ring.
  * grad_t     : (npol * nell * nell) complex array with ell-major alms.
  * ntheta     : Number of thetas (rings).
@@ -119,7 +119,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
  */
 
 void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell, 
-	     float complex *a_m_ell, double *y_m_ell, float complex *grad_t, 
+	     float complex *a_ell_m, double *y_m_ell, float complex *grad_t, 
 	     int ntheta, int nrule, int nell, int npol, int nufact, int nphi);
 
 /*
