@@ -175,8 +175,8 @@ void test_t_cubic_sp(void){
     t_cubic = t_cubic_sp(ct_weights, rule, weights, f_i_ell, a_ell_m, y_m_ell,
 			 ntheta, nrule, nell, npol, nufact, nphi);
 
-    exp_ans = 2 * 80 * 80 * 80 * 5 * (1. + 16.) * PI / 3. / (float)nphi;    
-    assert_float_equal(exp_ans, t_cubic, delta);
+    exp_ans = 2 * 80 * 80 * 80 * 5 * (1. + 16.) * PI / 3. / (float)nphi;
+    assert_float_equal(1.0, exp_ans / t_cubic, delta);
 
     free(ct_weights);
     free(rule);
@@ -442,6 +442,126 @@ void test_forward_sp(void){
     free(weights);
 }
 
+void test_step_sp(void){
+
+    int nufact = 3;
+    int npol = 2;
+    int nell = 3;
+    int nphi = 5;
+    int nm = nphi / 2 + 1;
+    int nrule = 3;
+    int ntheta = 2;
+
+    float delta = 1e-6;
+
+    float *ct_weights = malloc(sizeof ct_weights * ntheta);
+    int *rule = malloc(sizeof rule * nrule * 3);
+    float *weights = malloc(sizeof weights * nrule * 3);
+    float *f_i_ell = malloc(sizeof f_i_ell * nufact * npol * nell);
+    float complex *a_ell_m = malloc(sizeof a_ell_m * npol * nell * nell);
+    double *y_m_ell = malloc(sizeof y_m_ell * ntheta * nell * nell);
+    float complex *grad_t = malloc(sizeof a_ell_m * npol * nell * nell);
+
+    for (int i=0; i<npol*nell*nell; i++){
+	a_ell_m[i] = 0.;
+    }
+    // Set ell=2, m=0 elements for both polarizations.
+    a_ell_m[6] = 1.;
+    a_ell_m[15] = 7.;
+
+    for (int i=0; i<ntheta*nell*nell; i++){
+	y_m_ell[i] = 0.;
+    }
+    // Set ell=2, m=0 elements.
+    y_m_ell[6] = 10.;
+    y_m_ell[nell*nell+6] = 20.;
+
+    // Set all f_i_ells to 1.
+    for (int i=0; i<nufact*npol*nell; i++){
+	f_i_ell[i] = 1.;
+    }
+
+    rule[0] = 0;
+    rule[1] = 0;
+    rule[2] = 0;
+
+    rule[3] = 0;
+    rule[4] = 0;
+    rule[5] = 1;
+
+    rule[6] = 0;
+    rule[7] = 1;
+    rule[8] = 2;
+
+    weights[0] = 1;
+    weights[1] = 2;
+    weights[2] = 3;
+
+    weights[3] = 4;
+    weights[4] = 5;
+    weights[5] = 6;
+
+    weights[6] = 7;
+    weights[7] = 8;
+    weights[8] = 9;
+
+    ct_weights[0] = 1.;
+    ct_weights[1] = 2.;
+
+    for (int i=0; i<npol*nell*nell; i++){
+	grad_t[i] = 0;
+    }
+
+    step_sp(ct_weights, rule, weights, f_i_ell, a_ell_m, y_m_ell, grad_t, 
+	    ntheta, nrule, nell, npol, nufact, nphi);
+
+    assert_float_equal(creal(grad_t[0]), 0, delta);    
+    assert_float_equal(creal(grad_t[1]), 0, delta);    
+    assert_float_equal(creal(grad_t[2]), 0, delta);    
+    assert_float_equal(creal(grad_t[3]), 0, delta);    
+    assert_float_equal(creal(grad_t[4]), 0, delta);    
+    assert_float_equal(creal(grad_t[5]), 0, delta);    
+    assert_float_equal(1.0, creal(grad_t[6]) / 2153373268.476, delta);
+    assert_float_equal(creal(grad_t[7]), 0, delta);    
+    assert_float_equal(creal(grad_t[8]), 0, delta);    
+    assert_float_equal(creal(grad_t[9]), 0, delta);    
+    assert_float_equal(creal(grad_t[10]), 0, delta);    
+    assert_float_equal(creal(grad_t[11]), 0, delta);    
+    assert_float_equal(creal(grad_t[12]), 0, delta);    
+    assert_float_equal(creal(grad_t[13]), 0, delta);    
+    assert_float_equal(creal(grad_t[14]), 0, delta);    
+    assert_float_equal(1.0, creal(grad_t[15]) / 2153373268.476, delta);
+    assert_float_equal(creal(grad_t[16]), 0, delta);    
+    assert_float_equal(creal(grad_t[17]), 0, delta);    
+
+    assert_float_equal(cimag(grad_t[0]), 0, delta);    
+    assert_float_equal(cimag(grad_t[1]), 0, delta);    
+    assert_float_equal(cimag(grad_t[2]), 0, delta);    
+    assert_float_equal(cimag(grad_t[3]), 0, delta);    
+    assert_float_equal(cimag(grad_t[4]), 0, delta);    
+    assert_float_equal(cimag(grad_t[5]), 0, delta);    
+    assert_float_equal(cimag(grad_t[6]), 0, delta);    
+    assert_float_equal(cimag(grad_t[7]), 0, delta);    
+    assert_float_equal(cimag(grad_t[8]), 0, delta);    
+    assert_float_equal(cimag(grad_t[9]), 0, delta);    
+    assert_float_equal(cimag(grad_t[10]), 0, delta);    
+    assert_float_equal(cimag(grad_t[11]), 0, delta);    
+    assert_float_equal(cimag(grad_t[12]), 0, delta);    
+    assert_float_equal(cimag(grad_t[13]), 0, delta);    
+    assert_float_equal(cimag(grad_t[14]), 0, delta);    
+    assert_float_equal(cimag(grad_t[15]), 0, delta);    
+    assert_float_equal(cimag(grad_t[16]), 0, delta);    
+    assert_float_equal(cimag(grad_t[17]), 0, delta);    
+
+    free(ct_weights);
+    free(rule);
+    free(weights);
+    free(f_i_ell);
+    free(a_ell_m);
+    free(y_m_ell);
+    free(grad_t);
+}
+
 void test_fixture_estimator(void){
 
   test_fixture_start();
@@ -451,6 +571,7 @@ void test_fixture_estimator(void){
   run_test(test_t_cubic_sp);
   run_test(test_get_forward_array_size);
   run_test(test_forward_sp);
+  run_test(test_step_sp);
 
   test_fixture_end();
 }

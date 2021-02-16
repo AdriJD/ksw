@@ -311,6 +311,10 @@ void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
     float *work_i_phi = fftwf_malloc(sizeof *work_i_phi * nw * nphi);    
     float complex *grad_t_priv = fftwf_malloc(sizeof *grad_t_priv * npol * nell * nell);	
 
+    for (int i=0; i<npol*nell*nell; i++){
+	grad_t_priv[i] = 0;
+    }
+
     if (m_ell_m == NULL || n_ell_phi == NULL || f_i_phi == NULL){
 	fftwf_free(m_ell_m);
 	fftwf_free(n_ell_phi);
@@ -324,10 +328,10 @@ void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
 	backward_sp(f_i_ell, a_ell_m, y_m_ell + tidx * nell * nell,
 		    m_ell_m, n_ell_phi, plan_c2r,
 		    f_i_phi, nell, npol, nufact, nphi);
-
-	forward_sp(f_i_ell, grad_t_priv, y_m_ell, m_ell_m, n_ell_phi, plan_r2c,
-		   f_i_phi, work_i_ell, work_i_phi, rule, weights, 
-		   ct_weights[tidx], nrule, nw, nell, npol, nphi);		
+	forward_sp(f_i_ell, grad_t_priv, y_m_ell + tidx * nell * nell,
+		   m_ell_m, n_ell_phi, plan_r2c, f_i_phi, work_i_ell,
+		   work_i_phi, rule, weights, ct_weights[tidx], nrule,
+		   nw, nell, npol, nphi);		
     }
 
     #pragma omp critical
