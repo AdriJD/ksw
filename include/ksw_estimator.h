@@ -33,7 +33,7 @@ float t_cubic_on_ring_sp(int *rule, float * weights, float *f_i_phi, int nrule,
  * ---------
  * f_i_ell   : (nufact * npol * nell) array with unique factors.
  * a_ell_m   : (npol * nell * nell) complex array with ell-major alms.
- * y_m_ell   : (nell * nell) array with ell-major Ylms.
+ * y_m_ell   : (nell * nell) array with m-major Ylms.
  * m_ell_m   : (npol * nell * nm) complex array as input for ring fft, nm = nphi / 2 + 1.
  * n_ell_phi : (npol * nell * nphi) array as output for ring fft.
  * plan_c2r  : fftw plan for ring complex2real fft.
@@ -44,7 +44,7 @@ float t_cubic_on_ring_sp(int *rule, float * weights, float *f_i_phi, int nrule,
  * nphi      : Number of phi per ring.
  */
 
-void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
+void backward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
 		 float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_c2r,
 		 float *f_i_phi, int nell, int npol, int nufact, int nphi);
 
@@ -55,7 +55,7 @@ void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
  * ---------
  * f_i_ell    : (nufact * npol * nell) array with unique factors.
  * a_ell_m    : (npol * nell * nell) complex array with ell-major alms.
- * y_m_ell    : (nell * nell) array with ell-major Ylms.
+ * y_m_ell    : (nell * nell) array with m-major Ylms.
  * m_ell_m    : (npol * nell * nm) complex array as input for ring fft, nm = nphi / 2 + 1.
  * n_ell_phi  : (npol * nell * nphi) array as output for ring fft.
  * plan_r2c   : fftw plan for ring rea2complex fft.
@@ -72,7 +72,7 @@ void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
  * nphi       : Number of phi per ring.
  */
 
-void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
+void forward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
 		float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_r2c,
 		float *f_i_phi, float *work_i_ell, float *work_i_phi,  int *rule,
 		float *weights, float ct_weight, int nrule, int nw, int nell, int npol,
@@ -88,7 +88,7 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
  * weights    : (nrule, 3) array of weights for X_i Y_i Z_i.
  * f_i_ell    : (nufact * npol * nell) array with unique factors.
  * a_ell_m    : (npol * nell * nell) complex array with ell-major alms.
- * y_m_ell    : (ntheta * nell * nell) array with ell-major Ylms for each ring.
+ * y_m_ell    : (ntheta * nell * nell) array with m-major Ylms for each ring.
  * ntheta     : Number of thetas (rings).
  * nrule      : Number of rules.
  * nell       : Number of multipoles.
@@ -98,7 +98,7 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
  */
 
 float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
-		 float complex *a_ell_m, double *y_m_ell, int ntheta, int nrule,
+		 float complex *a_ell_m, float *y_m_ell, int ntheta, int nrule,
 		 int nell, int npol, int nufact, int nphi);
 
 /*
@@ -111,7 +111,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
  * weights    : (nrule, 3) array of weights for X_i Y_i Z_i.
  * f_i_ell    : (nufact * npol * nell) array with unique factors.
  * a_ell_m    : (npol * nell * nell) complex array with ell-major alms.
- * y_m_ell    : (ntheta * nell * nell) array with ell-major Ylms for each ring.
+ * y_m_ell    : (ntheta * nell * nell) array with m-major Ylms for each ring.
  * grad_t     : (npol * nell * nell) complex array with ell-major alms.
  * ntheta     : Number of thetas (rings).
  * nrule      : Number of rules.
@@ -122,7 +122,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
  */
 
 void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell, 
-	     float complex *a_ell_m, double *y_m_ell, float complex *grad_t, 
+	     float complex *a_ell_m, float *y_m_ell, float complex *grad_t, 
 	     int ntheta, int nrule, int nell, int npol, int nufact, int nphi);
 
 /*

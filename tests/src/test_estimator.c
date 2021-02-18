@@ -52,7 +52,7 @@ void test_backward_sp(void){
 
     float *f_i_ell = malloc(sizeof f_i_ell * nufact * npol * nell);
     complex float *a_ell_m = malloc(sizeof a_ell_m * npol * nell * nell);
-    double *y_m_ell = malloc(sizeof y_m_ell * nell * nell);
+    float *y_m_ell = malloc(sizeof y_m_ell * nell * nell);
     float *f_i_phi = malloc(sizeof f_i_phi * nufact * nphi);
 
     for (int i=0; i<npol*nell*nell; i++){
@@ -66,7 +66,7 @@ void test_backward_sp(void){
 	y_m_ell[i] = 0.;
     }
     // Set ell=2, m=0 element.
-    y_m_ell[6] = 10.;
+    y_m_ell[2] = 10.;
 
     // Set all f_i_ells to 1.
     for (int i=0; i<nufact*npol*nell; i++){
@@ -133,7 +133,7 @@ void test_t_cubic_sp(void){
     float *weights = malloc(sizeof weights * nrule * 3);
     float *f_i_ell = malloc(sizeof f_i_ell * nufact * npol * nell);
     complex float *a_ell_m = malloc(sizeof a_ell_m * npol * nell * nell);
-    double *y_m_ell = malloc(sizeof y_m_ell * ntheta * nell * nell);
+    float *y_m_ell = malloc(sizeof y_m_ell * ntheta * nell * nell);
 
     ct_weights[0] = 1.;
     ct_weights[1] = 2.;
@@ -168,8 +168,8 @@ void test_t_cubic_sp(void){
 	y_m_ell[i] = 0.;
     }
     // Set ell=2, m=0 elements.
-    y_m_ell[6] = 10.;
-    y_m_ell[nell*nell+6] = 20.;
+    y_m_ell[2] = 10.;
+    y_m_ell[nell*nell+2] = 20.;
 
 
     t_cubic = t_cubic_sp(ct_weights, rule, weights, f_i_ell, a_ell_m, y_m_ell,
@@ -265,7 +265,7 @@ void test_forward_sp(void){
 
     float *f_i_ell = malloc(sizeof f_i_ell * nufact * npol * nell);
     float complex *a_ell_m = malloc(sizeof a_ell_m * npol * nell * nell);
-    double *y_m_ell = malloc(sizeof y_m_ell * nell * nell);
+    float *y_m_ell = malloc(sizeof y_m_ell * nell * nell);
     float complex *m_ell_m = fftwf_malloc(sizeof *m_ell_m * npol * nell * nm);
     float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
     float *f_i_phi = malloc(sizeof f_i_phi * nufact * nphi);
@@ -459,7 +459,7 @@ void test_step_sp(void){
     float *weights = malloc(sizeof weights * nrule * 3);
     float *f_i_ell = malloc(sizeof f_i_ell * nufact * npol * nell);
     float complex *a_ell_m = malloc(sizeof a_ell_m * npol * nell * nell);
-    double *y_m_ell = malloc(sizeof y_m_ell * ntheta * nell * nell);
+    float *y_m_ell = malloc(sizeof y_m_ell * ntheta * nell * nell);
     float complex *grad_t = malloc(sizeof a_ell_m * npol * nell * nell);
 
     for (int i=0; i<npol*nell*nell; i++){
@@ -473,8 +473,8 @@ void test_step_sp(void){
 	y_m_ell[i] = 0.;
     }
     // Set ell=2, m=0 elements.
-    y_m_ell[6] = 10.;
-    y_m_ell[nell*nell+6] = 20.;
+    y_m_ell[2] = 10.;
+    y_m_ell[nell*nell+2] = 20.;
 
     // Set all f_i_ells to 1.
     for (int i=0; i<nufact*npol*nell; i++){

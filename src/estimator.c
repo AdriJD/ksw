@@ -22,7 +22,7 @@ float t_cubic_on_ring_sp(int *rule, float *weights, float *f_i_phi, int nrule, i
     return t_cubic;
 }
 
-void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
+void backward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
 		 float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_c2r,
 		 float *f_i_phi, int nell, int npol, int nufact, int nphi){
 
@@ -33,17 +33,17 @@ void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
 	for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 	    for (ptrdiff_t midx=0; midx<nm; midx++){
 
-		complex double tmp;
+		complex float tmp;
 
 		if (midx < nell){
-		    tmp = (complex double) a_ell_m[pidx*nell*nell+lidx*nell+midx]
-			* (complex double) y_m_ell[lidx*nell+midx];
+		    tmp = a_ell_m[pidx*nell*nell+lidx*nell+midx]
+			  * y_m_ell[midx*nell+lidx];
 		} else{
 		    // Needed because m_ell_m array can be larger than alm.
 		    tmp = 0. + 0.*I;
 		}
-		m_ell_m[pidx*nell*nm+lidx*nm+midx] = (complex float) tmp;
 
+		m_ell_m[pidx*nell*nm+lidx*nm+midx] = tmp;
 	    }
 	}
     }
@@ -62,7 +62,7 @@ void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
 		0.0, f_i_phi, nphi);    
 }
 
-void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
+void forward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
 		float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_r2c,
 		float *f_i_phi, float *work_i_ell, float *work_i_phi,  int *rule,
 		float *weights, float ct_weight, int nrule, int nw, int nell, int npol,
@@ -204,15 +204,18 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
 	for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 	    for (ptrdiff_t midx=0; midx<nell; midx++){
     
-		a_ell_m[pidx*nell*nell+lidx*nell+midx] += (complex float) 
-		    y_m_ell[lidx*nell+midx] * m_ell_m[pidx*nell*nm+lidx*nm+midx];
+		//a_ell_m[pidx*nell*nell+lidx*nell+midx] += (complex float) 
+		//  y_m_ell[lidx*nell+midx] * m_ell_m[pidx*nell*nm+lidx*nm+midx];
+		a_ell_m[pidx*nell*nell+lidx*nell+midx] += y_m_ell[midx*nell+lidx] 
+		    * m_ell_m[pidx*nell*nm+lidx*nm+midx];
+
 	    }
 	}
     }        
 }
 
 float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell, 
-		 float complex *a_ell_m, double *y_m_ell, int ntheta, int nrule,
+		 float complex *a_ell_m, float *y_m_ell, int ntheta, int nrule,
 		 int nell, int npol, int nufact, int nphi){
 
     int nm = nphi / 2 + 1;
@@ -271,7 +274,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
 }
 
 void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell, 
-	     float complex *a_ell_m, double *y_m_ell, float complex *grad_t, 
+	     float complex *a_ell_m, float *y_m_ell, float complex *grad_t, 
 	     int ntheta, int nrule, int nell, int npol, int nufact, int nphi){
  
     int nm = nphi / 2 + 1;
