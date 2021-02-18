@@ -1,6 +1,7 @@
 #include <ksw_estimator.h>
 
-float t_cubic_on_ring_sp(int *rule, float *weights, float *f_i_phi, int nrule, int nphi){
+float t_cubic_on_ring_sp(const int *rule, const float *weights, const float *f_i_phi,
+			 int nrule, int nphi){
 
     float t_cubic = 0.0;
 
@@ -22,9 +23,10 @@ float t_cubic_on_ring_sp(int *rule, float *weights, float *f_i_phi, int nrule, i
     return t_cubic;
 }
 
-void backward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
-		 float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_c2r,
-		 float *f_i_phi, int nell, int npol, int nufact, int nphi){
+void backward_sp(const float *f_i_ell, const float complex *a_ell_m, 
+		 const float *y_m_ell, float complex *m_ell_m, float *n_ell_phi,
+		 fftwf_plan plan_c2r, float *f_i_phi, int nell, int npol, int nufact,
+		 int nphi){
 
     int nm = nphi / 2 + 1;
 
@@ -62,11 +64,11 @@ void backward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
 		0.0, f_i_phi, nphi);    
 }
 
-void forward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
+void forward_sp(const float *f_i_ell, float complex *a_ell_m, const float *y_m_ell,
 		float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_r2c,
-		float *f_i_phi, float *work_i_ell, float *work_i_phi,  int *rule,
-		float *weights, float ct_weight, int nrule, int nw, int nell, int npol,
-		int nphi){
+		const float *f_i_phi, float *work_i_ell, float *work_i_phi,
+		const int *rule, const float *weights, const float ct_weight,
+		int nrule, int nw, int nell, int npol, int nphi){
 
     int widx = 0; // Index to work arrays.
     int nm = nphi / 2 + 1;
@@ -202,10 +204,8 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
     // Multiply by ylm and add result to alm.
     for (ptrdiff_t pidx=0; pidx<npol; pidx++){
 	for (ptrdiff_t lidx=0; lidx<nell; lidx++){
-	    for (ptrdiff_t midx=0; midx<nell; midx++){
+	    for (ptrdiff_t midx=0; midx<=lidx; midx++){
     
-		//a_ell_m[pidx*nell*nell+lidx*nell+midx] += (complex float) 
-		//  y_m_ell[lidx*nell+midx] * m_ell_m[pidx*nell*nm+lidx*nm+midx];
 		a_ell_m[pidx*nell*nell+lidx*nell+midx] += y_m_ell[midx*nell+lidx] 
 		    * m_ell_m[pidx*nell*nm+lidx*nm+midx];
 
@@ -214,8 +214,9 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, float *y_m_ell,
     }        
 }
 
-float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell, 
-		 float complex *a_ell_m, float *y_m_ell, int ntheta, int nrule,
+float t_cubic_sp(const float *ct_weights, const int *rule, const float *weights,
+		 const float *f_i_ell, const float complex *a_ell_m,
+		 const float *y_m_ell, int ntheta, int nrule,
 		 int nell, int npol, int nufact, int nphi){
 
     int nm = nphi / 2 + 1;
@@ -273,9 +274,10 @@ float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
     return t_cubic;
 }
 
-void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell, 
-	     float complex *a_ell_m, float *y_m_ell, float complex *grad_t, 
-	     int ntheta, int nrule, int nell, int npol, int nufact, int nphi){
+void step_sp(const float *ct_weights, const int *rule, const float *weights,
+	     const float *f_i_ell, const float complex *a_ell_m, const float *y_m_ell,
+	     float complex *grad_t, int ntheta, int nrule, int nell, int npol, 
+	     int nufact, int nphi){
  
     int nm = nphi / 2 + 1;
     float t_cubic = 0.0;
@@ -357,7 +359,7 @@ void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
     fftwf_destroy_plan(plan_r2c);
 }
 
-int get_forward_array_size(int *rule, int nrule){
+int get_forward_array_size(const int *rule, int nrule){
 
     int array_size = 0;
 
