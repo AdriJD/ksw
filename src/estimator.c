@@ -4,7 +4,7 @@ float t_cubic_on_ring_sp(int *rule, float *weights, float *f_i_phi, int nrule, i
 
     float t_cubic = 0.0;
 
-    for (int ridx=0; ridx<nrule; ridx++){
+    for (ptrdiff_t ridx=0; ridx<nrule; ridx++){
 
 	int rx = rule[ridx*3];
 	int ry = rule[ridx*3+1];
@@ -14,7 +14,7 @@ float t_cubic_on_ring_sp(int *rule, float *weights, float *f_i_phi, int nrule, i
 	int wy = weights[ridx*3+1];
 	int wz = weights[ridx*3+2];
 
-	for (int phidx=0; phidx<nphi; phidx++){
+	for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 	    t_cubic += wx * wy * wz * f_i_phi[rx*nphi+phidx] * f_i_phi[ry*nphi+phidx]
 		       * f_i_phi[rz*nphi+phidx];
 	}
@@ -29,9 +29,9 @@ void backward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
     int nm = nphi / 2 + 1;
 
     // Place alm * Ylm into Mlm.
-    for (int pidx=0; pidx<npol; pidx++){
-	for (int lidx=0; lidx<nell; lidx++){
-	    for (int midx=0; midx<nm; midx++){
+    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+	for (ptrdiff_t lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t midx=0; midx<nm; midx++){
 
 		complex double tmp;
 
@@ -71,7 +71,7 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
     int widx = 0; // Index to work arrays.
     int nm = nphi / 2 + 1;
 
-    for (int ridx=0; ridx<nrule; ridx++){
+    for (ptrdiff_t ridx=0; ridx<nrule; ridx++){
 
 	int rx = rule[ridx*3];
 	int ry = rule[ridx*3+1];
@@ -82,102 +82,102 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
 
 	// Fill work arrays.
 	if (rx == ry && rx == rz){ // Case: 000.
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[widx*npol*nell+pidx*nell+lidx] = 3. * weight
 			* f_i_ell[rx*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[widx*nphi+phidx] = f_i_phi[ry*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
 	    widx += 1;
 	} else if (rx == ry && ry != rz){ // Case: 001.
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[widx*npol*nell+pidx*nell+lidx] = 2. * weight
 			* f_i_ell[rx*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[(widx+1)*npol*nell+pidx*nell+lidx] = weight
 			* f_i_ell[rz*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[widx*nphi+phidx] = f_i_phi[ry*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[(widx+1)*nphi+phidx] = f_i_phi[rx*nphi+phidx] * f_i_phi[ry*nphi+phidx];
 	    }
 	    widx += 2;
 	} else if (rx != ry && ry == rz){ // Case: 100.
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[widx*npol*nell+pidx*nell+lidx] = weight
 			* f_i_ell[rx*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[(widx+1)*npol*nell+pidx*nell+lidx] = 2. * weight
 			* f_i_ell[ry*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[widx*nphi+phidx] = f_i_phi[ry*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[(widx+1)*nphi+phidx] = f_i_phi[rx*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
 	    widx += 2;
 	} else if (rx == rz && rx != ry){ // Case 010.
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[widx*npol*nell+pidx*nell+lidx] = 2. * weight
 			* f_i_ell[rx*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[(widx+1)*npol*nell+pidx*nell+lidx] = weight
 			* f_i_ell[ry*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[widx*nphi+phidx] = f_i_phi[ry*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[(widx+1)*nphi+phidx] = f_i_phi[rx*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
 	    widx += 2;
 	} else { // Case: 012.
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[widx*npol*nell+pidx*nell+lidx] = weight
 			* f_i_ell[rx*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[(widx+1)*npol*nell+pidx*nell+lidx] = weight
 			* f_i_ell[ry*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int pidx=0; pidx<npol; pidx++){
-		for (int lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+		for (ptrdiff_t lidx=0; lidx<nell; lidx++){
 		    work_i_ell[(widx+2)*npol*nell+pidx*nell+lidx] = weight
 			* f_i_ell[rz*npol*nell+pidx*nell+lidx];
 		}
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[widx*nphi+phidx] = f_i_phi[ry*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[(widx+1)*nphi+phidx] = f_i_phi[rx*nphi+phidx] * f_i_phi[rz*nphi+phidx];
 	    }
-	    for (int phidx=0; phidx<nphi; phidx++){
+	    for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 		work_i_phi[(widx+2)*nphi+phidx] = f_i_phi[rx*nphi+phidx] * f_i_phi[ry*nphi+phidx];
 	    }
 	    widx += 3;
@@ -200,9 +200,9 @@ void forward_sp(float *f_i_ell, float complex *a_ell_m, double *y_m_ell,
     fftwf_execute_dft_r2c(plan_r2c, n_ell_phi, m_ell_m);
 
     // Multiply by ylm and add result to alm.
-    for (int pidx=0; pidx<npol; pidx++){
-	for (int lidx=0; lidx<nell; lidx++){
-	    for (int midx=0; midx<nell; midx++){
+    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+	for (ptrdiff_t lidx=0; lidx<nell; lidx++){
+	    for (ptrdiff_t midx=0; midx<nell; midx++){
     
 		a_ell_m[pidx*nell*nell+lidx*nell+midx] += (complex float) 
 		    y_m_ell[lidx*nell+midx] * m_ell_m[pidx*nell*nm+lidx*nm+midx];
@@ -249,7 +249,7 @@ float t_cubic_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
     }
 
     #pragma omp for reduction (+:t_cubic)
-    for (int tidx=0; tidx<ntheta; tidx++){
+    for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
 
 	backward_sp(f_i_ell, a_ell_m, y_m_ell + tidx * nell * nell,
 		    m_ell_m, n_ell_phi, plan_c2r,
@@ -311,7 +311,7 @@ void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
     float *work_i_phi = fftwf_malloc(sizeof *work_i_phi * nw * nphi);    
     float complex *grad_t_priv = fftwf_malloc(sizeof *grad_t_priv * npol * nell * nell);	
 
-    for (int i=0; i<npol*nell*nell; i++){
+    for (ptrdiff_t i=0; i<npol*nell*nell; i++){
 	grad_t_priv[i] = 0;
     }
 
@@ -323,7 +323,7 @@ void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
     }
 
     #pragma omp for
-    for (int tidx=0; tidx<ntheta; tidx++){
+    for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
 
 	backward_sp(f_i_ell, a_ell_m, y_m_ell + tidx * nell * nell,
 		    m_ell_m, n_ell_phi, plan_c2r,
@@ -336,7 +336,7 @@ void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
 
     #pragma omp critical
     {
-	for (int i=0; i<npol*nell*nell; i++){
+	for (ptrdiff_t i=0; i<npol*nell*nell; i++){
 	    grad_t[i] += grad_t_priv[i];
 	}	
     }
@@ -358,7 +358,7 @@ int get_forward_array_size(int *rule, int nrule){
 
     int array_size = 0;
 
-    for (int ridx=0; ridx<nrule; ridx++){
+    for (ptrdiff_t ridx=0; ridx<nrule; ridx++){
 
 	int rx = rule[ridx*3];
 	int ry = rule[ridx*3+1];
@@ -376,6 +376,37 @@ int get_forward_array_size(int *rule, int nrule){
     return array_size;
 }
 
-void compute_ylm(){
+void compute_ylm_sp(const double *thetas, float *y_m_ell, int ntheta, int lmax){
 
+    int nell = lmax + 1;
+    double epsilon = 1e-300;
+
+    #pragma omp parallel
+    {
+    Ylmgen_C ygen;
+
+    // Sse2 version not needed, ylm computation is subdominant to filling the ylm
+    // array, i.e. it's really fast.
+    Ylmgen_init(&ygen, lmax, lmax, 0, 0, epsilon);
+    Ylmgen_set_theta(&ygen, thetas, ntheta);
+
+    #pragma omp for schedule(dynamic, 10)
+    for (ptrdiff_t midx=0; midx<nell; midx++){ 
+	
+	for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
+	
+	    Ylmgen_prepare(&ygen, tidx, midx);
+	    Ylmgen_recalc_Ylm(&ygen);
+
+	    ptrdiff_t firstl = *ygen.firstl;
+
+	    for (ptrdiff_t lidx=firstl; lidx<nell; lidx++){
+		
+		y_m_ell[tidx*nell*nell+midx*nell+lidx] = (float) ygen.ylm[lidx];
+	    }
+	}
+    }
+
+    Ylmgen_destroy(&ygen);
+    } // End of parallel region.
 }

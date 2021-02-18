@@ -13,6 +13,9 @@ PDIR = $(DIR)/ksw
 HS_SDIR = $(DIR)/hyperspherical/src
 HS_IDIR = $(DIR)/hyperspherical/include
 
+LP_SDIR = $(DIR)/libpshtlight
+LP_IDIR = $(DIR)/libpshtlight
+
 NEWDIRS = $(LDIR) $(ODIR) $(TDIR)/obj $(TDIR)/bin
 $(info $(shell mkdir -p -v $(NEWDIRS)))
 
@@ -23,6 +26,10 @@ OPTFLAG = -march=native -O3 -ffast-math
 RF_OBJECTS = $(ODIR)/radial_functional.o \
              $(ODIR)/common.o \
              $(ODIR)/hyperspherical.o
+
+LP_OBJECTS = $(ODIR)/ylmgen_c.o \
+             $(ODIR)/c_utils.o \
+	     $(ODIR)/walltime_c.o 
 
 EST_OBJECTS = $(ODIR)/estimator.o
 
@@ -56,11 +63,20 @@ $(ODIR)/common.o: $(HS_SDIR)/common.c $(HS_IDIR)/common.h $(HS_IDIR)/svnversion.
 $(ODIR)/hyperspherical.o: $(HS_SDIR)/hyperspherical.c $(HS_IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(HS_IDIR)
 
-$(LDIR)/libksw_estimator.so: $(EST_OBJECTS)
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< 
+$(LDIR)/libksw_estimator.so: $(EST_OBJECTS) $(LP_OBJECTS) $(IDIR)/ksw_estimator.h
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS)
 
 $(ODIR)/estimator.o: $(SDIR)/estimator.c $(IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL)
+
+$(ODIR)/ylmgen_c.o: $(LP_SDIR)/ylmgen_c.c $(LP_IDIR)/*.h
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) 
+
+$(ODIR)/c_utils.o: $(LP_SDIR)/c_utils.c $(LP_IDIR)/*.h
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) 
+
+$(ODIR)/walltime_c.o: $(LP_SDIR)/walltime_c.c $(LP_IDIR)/*.h
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) 
 
 check: check_c check_python
 
@@ -70,11 +86,11 @@ check_c: $(TDIR)/bin/run_tests
 check_python:
 	cd $(TDIR); python -m pytest python/
 
-$(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(RF_OBJECTS) $(LDIR)/libradial_functional.so $(LDIR)/libksw_estimator.so
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include -L$(LDIR) -lradial_functional -lksw_estimator $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp -Wl,-rpath,$(LDIR)
+$(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(LDIR)/libradial_functional.so $(LDIR)/libksw_estimator.so
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -L$(LDIR) -lradial_functional -lksw_estimator $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp -Wl,-rpath,$(LDIR)
 
 $(TDIR)/obj/run_tests.o: $(TDIR)/src/run_tests.c $(TDIR)/include/seatest.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include -I$(IDIR)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include -I$(IDIR) -I$(LP_IDIR)
 
 $(TDIR)/obj/seatest.o: $(TDIR)/src/seatest.c $(TDIR)/include/seatest.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include
@@ -83,7 +99,7 @@ $(TDIR)/obj/test_radial_functional.o: $(TDIR)/src/test_radial_functional.c $(IDI
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
 
 $(TDIR)/obj/test_estimator.o: $(TDIR)/src/test_estimator.c $(IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) -I$(TDIR)/include
 
 clean:
 	rm -rf $(ODIR)

@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <math.h>
 #include <complex.h>
 #include <omp.h>
 #include <fftw3.h>
 #include <mkl_cblas.h>
+#include <ylmgen_c.h>
 
 #define PI 3.14159265358979323846
 
@@ -135,3 +138,16 @@ void step_sp(float *ct_weights, int *rule, float *weights, float *f_i_ell,
  */
 
 int get_forward_array_size(int *rule, int nrule);
+
+/*
+ * Compute Ylm(theta,0) for a range of thetas.
+ *
+ * Arguments
+ * ---------
+ * thetas  : (ntheta) array of theta values.
+ * y_m_ell : (ntheta, nm, nell) output array.
+ * ntheta  : number of theta values.
+ * lmax    : Maximum multipole (determining nell=nm=lmax+1).
+ */
+
+void compute_ylm_sp(const double *thetas, float *y_m_ell, int ntheta, int lmax);

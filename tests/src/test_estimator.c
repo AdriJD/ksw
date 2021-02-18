@@ -562,6 +562,55 @@ void test_step_sp(void){
     free(grad_t);
 }
 
+void test_compute_ylm_sp(void){
+
+    int ntheta = 2;
+    int lmax = 2;
+    int nell = lmax + 1;    
+    float delta = 1e-6;
+
+    double *thetas = malloc(sizeof thetas * ntheta);
+    float *y_m_ell = calloc(ntheta * nell * nell, sizeof y_m_ell);
+
+    thetas[0] = 0.1;
+    thetas[1] = 0.5;
+    
+    compute_ylm_sp(thetas, y_m_ell, ntheta, lmax);
+        
+    assert_float_equal(1.0, y_m_ell[0] / sqrt(1 / 4. / PI), delta); // m=0, l=0.
+    assert_float_equal(1.0, y_m_ell[1] / (sqrt(3 / 4. / PI) * cos(thetas[0])),
+		       delta); // m=0, l=1.
+    assert_float_equal(1.0, y_m_ell[2] / (sqrt(5 / 16. / PI) * (3 * cos(thetas[0])
+		       * cos(thetas[0]) - 1)), delta); // m=0, l=2.
+    assert_float_equal(0.0, y_m_ell[3], delta); // m=1, l=0.
+    assert_float_equal(1.0, y_m_ell[4] / (-sqrt(3 / 8. / PI) * sin(thetas[0])),
+		       delta); // m=1, l=1.
+    assert_float_equal(1.0, y_m_ell[5] / (-sqrt(15 / 8. / PI) * sin(thetas[0]) 
+                       * cos(thetas[0])), delta); // m=1, l=2.
+    assert_float_equal(0.0, y_m_ell[6], delta); // m=2, l=0.
+    assert_float_equal(0.0, y_m_ell[7], delta); // m=2, l=1.
+    assert_float_equal(1.0, y_m_ell[8] / (sqrt(15 / 32. / PI) * sin(thetas[0]) 
+                       * sin(thetas[0])), delta); // m=1, l=2.
+
+    assert_float_equal(1.0, y_m_ell[9] / sqrt(1 / 4. / PI), delta); // m=0, l=0.
+    assert_float_equal(1.0, y_m_ell[10] / (sqrt(3 / 4. / PI) * cos(thetas[1])),
+		       delta); // m=0, l=1.
+    assert_float_equal(1.0, y_m_ell[11] / (sqrt(5 / 16. / PI) * (3 * cos(thetas[1])
+		       * cos(thetas[1]) - 1)), delta); // m=0, l=2.
+    assert_float_equal(0.0, y_m_ell[12], delta); // m=1, l=0.
+    assert_float_equal(1.0, y_m_ell[13] / (-sqrt(3 / 8. / PI) * sin(thetas[1])),
+		       delta); // m=1, l=1.
+    assert_float_equal(1.0, y_m_ell[14] / (-sqrt(15 / 8. / PI) * sin(thetas[1]) 
+                       * cos(thetas[1])), delta); // m=1, l=2.
+    assert_float_equal(0.0, y_m_ell[15], delta); // m=2, l=0.
+    assert_float_equal(0.0, y_m_ell[16], delta); // m=2, l=1.
+    assert_float_equal(1.0, y_m_ell[17] / (sqrt(15 / 32. / PI) * sin(thetas[1]) 
+                       * sin(thetas[1])), delta); // m=1, l=2.
+
+    free(thetas);
+    free(y_m_ell);
+}
+
 void test_fixture_estimator(void){
 
   test_fixture_start();
@@ -572,6 +621,7 @@ void test_fixture_estimator(void){
   run_test(test_get_forward_array_size);
   run_test(test_forward_sp);
   run_test(test_step_sp);
+  run_test(test_compute_ylm_sp);
 
   test_fixture_end();
 }
