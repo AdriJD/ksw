@@ -4,7 +4,7 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 
 ### Dependencies
 
-- Python>=3.4
+- Python>=3.6
 - a C compiler (tested with gcc and icc)
 - [numpy](https://pypi.org/project/numpy/)
 - [scipy](https://pypi.org/project/scipy/)
