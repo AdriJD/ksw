@@ -1,3 +1,4 @@
+#include "ksw_estimator_internal.h"
 #include <ksw_estimator.h>
 
 float t_cubic_on_ring_sp(const int *rule, const float *weights, const float *f_i_phi,
