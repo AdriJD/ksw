@@ -248,6 +248,57 @@ class KSW():
 
         return x_i_ell, y_i_ell, z_i_ell
 
+    def _init_reduced_bispectrum_new(self, red_bisp):
+        '''
+        Prepare reduced bispectrum for estimation.
+
+        Parameters
+        ----------
+        red_bisp : ksw.ReducedBispectrum instance
+        
+        Returns
+        -------
+        f_i_ell : (nufact, npol, nell) array
+            Unique factors of bispectrum scaled by beam.
+        rule : (nfact, 3) array
+            Rule to map unique factors to bispectrum.
+        weights : (nfact, 3) array
+            Amplitude for each element in rule.
+        '''
+        
+        # We use lmax data as reference.
+        if red_bisp.lmax < self.data.lmax:
+            raise ValueError('lmax bispectrum ({}) < lmax data ({})'.format(
+                red_bisp.lmax, self.data.lmax))
+
+        nufact = red_bisp.factors.shape[0]
+        f_i_ell = np.zeros((nufact, self.data.npol, self.data.lmax + 1),
+                           dtype=self.dtype)
+
+        # Find index of lmax data in ells of red. bisp.
+        try:
+            end_ells_full = np.where(red_bisp.ells_full == self.data.lmax)[0][0] + 1
+        except IndexError:
+            end_ells_full = None
+
+        # Slice corresponding to data pol. Assume red. bisp. has T and E.
+        if self.data.npol == 1 and 'T' in self.data.pol:
+            pslice = slice(0, 1, None)
+        elif self.data.npol == 1 and 'E' in self.data.pol:
+            pslice = slice(1, 2, None)
+        else:
+            pslice = slice(0, 2, None)
+
+        f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
+            red_bisp.factors[:,pslice,:end_ells_full]
+        f_i_ell *= self.data.b_ell
+        f_i_ell = f_i_ell.astype(self.dtype)
+
+        rule = red_bisp.rule
+        weights = red_bisp.weights.astype(self.dtype)
+
+        return f_i_ell, rule, weights
+
     def _init_rings(self, nfact):
         '''
         Allocate the X_{i phi}, Y_{i phi}, Z_{i phi} ring arrays.
@@ -341,7 +392,7 @@ class KSW():
 
         self.mc_idx += 1
 
-    def compute_estimate_new(self, alm):
+    def compute_estimate_new(self, alm, theta_batch=25):
         '''
         Compute fNL estimate for input alm.
 
@@ -376,54 +427,15 @@ class KSW():
         a_ell_m = a_ell_m.astype(self.cdtype)
 
         red_bisp = self.cosmology.red_bispectra[0]
-        # We use lmax data as reference.
-        if red_bisp.lmax < self.data.lmax:
-            raise ValueError('lmax bispectrum ({}) < lmax data ({})'.format(
-                red_bisp.lmax, self.data.lmax))
 
-        nufact = red_bisp.factors.shape[0]
-        f_i_ell = np.zeros((nufact, self.data.npol, self.data.lmax + 1),
-                           dtype=self.dtype)
+        f_i_ell, rule, weights = self._init_reduced_bispectrum_new(red_bisp)
 
-        # Find index of lmax data in ells of red. bisp.
-        try:
-            end_ells_full = np.where(red_bisp.ells_full == self.data.lmax)[0][0] + 1
-        except IndexError:
-            end_ells_full = None
-
-        # Slice corresponding to data pol. Assume red. bisp. has T and E.
-        if self.data.npol == 1 and 'T' in self.data.pol:
-            pslice = slice(0, 1, None)
-        elif self.data.npol == 1 and 'E' in self.data.pol:
-            pslice = slice(1, 2, None)
-        else:
-            pslice = slice(0, 2, None)
-
-        f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
-            red_bisp.factors[:,pslice,:end_ells_full]
-        f_i_ell *= self.data.b_ell
-        f_i_ell = f_i_ell.astype(self.dtype)
-
-        rule = red_bisp.rule
-        weights = red_bisp.weights.astype(self.dtype)
-        
-        tidx_batch = 25
-        # loop over theta batches.
-        for tidx_start in range(0, len(self.thetas), tidx_batch):
-            thetas_batch = self.thetas[tidx_start:tidx_start+tidx_batch]
-            ct_weights_batch = self.theta_weights[tidx_start:tidx_start+tidx_batch]
-            #print('thetas', thetas_batch)
-            #print('ct_weights', ct_weights_batch)
-            #print('f_i_ell', f_i_ell)
-            #print('weights', weights)
-            #print('rule', rule)
-            #print('a_ell_m', a_ell_m)
-            #print('nphi', self.nphi)
-            y_m_ell = estimator_core._compute_ylm(thetas_batch, self.data.lmax, dtype=self.dtype)            
-            #print(y_m_ell)
+        for tidx_start in range(0, len(self.thetas), theta_batch):
+            thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
+            ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
+            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.data.lmax, dtype=self.dtype)            
             t_cubic += estimator_core.compute_estimate(ct_weights_batch, rule, weights,
                                                        f_i_ell, a_ell_m, y_m_ell, self.nphi)
-            print(t_cubic)
             
         return (t_cubic - lin_term) / fisher
 

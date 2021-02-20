@@ -195,7 +195,7 @@ def _compute_estimate_dp(ct_weights, rule, weights, f_i_ell, a_ell_m, y_m_ell,
 		               nell, npol, nufact, nphi)
     return t_cubic
 
-def _compute_ylm(thetas, lmax, dtype=np.float32):
+def compute_ylm(thetas, lmax, dtype=np.float32):
     '''
     Compute Ylm(theta,0) for a range of thetas.
 
