@@ -23,8 +23,11 @@
  *
  */
 
-float t_cubic_on_ring_sp(const int *rule, const float * weights, const float *f_i_phi,
+float t_cubic_on_ring_sp(const long long *rule, const float *weights, const float *f_i_phi,
 			 int nrule, int nphi);
+
+double t_cubic_on_ring_dp(const long long *rule, const double *weights, const double *f_i_phi,
+			  int nrule, int nphi);
 
 
 /*
@@ -48,6 +51,11 @@ float t_cubic_on_ring_sp(const int *rule, const float * weights, const float *f_
 void backward_sp(const float *f_i_ell, const float complex *a_ell_m, 
 		 const float *y_m_ell, float complex *m_ell_m, float *n_ell_phi,
 		 fftwf_plan plan_c2r, float *f_i_phi, int nell, int npol, int nufact,
+		 int nphi);
+
+void backward_dp(const double *f_i_ell, const double complex *a_ell_m, 
+		 const double *y_m_ell, double complex *m_ell_m, double *n_ell_phi,
+		 fftw_plan plan_c2r, double *f_i_phi, int nell, int npol, int nufact,
 		 int nphi);
 
 /*
@@ -77,7 +85,13 @@ void backward_sp(const float *f_i_ell, const float complex *a_ell_m,
 void forward_sp(const float *f_i_ell, float complex *a_ell_m, const float *y_m_ell,
 		float complex *m_ell_m, float *n_ell_phi, fftwf_plan plan_r2c,
 		const float *f_i_phi, float *work_i_ell, float *work_i_phi,
-		const int *rule, const float *weights, const float ct_weight,
+		const long long *rule, const float *weights, const double ct_weight,
+		int nrule, int nw, int nell, int npol, int nphi);
+
+void forward_dp(const double *f_i_ell, double complex *a_ell_m, const double *y_m_ell,
+		double complex *m_ell_m, double *n_ell_phi, fftw_plan plan_r2c,
+		const double *f_i_phi, double *work_i_ell, double *work_i_phi,
+		const long long *rule, const double *weights, const double ct_weight,
 		int nrule, int nw, int nell, int npol, int nphi);
 
 /*
@@ -88,9 +102,9 @@ void forward_sp(const float *f_i_ell, float complex *a_ell_m, const float *y_m_e
  *
  * Arguments
  * ---------
- * ct_weights : (ntheta) array of quadruture weights for cos(theta).
- * rule       : (nrule, 3) array
+ * rule  : (nrule, 3) array
+ * nrule : Number of rules.
  */
 
-int get_forward_array_size(const int *rule, int nrule);
+int get_forward_array_size(const long long *rule, int nrule);
 

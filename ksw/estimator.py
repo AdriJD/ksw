@@ -4,7 +4,7 @@ from scipy.special import roots_legendre
 import healpy as hp
 import pyfftw
 
-from ksw import utils, legendre
+from ksw import utils, legendre, estimator_core
 
 class KSW():
     '''
@@ -341,6 +341,92 @@ class KSW():
 
         self.mc_idx += 1
 
+    def compute_estimate_new(self, alm):
+        '''
+        Compute fNL estimate for input alm.
+
+        Parameters
+        ----------
+        alm : (npol, nelem) array
+            Healpix-ordered unfiltered alm array. Will be overwritten!
+
+        Returns
+        -------
+        estimate : scalar, None
+            fNL estimate on root.
+
+        Raises
+        ------
+        ValueError
+            If shape input alm is not understood.
+            If Monte Carlo quantities are not iterated yet.
+        '''
+
+        # Similar to step, but only do backward transform, multiply alm with linear term
+        # and apply normalization.
+
+        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
+
+        t_cubic = 0 # The cubic estimate.
+        fisher = self.compute_fisher()
+        lin_term = self.compute_linear_term(alm)
+        
+        alm = self.icov(alm)
+        a_ell_m = utils.alm2a_ell_m(alm)
+        a_ell_m = a_ell_m.astype(self.cdtype)
+
+        red_bisp = self.cosmology.red_bispectra[0]
+        # We use lmax data as reference.
+        if red_bisp.lmax < self.data.lmax:
+            raise ValueError('lmax bispectrum ({}) < lmax data ({})'.format(
+                red_bisp.lmax, self.data.lmax))
+
+        nufact = red_bisp.factors.shape[0]
+        f_i_ell = np.zeros((nufact, self.data.npol, self.data.lmax + 1),
+                           dtype=self.dtype)
+
+        # Find index of lmax data in ells of red. bisp.
+        try:
+            end_ells_full = np.where(red_bisp.ells_full == self.data.lmax)[0][0] + 1
+        except IndexError:
+            end_ells_full = None
+
+        # Slice corresponding to data pol. Assume red. bisp. has T and E.
+        if self.data.npol == 1 and 'T' in self.data.pol:
+            pslice = slice(0, 1, None)
+        elif self.data.npol == 1 and 'E' in self.data.pol:
+            pslice = slice(1, 2, None)
+        else:
+            pslice = slice(0, 2, None)
+
+        f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
+            red_bisp.factors[:,pslice,:end_ells_full]
+        f_i_ell *= self.data.b_ell
+        f_i_ell = f_i_ell.astype(self.dtype)
+
+        rule = red_bisp.rule
+        weights = red_bisp.weights.astype(self.dtype)
+        
+        tidx_batch = 25
+        # loop over theta batches.
+        for tidx_start in range(0, len(self.thetas), tidx_batch):
+            thetas_batch = self.thetas[tidx_start:tidx_start+tidx_batch]
+            ct_weights_batch = self.theta_weights[tidx_start:tidx_start+tidx_batch]
+            #print('thetas', thetas_batch)
+            #print('ct_weights', ct_weights_batch)
+            #print('f_i_ell', f_i_ell)
+            #print('weights', weights)
+            #print('rule', rule)
+            #print('a_ell_m', a_ell_m)
+            #print('nphi', self.nphi)
+            y_m_ell = estimator_core._compute_ylm(thetas_batch, self.data.lmax, dtype=self.dtype)            
+            #print(y_m_ell)
+            t_cubic += estimator_core.compute_estimate(ct_weights_batch, rule, weights,
+                                                       f_i_ell, a_ell_m, y_m_ell, self.nphi)
+            print(t_cubic)
+            
+        return (t_cubic - lin_term) / fisher
+
     def compute_estimate(self, alm, comm=None):
         '''
         Compute fNL estimate for input alm.
@@ -376,7 +462,6 @@ class KSW():
         
         alm = self.icov(alm)
         alm = utils.alm2a_ell_m(alm)
-        grad_t = np.zeros_like(alm)
 
         red_bisp = self.cosmology.red_bispectra[0]
         x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
