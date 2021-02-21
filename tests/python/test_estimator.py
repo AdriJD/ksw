@@ -999,14 +999,14 @@ class TestKSW_64(unittest.TestCase):
         estimate = estimator.compute_estimate(alm.copy())
 
         alm = np.zeros(hp.Alm.getsize(lmax + 1), dtype=np.complex128) # Note lmax+1
-        self.assertRaises(ValueError, estimator.step, alm.copy())
+        self.assertRaises(ValueError, estimator.compute_estimate, alm.copy())
 
         alm = np.zeros((2, hp.Alm.getsize(lmax + 1)), dtype=np.complex128) # npol=2.
-        self.assertRaises(ValueError, estimator.step, alm.copy())
+        self.assertRaises(ValueError, estimator.compute_estimate, alm.copy())
 
         estimator.data.pol = ['T', 'E']
         alm = np.zeros((1, hp.Alm.getsize(lmax + 1)), dtype=np.complex128) # npol=1.
-        self.assertRaises(ValueError, estimator.step, alm.copy())
+        self.assertRaises(ValueError, estimator.compute_estimate, alm.copy())
 
     def test_ksw_compute_estimate_cubic_I_simple(self):
 
@@ -3183,7 +3183,6 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-# 
     def test_ksw_compute_estimate_new_cubic_local_pol(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
@@ -3440,6 +3439,515 @@ class TestKSW_64(unittest.TestCase):
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+
+    def test_ksw_step_new_I_simple(self):
+
+        np.random.seed(1)
+
+        # Compare to direct 4 dimensional sum over (l,m).
+        lmax = 5
+        alm = np.zeros(hp.Alm.getsize(lmax), dtype=np.complex128)
+        alm += np.random.randn(alm.size)
+        alm += np.random.randn(alm.size) * 1j
+        alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
+        alm = alm.reshape((1, alm.size))
+
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+
+        # Create a reduced bispectrum that is just b_l1l2l3 = 1.
+        rb = self.FakeReducedBispectrum
+        rb.npol = 1
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data, precision=self.precision)
+        estimator.step_new(alm.copy())
+
+        def red_bisp(ell1, ell2, ell3):
+            return 1.
+
+        alm = hp.almxfl(alm[0], data.b_ell[0])
+        grad_exp = self.grad_direct(alm, alm, red_bisp)
+        # Bispectrum in grad still has 3 b_ell terms, so 
+        # add one term for fair comparison.
+        grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
+
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
+                                             decimal=self.decimal)
+
+        mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
+        mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
+        
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
+
+    def test_ksw_step_new_pol_simple(self):
+
+        np.random.seed(1)
+
+        lmax = 5
+        alm = np.zeros((2, hp.Alm.getsize(lmax)), dtype=np.complex128)
+        alm += np.random.randn(alm.size).reshape(alm.shape)
+        alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
+        alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
+
+        npol = 2
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T', 'E')
+        data.npol = npol
+
+        # Create a reduced bispectrum with factors that are 1 for I and 2 for E.
+        rb = self.FakeReducedBispectrum
+        rb.npol = 2
+        rb.nfact = 1
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+        rb.factors = np.ones((1, npol, lmax + 1))
+        rb.factors[:,1,:] = 2
+        rb.rule = np.zeros((1, 3), dtype=int)
+        rb.weights = np.ones((1, 3))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data, precision=self.precision)
+        estimator.step_new(alm.copy())
+
+        def red_bisp_III(ell1, ell2, ell3):
+            return 1 * 1 * 1
+        def red_bisp_IIE(ell1, ell2, ell3):
+            return 1 * 1 * 2
+        def red_bisp_IEI(ell1, ell2, ell3):
+            return 1 * 2 * 1
+        def red_bisp_EII(ell1, ell2, ell3):
+            return 2 * 1 * 1
+        def red_bisp_IEE(ell1, ell2, ell3):
+            return 1 * 2 * 2
+        def red_bisp_EIE(ell1, ell2, ell3):
+            return 2 * 1 * 2
+        def red_bisp_EEI(ell1, ell2, ell3):
+            return 2 * 2 * 1
+        def red_bisp_EEE(ell1, ell2, ell3):
+            return 2 * 2 * 2
+
+        alm_I = hp.almxfl(alm[0], data.b_ell[0])
+        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        
+        # Grad is now 2d and is sum of all pol combinations.
+        grad_exp_I = self.grad_direct(alm_I, alm_I, red_bisp_III)
+        grad_exp_I += self.grad_direct(alm_I, alm_E, red_bisp_IIE)
+        grad_exp_I += self.grad_direct(alm_E, alm_I, red_bisp_IEI)
+        grad_exp_I += self.grad_direct(alm_E, alm_E, red_bisp_IEE)
+
+        grad_exp_E = self.grad_direct(alm_I, alm_I, red_bisp_EII)
+        grad_exp_E += self.grad_direct(alm_I, alm_E, red_bisp_EIE)
+        grad_exp_E += self.grad_direct(alm_E, alm_I, red_bisp_EEI)
+        grad_exp_E += self.grad_direct(alm_E, alm_E, red_bisp_EEE)
+
+        # Bispectrum in grad still has 3 b_ell terms, so 
+        # add one term for fair comparison.
+        grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
+        grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
+
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I, 
+                                             decimal=self.decimal)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
+                                             decimal=self.decimal)
+
+        # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
+        mc_gt_sq_exp = np.sum(2 * np.real(grad_exp_I * np.conj(grad_exp_I)))
+        mc_gt_sq_exp -= np.sum(grad_exp_I[:lmax+1].real ** 2 )
+
+        mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
+        mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
+        
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
+
+    def test_ksw_step_new_I_simple_2d(self):
+
+        np.random.seed(1)
+
+        # Compare to direct 4 dimensional sum over (l,m).
+        lmax = 5
+        alm = np.zeros(hp.Alm.getsize(lmax), dtype=np.complex128)
+        alm += np.random.randn(alm.size)
+        alm += np.random.randn(alm.size) * 1j
+        alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
+        alm = alm.reshape((1, alm.size))
+
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+
+        # Create a reduced bispectrum that is b_l1l2l3 = 1 * 1 * 1 + 2 * 2 * 2.
+        rb = self.FakeReducedBispectrum
+        rb.npol = 1
+        rb.nfact = 2
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+
+        rb.factors = np.ones((2, npol, lmax + 1))
+        rb.factors[1] *= 2
+        rb.rule = np.zeros((2, 3), dtype=int)
+        rb.rule[1] = 1
+        rb.weights = np.ones((2, 3))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data, precision=self.precision)
+        estimator.step_new(alm.copy())
+
+        def red_bisp(ell1, ell2, ell3):
+            return 1 * 1 * 1 + 2 * 2 * 2
+
+        alm = hp.almxfl(alm[0], data.b_ell[0])
+        grad_exp = self.grad_direct(alm, alm, red_bisp)
+        # Bispectrum in grad still has 3 b_ell terms, so 
+        # add one term for fair comparison.
+        grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
+
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
+                                             decimal=self.decimal)
+
+        mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
+        mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
+        
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
+
+    def test_ksw_step_new_pol_simple_2d(self):
+
+        np.random.seed(1)
+
+        lmax = 5
+        alm = np.zeros((2, hp.Alm.getsize(lmax)), dtype=np.complex128)
+        alm += np.random.randn(alm.size).reshape(alm.shape)
+        alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
+        alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
+
+        npol = 2
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T', 'E')
+        data.npol = npol
+
+        # Create a reduced bispectrum that is sum of 1 for I and 2 for E
+        # and 3 for I and 6 for E.
+        rb = self.FakeReducedBispectrum
+        rb.npol = 2
+        rb.nfact = 2
+        rb.ells_sparse = np.arange(lmax + 1)
+        rb.ells_full = np.arange(lmax + 1)
+        rb.lmax = lmax
+        rb.lmin = 0
+
+        rb.factors = np.ones((2, npol, lmax + 1))
+        rb.factors[0,1,:] = 2
+        rb.factors[1,0,:] = 3
+        rb.factors[1,1,:] = 6
+        rb.rule = np.zeros((2, 3), dtype=int)
+        rb.rule[1] = 1
+        rb.weights = np.ones((2, 3))
+
+        data.cosmology.red_bispectra[0] = rb
+
+        estimator = KSW(data, precision=self.precision)
+        estimator.step_new(alm.copy())
+
+        def red_bisp_III(ell1, ell2, ell3):
+            return 1 * 1 * 1 + 3 * 3 * 3
+        def red_bisp_IIE(ell1, ell2, ell3):
+            return 1 * 1 * 2 + 3 * 3 * 6
+        def red_bisp_IEI(ell1, ell2, ell3):
+            return 1 * 2 * 1 + 3 * 6 * 3
+        def red_bisp_EII(ell1, ell2, ell3):
+            return 2 * 1 * 1 + 6 * 3 * 3
+        def red_bisp_IEE(ell1, ell2, ell3):
+            return 1 * 2 * 2 + 3 * 6 * 6
+        def red_bisp_EIE(ell1, ell2, ell3):
+            return 2 * 1 * 2 + 6 * 3 * 6
+        def red_bisp_EEI(ell1, ell2, ell3):
+            return 2 * 2 * 1 + 6 * 6 * 3
+        def red_bisp_EEE(ell1, ell2, ell3):
+            return 2 * 2 * 2 + 6 * 6 * 6
+
+        alm_I = hp.almxfl(alm[0], data.b_ell[0])
+        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        
+        # Grad is now 2d and is sum of all pol combinations.
+        grad_exp_I = self.grad_direct(alm_I, alm_I, red_bisp_III)
+        grad_exp_I += self.grad_direct(alm_I, alm_E, red_bisp_IIE)
+        grad_exp_I += self.grad_direct(alm_E, alm_I, red_bisp_IEI)
+        grad_exp_I += self.grad_direct(alm_E, alm_E, red_bisp_IEE)
+
+        grad_exp_E = self.grad_direct(alm_I, alm_I, red_bisp_EII)
+        grad_exp_E += self.grad_direct(alm_I, alm_E, red_bisp_EIE)
+        grad_exp_E += self.grad_direct(alm_E, alm_I, red_bisp_EEI)
+        grad_exp_E += self.grad_direct(alm_E, alm_E, red_bisp_EEE)
+
+        # Bispectrum in grad still has 3 b_ell terms, so 
+        # add one term for fair comparison.
+        grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
+        grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
+
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I,
+                                             decimal=self.decimal)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
+                                             decimal=self.decimal)
+
+        # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
+        mc_gt_sq_exp = np.sum(2 * np.real(grad_exp_I * np.conj(grad_exp_I)))
+        mc_gt_sq_exp -= np.sum(grad_exp_I[:lmax+1].real ** 2 )
+
+        mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
+        mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
+        
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
+
+    def test_ksw_step_new_local_I(self):
+
+        # Compare to direct 4 dimensional sum over (l,m).
+        # For local reduced bispectrum.
+
+        lmax_transfer = 300
+        radii = np.asarray([11000., 14000.])
+        dr = ((radii[1] - radii[0]) / 2.)
+        cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
+                               mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
+        pars = camb.CAMBparams(**cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo.compute_transfer(lmax_transfer)
+
+        prim_shape = Shape.prim_local(ns=1)
+
+        self.assertTrue(len(cosmo.red_bispectra) == 0)
+        cosmo.add_prim_reduced_bispectrum(prim_shape, radii)
+        self.assertTrue(len(cosmo.red_bispectra) == 1)
+
+        rb = cosmo.red_bispectra[0]
+
+        # Lmax and pol of data should overrule those of bispectrum.
+        lmax = 5
+        alm = np.zeros(hp.Alm.getsize(lmax), dtype=np.complex128)
+        alm += np.random.randn(alm.size)
+        alm += np.random.randn(alm.size) * 1j
+        alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
+        alm = alm.reshape((1, alm.size))
+
+        npol = 1
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T')
+        data.npol = npol
+        data.cosmology = cosmo
+
+        estimator = KSW(data, precision=self.precision)
+        estimator.step_new(alm.copy())
+
+        def red_bisp(ell1, ell2, ell3):
+            '''
+            b_l1l2l3 = int dr r^2 1/6 (alpha_l1(r) beta_l2(r) beta_l3(r) + 5 symm.)
+            '''
+            # Factors are direct output from radial functional, 
+            # so they do not have the 2 * As^2 factor.
+
+            if ell1 < 2 or ell2 < 2 or ell3 < 2:
+                return 0
+
+            # Determine indices into ell dimension of factors.
+            lidx1 = np.where(rb.ells_full == ell1)[0][0]
+            lidx2 = np.where(rb.ells_full == ell2)[0][0]
+            lidx3 = np.where(rb.ells_full == ell3)[0][0]
+
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
+            # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
+            ret = dr * radii[0] ** 2 * \
+                  rb.factors[0,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[2,0,lidx3]
+            # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                  rb.factors[2,0,lidx1] * rb.factors[0,0,lidx2] * rb.factors[2,0,lidx3]
+            # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                  rb.factors[2,0,lidx1] * rb.factors[2,0,lidx2] * rb.factors[0,0,lidx3]
+            
+            # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   rb.factors[1,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[3,0,lidx3]
+            # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   rb.factors[3,0,lidx1] * rb.factors[1,0,lidx2] * rb.factors[3,0,lidx3]
+            # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   rb.factors[3,0,lidx1] * rb.factors[3,0,lidx2] * rb.factors[1,0,lidx3]
+
+            ret *= amp
+
+            return ret
+
+        alm = hp.almxfl(alm[0], data.b_ell[0])
+        grad_exp = self.grad_direct(alm, alm, red_bisp)
+        # Bispectrum in grad still has 3 b_ell terms, so 
+        # add one term for fair comparison.
+        grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
+
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
+                                             decimal=self.decimal)
+
+        mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
+        mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
+        
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
+
+    def test_ksw_step_new_local_pol(self):
+
+        # Compare to direct 4 dimensional sum over (l,m).
+        # For local reduced bispectrum.
+
+        np.random.seed(1)
+
+        lmax_transfer = 300
+        radii = np.asarray([11000., 14000.])
+        dr = ((radii[1] - radii[0]) / 2.)
+        cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
+                               mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
+        pars = camb.CAMBparams(**cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo.compute_transfer(lmax_transfer)
+
+        prim_shape = Shape.prim_local(ns=1)
+
+        self.assertTrue(len(cosmo.red_bispectra) == 0)
+        cosmo.add_prim_reduced_bispectrum(prim_shape, radii)
+        self.assertTrue(len(cosmo.red_bispectra) == 1)
+
+        rb = cosmo.red_bispectra[0]
+
+        # Lmax and pol of data should overrule those of bispectrum.
+        lmax = 5
+        alm = np.zeros((2, hp.Alm.getsize(lmax)), dtype=np.complex128)
+        alm += np.random.randn(alm.size).reshape(alm.shape)
+        alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
+        alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
+
+        npol = 2
+        data = self.FakeData()
+        data.lmax = lmax
+        data.pol = ('T', 'E')
+        data.npol = npol
+        data.cosmology = cosmo
+
+        estimator = KSW(data, precision=self.precision)
+        estimator.step_new(alm.copy())
+
+        def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
+            '''
+            b^X1X2X3_l1l2l3 = int dr r^2 1/6 (alpha^X1_l1(r) beta^X2_l2(r) beta^X3_l3(r) + 5 symm.)
+            '''
+            # Factors are direct output from radial functional, 
+            # so they do not have the 2 * As^2 factor.
+
+            if ell1 < 2 or ell2 < 2 or ell3 < 2:
+                return 0
+
+            # Determine indices into ell dimension of factors.
+            lidx1 = np.where(rb.ells_full == ell1)[0][0]
+            lidx2 = np.where(rb.ells_full == ell2)[0][0]
+            lidx3 = np.where(rb.ells_full == ell3)[0][0]
+
+            # Note that the symmetrisation below is not needed for the cubic term, but still
+            # formally correct.
+            
+            amp = 2 * (2 * np.pi ** 2 * cosmo.camb_params.InitPower.As) ** 2 * (3 / 5)
+            # First alpha_l1(r1) beta_l2(r1) beta_l3(r1).
+            ret = dr * radii[0] ** 2 * \
+                  rb.factors[0,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+            # beta_l1(r1) alpha_l2(r1) beta_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                   rb.factors[2,pidx1,lidx1] * rb.factors[0,pidx2,lidx2] * rb.factors[2,pidx3,lidx3]
+            # beta_l1(r1) beta_l2(r1) alpha_l3(r1).
+            ret += dr * radii[0] ** 2 * \
+                   rb.factors[2,pidx1,lidx1] * rb.factors[2,pidx2,lidx2] * rb.factors[0,pidx3,lidx3]
+            
+            # Then alpha_l1(r2) beta_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   rb.factors[1,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+            # beta_l1(r2) alpha_l2(r2) beta_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   rb.factors[3,pidx1,lidx1] * rb.factors[1,pidx2,lidx2] * rb.factors[3,pidx3,lidx3]
+            # beta_l1(r2) beta_l2(r2) alpha_l3(r2).
+            ret += dr * radii[1] ** 2 * \
+                   rb.factors[3,pidx1,lidx1] * rb.factors[3,pidx2,lidx2] * rb.factors[1,pidx3,lidx3]
+
+            ret *= amp
+
+            return ret
+
+        # Create separate function for each pol combo.
+        red_bisp_III = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 0, 0, 0)
+        red_bisp_IIE = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 0, 0, 1)
+        red_bisp_IEI = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 0, 1, 0)
+        red_bisp_EII = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 0, 0)
+        red_bisp_IEE = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 0, 1, 1)
+        red_bisp_EIE = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 0, 1)
+        red_bisp_EEI = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 1, 0)
+        red_bisp_EEE = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 1, 1)
+
+        alm_I = hp.almxfl(alm[0], data.b_ell[0])
+        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        
+        # Grad is now 2d and is sum of all pol combinations.
+        grad_exp_I = self.grad_direct(alm_I, alm_I, red_bisp_III)
+        grad_exp_I += self.grad_direct(alm_I, alm_E, red_bisp_IIE)
+        grad_exp_I += self.grad_direct(alm_E, alm_I, red_bisp_IEI)
+        grad_exp_I += self.grad_direct(alm_E, alm_E, red_bisp_IEE)
+
+        grad_exp_E = self.grad_direct(alm_I, alm_I, red_bisp_EII)
+        grad_exp_E += self.grad_direct(alm_I, alm_E, red_bisp_EIE)
+        grad_exp_E += self.grad_direct(alm_E, alm_I, red_bisp_EEI)
+        grad_exp_E += self.grad_direct(alm_E, alm_E, red_bisp_EEE)
+
+        # Bispectrum in grad still has 3 b_ell terms, so 
+        # add one term for fair comparison.
+        grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
+        grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
+
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I, 
+                                             decimal=self.decimal)
+        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
+                                             decimal=self.decimal)
+
+        # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
+        mc_gt_sq_exp = np.sum(2 * np.real(grad_exp_I * np.conj(grad_exp_I)))
+        mc_gt_sq_exp -= np.sum(grad_exp_I[:lmax+1].real ** 2 )
+
+        mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
+        mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
+        
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                             decimal=self.decimal)
 
 class TestKSW_32(TestKSW_64):
 

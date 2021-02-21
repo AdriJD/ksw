@@ -323,6 +323,62 @@ class KSW():
         z_i_phi = np.zeros_like(x_i_phi)
 
         return x_i_phi, y_i_phi, z_i_phi
+
+    def step_new(self, alm, theta_batch=25):
+        '''
+        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
+        and <grad T (C^-1 a)> Monte Carlo estimates.
+
+        Parameters
+        ----------
+        alm : (nelem) or (npol, nelem) array
+            Healpix-ordered unfiltered alm array. Will be overwritten!
+        theta_batch : int, optional
+            Process loop over theta in batches of this size. Higher values
+            take up more memory.
+
+        Raises
+        ------
+        ValueError
+            If shape input alm is not understood.
+        '''
+
+        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
+        alm = self.icov(alm)
+        a_ell_m = utils.alm2a_ell_m(alm)
+        a_ell_m = a_ell_m.astype(self.cdtype)
+        grad_t = np.zeros_like(a_ell_m)
+
+        red_bisp = self.cosmology.red_bispectra[0]
+        f_i_ell, rule, weights = self._init_reduced_bispectrum_new(red_bisp)
+
+        for tidx_start in range(0, len(self.thetas), theta_batch):
+
+            thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
+            ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
+            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.data.lmax,
+                                                 dtype=self.dtype)
+            estimator_core.step(ct_weights_batch, rule, weights, f_i_ell, a_ell_m, y_m_ell,
+                               grad_t, self.nphi)
+
+
+        # Turn back into healpy shape.
+        grad_t = utils.a_ell_m2alm(grad_t).astype(np.complex128)
+
+        # Add to Monte Carlo estimates.
+        if self.mc_gt is None:
+            self.mc_gt = grad_t
+        else:
+            self.__mc_gt += grad_t
+
+        mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
+
+        if self.mc_gt_sq is None:
+            self.mc_gt_sq = mc_gt_sq
+        else:
+            self.__mc_gt_sq += mc_gt_sq
+
+        self.mc_idx += 1
         
     #@profile
     def step(self, alm, comm=None):
@@ -400,6 +456,9 @@ class KSW():
         ----------
         alm : (npol, nelem) array
             Healpix-ordered unfiltered alm array. Will be overwritten!
+        theta_batch : int, optional
+            Process loop over theta in batches of this size. Higher values
+            take up more memory.
 
         Returns
         -------
@@ -427,13 +486,13 @@ class KSW():
         a_ell_m = a_ell_m.astype(self.cdtype)
 
         red_bisp = self.cosmology.red_bispectra[0]
-
         f_i_ell, rule, weights = self._init_reduced_bispectrum_new(red_bisp)
 
         for tidx_start in range(0, len(self.thetas), theta_batch):
             thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
             ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
-            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.data.lmax, dtype=self.dtype)            
+            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.data.lmax,
+                                                 dtype=self.dtype)            
             t_cubic += estimator_core.compute_estimate(ct_weights_batch, rule, weights,
                                                        f_i_ell, a_ell_m, y_m_ell, self.nphi)
             
