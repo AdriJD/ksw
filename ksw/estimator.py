@@ -324,23 +324,20 @@ class KSW():
 
         return x_i_phi, y_i_phi, z_i_phi
 
-    def step_new(self, alm, theta_batch=25):
+    def _step_new(self, alm, theta_batch=25):
         '''
-        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
-        and <grad T (C^-1 a)> Monte Carlo estimates.
+        Calculate grad_t.
 
-        Parameters
-        ----------
-        alm : (nelem) or (npol, nelem) array
+        alm : (nelem) or (npol, nelem) complex array
             Healpix-ordered unfiltered alm array. Will be overwritten!
         theta_batch : int, optional
             Process loop over theta in batches of this size. Higher values
             take up more memory.
-
-        Raises
-        ------
-        ValueError
-            If shape input alm is not understood.
+        
+        Returns
+        -------
+        grad_t : (nelem) or (npol, nelem) complex array
+            Healpix-ordered alm array.
         '''
 
         alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
@@ -361,9 +358,31 @@ class KSW():
             estimator_core.step(ct_weights_batch, rule, weights, f_i_ell, a_ell_m, y_m_ell,
                                grad_t, self.nphi)
 
-
         # Turn back into healpy shape.
         grad_t = utils.a_ell_m2alm(grad_t).astype(np.complex128)
+
+        return grad_t
+
+    def step_new(self, alm, theta_batch=25):
+        '''
+        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
+        and <grad T (C^-1 a)> Monte Carlo estimates.
+
+        Parameters
+        ----------
+        alm : (nelem) or (npol, nelem) complex array
+            Healpix-ordered unfiltered alm array. Will be overwritten!
+        theta_batch : int, optional
+            Process loop over theta in batches of this size. Higher values
+            take up more memory.
+
+        Raises
+        ------
+        ValueError
+            If shape input alm is not understood.
+        '''
+
+        grad_t = self._step_new(alm, theta_batch=theta_batch)
 
         # Add to Monte Carlo estimates.
         if self.mc_gt is None:
@@ -378,8 +397,78 @@ class KSW():
         else:
             self.__mc_gt_sq += mc_gt_sq
 
-        self.mc_idx += 1
+        self.mc_idx += 1        
+
+    # ADD CALLBACK FUNCTION: e.g. print fisher. or save fisher.
+
+    def step_batch(self, alm_loader, alm_files, comm=None, verbose=False, **kwargs):
+        '''
+        Add iterations to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
+        and <grad T (C^-1 a)> Monte Carlo estimates by loading and 
+        processing several alms in parallel using MPI.
+
+        Arguments
+        ---------
+        alm_loader : callable
+            Function that returns alms on rank given filename as first argument.
+        alm_files : array_like
+            List of alm files to load.
+        comm : MPI communicator, optional
+        verbose : bool, optional
+            Print process.
+        kwargs : dict, optional
+            Optional keyword arguments passed to "_step_new".        
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        # Monte carlo quantities local to rank.
+        mc_idx_loc = 0
+        mc_gt_sq_loc = None
+        mc_gt_loc = None
+
+        # Split alm_file loop over ranks
+        for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
+
+            if verbose:
+                print('rank {:3}: loading {}'.format(comm.Get_rank(), alm_file))
+            alm = alm_loader(alm_file)
+            grad_t = self._step_new(alm, **kwargs)
+
+            if mc_gt_loc is None:
+                mc_gt_loc = grad_t
+            else:
+                mc_gt_loc += grad_t
+
+            mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
+
+            if mc_gt_sq_loc is None:
+                mc_gt_sq_loc = mc_gt_sq
+            else:
+                mc_gt_sq_loc += mc_gt_sq
         
+            mc_idx_loc += 1
+
+        mc_gt = utils.reduce_array(mc_gt_loc, comm)
+        mc_gt_sq = utils.reduce(mc_gt_sq_loc, comm)        
+        mc_idx = utils.allreduce(mc_idx_loc, comm)
+
+        # Add quantities to mc attributes on root.
+        if comm.Get_rank() == 0:        
+            if self.mc_gt is None:
+                self.mc_gt = mc_gt
+            else:
+                self.__mc_gt += mc_gt
+
+            if self.mc_gt_sq is None:
+                self.mc_gt_sq = mc_gt_sq
+            else:
+                self.__mc_gt_sq += mc_gt_sq
+        
+        # We let all ranks know about idx.
+        self.mc_idx += mc_idx
+
     #@profile
     def step(self, alm, comm=None):
         '''
@@ -495,7 +584,7 @@ class KSW():
                                                  dtype=self.dtype)            
             t_cubic += estimator_core.compute_estimate(ct_weights_batch, rule, weights,
                                                        f_i_ell, a_ell_m, y_m_ell, self.nphi)
-            
+
         return (t_cubic - lin_term) / fisher
 
     def compute_estimate(self, alm, comm=None):

@@ -394,7 +394,7 @@ class Cosmology:
 
         return (n_uni ** 2 + n_uni) // 2
 
-    def add_reduced_bispectrum_from_file(self, filename):
+    def add_reduced_bispectrum_from_file(self, filename, comm=None):
         '''
         Load reduced bispectrum and add to internal list
         of reduced bispectra.
@@ -403,10 +403,21 @@ class Cosmology:
         ----------
         filename : str
             Absolute path to file.
+        comm : MPI communicator, optional
+            If provided, broadcast after load.
         '''
-        
-        self.red_bispectra.append(ReducedBispectrum.init_from_file(filename))
 
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        if comm.Get_rank() == 0:
+            rb = ReducedBispectrum.init_from_file(filename)
+        else:
+            rb = None
+
+        rb = utils.bcast(rb, comm)
+        self.red_bispectra.append(rb)
+        
     def write_transfer(self, filename):
         '''
         Write the transfer functions to disk.
@@ -462,7 +473,7 @@ class Cosmology:
             unlens_scal.create_dataset('c_ell',
                     data=self.c_ell['unlensed_scalar']['c_ell'])
 
-    def read_c_ell(self, filename):
+    def read_c_ell(self, filename, comm=None):
         '''
         Read in c_ell file and populate c_ell attribute.
 
@@ -470,23 +481,33 @@ class Cosmology:
         ----------
         filename : str
             Absolute path to spectra file.
+        comm : MPI communicator, optional
+            If provided, broadcast after load.
         '''
+        
+        if comm is None:
+            comm = utils.FakeMPIComm()
 
-        self.c_ell = {}
+        if comm.Get_rank() == 0:
+            self.c_ell = {}
 
-        with h5py.File(filename + '.hdf5', 'r') as f:
-            ells = f['lensed_scalar/ells'][()]
-            c_ell = f['lensed_scalar/c_ell'][()]
-            self.c_ell['lensed_scalar'] = {}
-            self.c_ell['lensed_scalar']['ells'] = ells
-            self.c_ell['lensed_scalar']['c_ell'] = c_ell
+            with h5py.File(filename + '.hdf5', 'r') as f:
+                ells = f['lensed_scalar/ells'][()]
+                c_ell = f['lensed_scalar/c_ell'][()]
+                self.c_ell['lensed_scalar'] = {}
+                self.c_ell['lensed_scalar']['ells'] = ells
+                self.c_ell['lensed_scalar']['c_ell'] = c_ell
 
-            ells = f['unlensed_scalar/ells'][()]
-            c_ell = f['unlensed_scalar/c_ell'][()]
-            self.c_ell['unlensed_scalar'] = {}
-            self.c_ell['unlensed_scalar']['ells'] = ells
-            self.c_ell['unlensed_scalar']['c_ell'] = c_ell
-
+                ells = f['unlensed_scalar/ells'][()]
+                c_ell = f['unlensed_scalar/c_ell'][()]
+                self.c_ell['unlensed_scalar'] = {}
+                self.c_ell['unlensed_scalar']['ells'] = ells
+                self.c_ell['unlensed_scalar']['c_ell'] = c_ell
+        else:
+            self.c_ell = None
+    
+        self.c_ell = utils.bcast(self.c_ell, comm)
+                            
     def write_camb_params(self, filename):
         '''
         Write the CAMB parameters to human readable file.

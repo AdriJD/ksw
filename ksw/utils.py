@@ -297,7 +297,7 @@ def reduce(obj, comm, op=None, root=0):
 
     Parameters
     ----------
-    opj : object
+    obj : object
     comm : MPI communicator
     op : mpi4py.MPI.Op object, optional
         Operation during reduce, defaults to SUM.
@@ -319,7 +319,57 @@ def reduce(obj, comm, op=None, root=0):
         obj_out = comm.reduce(obj, root=root)
     
     return obj_out
+
+def allreduce(obj, comm, op=None):
+    '''
+    Allreduce python object.
+
+    Parameters
+    ----------
+    obj : object
+    comm : MPI communicator
+    op : mpi4py.MPI.Op object, optional
+        Operation during reduce, defaults to SUM.
     
+    Returns
+    -------
+    obj_out : obj
+        Reduced object (on all ranks).
+    '''
+    
+    if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
+        return obj
+
+    if op is not None:
+        obj_out = comm.allreduce(obj, op=op)
+    else:
+        obj_out = comm.allreduce(obj)
+    
+    return obj_out
+    
+def bcast(obj, comm, root=0):
+    '''
+    Broadcast python object.
+
+    Parameters
+    ----------
+    obj : object
+        Object on root rank, can be None on other ranks.
+    comm : MPI cummunicator
+    root : int, optional
+        Broadcast object from thi rank.
+
+    Returns
+    -------
+    obj_out : obj
+        Input object on all ranks.
+    '''
+    
+    if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
+        return obj
+    
+    return comm.bcast(obj, root=root)
+
 class FakeMPIComm():
     '''
     Mimic an actual MPI communicator.
