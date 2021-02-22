@@ -291,6 +291,36 @@ def reduce_array(arr, comm, op=None, root=0):
 
     return arr_out
 
+def allreduce_array(arr, comm, op=None):
+    '''
+    Allreduce numpy array.
+
+    Parameters
+    ----------
+    arr : array
+        Array present on all ranks.
+    comm : MPI communicator
+    op : mpi4py.MPI.Op object, optional
+        Operation during reduce, defaults to SUM.
+    
+    Returns
+    -------
+    arr_out : array
+        Reduced array.
+    '''
+
+    if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
+        return arr
+    
+    arr_out = np.zeros_like(arr)
+
+    if op is not None:
+        comm.Allreduce(arr, arr_out, op=op)
+    else:
+        comm.Allreduce(arr, arr_out)
+
+    return arr_out
+
 def reduce(obj, comm, op=None, root=0):
     '''
     Reduce python object to root.

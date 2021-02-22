@@ -399,8 +399,6 @@ class KSW():
 
         self.mc_idx += 1        
 
-    # ADD CALLBACK FUNCTION: e.g. print fisher. or save fisher.
-
     def step_batch(self, alm_loader, alm_files, comm=None, verbose=False, **kwargs):
         '''
         Add iterations to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
@@ -450,23 +448,21 @@ class KSW():
         
             mc_idx_loc += 1
 
-        mc_gt = utils.reduce_array(mc_gt_loc, comm)
-        mc_gt_sq = utils.reduce(mc_gt_sq_loc, comm)        
+        mc_gt = utils.allreduce_array(mc_gt_loc, comm)
+        mc_gt_sq = utils.allreduce(mc_gt_sq_loc, comm)        
         mc_idx = utils.allreduce(mc_idx_loc, comm)
 
-        # Add quantities to mc attributes on root.
-        if comm.Get_rank() == 0:        
-            if self.mc_gt is None:
-                self.mc_gt = mc_gt
-            else:
-                self.__mc_gt += mc_gt
+        # All ranks get to update the internal mc variables themselves.
+        if self.mc_gt is None:
+            self.mc_gt = mc_gt
+        else:
+            self.__mc_gt += mc_gt
 
-            if self.mc_gt_sq is None:
-                self.mc_gt_sq = mc_gt_sq
-            else:
-                self.__mc_gt_sq += mc_gt_sq
-        
-        # We let all ranks know about idx.
+        if self.mc_gt_sq is None:
+            self.mc_gt_sq = mc_gt_sq
+        else:
+            self.__mc_gt_sq += mc_gt_sq
+                
         self.mc_idx += mc_idx
 
     #@profile
@@ -537,6 +533,51 @@ class KSW():
 
         self.mc_idx += 1
 
+    def compute_estimate_batch(self, alm_loader, alm_files, comm=None, 
+                               verbose=False, **kwargs):
+        '''
+        Compute fNL estimates for a collection of maps in parallel using MPI.
+
+        Arguments
+        ---------
+        alm_loader : callable
+            Function that returns alms on rank given filename as first argument.
+        alm_files : array_like
+            List of alm files to load.
+        comm : MPI communicator, optional
+        verbose : bool, optional
+            Print process.
+        kwargs : dict, optional
+            Optional keyword arguments passed to "compute_estimate_new".        
+
+        Returns
+        -------
+        estimates : (nalm_files) array, None
+            Estimates for each input file in same order as
+            "alm_files".            
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        estimates = np.zeros(len(alm_files))
+
+        # Split alm_file loop over ranks
+        for aidx in range(comm.Get_rank(), len(alm_files), comm.Get_size()):
+        
+            alm_file = alm_files[aidx]
+            if verbose:
+                print('rank {:3}: loading {}'.format(comm.Get_rank(), alm_file))
+            alm = alm_loader(alm_file)
+            
+            estimate = self.compute_estimate_new(alm, **kwargs)
+            if verbose:
+                print('rank {:3}: estimate : {}'.format(comm.Get_rank(), estimate))
+
+            estimates[aidx] = estimate
+            
+        return utils.allreduce_array(estimates, comm)
+                    
     def compute_estimate_new(self, alm, theta_batch=25):
         '''
         Compute fNL estimate for input alm.
@@ -552,7 +593,7 @@ class KSW():
         Returns
         -------
         estimate : scalar, None
-            fNL estimate on root.
+            fNL estimate.
 
         Raises
         ------
