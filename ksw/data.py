@@ -4,7 +4,7 @@ import healpy as hp
 
 class Data():
     '''
-    A Data instance contains data alms, beam and S+N covariance.
+    A Data instance contains beam and S+N covariance.
     Can generate Gaussian sims of data.
 
     Parameters

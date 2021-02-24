@@ -321,6 +321,42 @@ def allreduce_array(arr, comm, op=None):
 
     return arr_out
 
+def bcast_array(arr, comm, root=0):
+    '''
+    Reduce numpy array to root.
+
+    Parameters
+    ----------
+    arr : array
+    comm : MPI communicator
+    root : int, optional
+        Broadcast array from this rank.
+    
+    Returns
+    -------
+    arr_out : array, None
+        Broadcasted array on all ranks.
+    '''
+  
+    if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
+        return arr
+
+    if comm.Get_rank() == root:
+        shape = arr.shape
+        dtype = arr.dtype
+    else:
+        shape, dtype = None, None
+
+    shape = comm.bcast(shape, root=root)
+    dtype = comm.bcast(dtype, root=root)
+
+    if comm.Get_rank() != root:
+        arr = np.zeros(shape, dtype=dtype)
+
+    comm.Bcast(arr, root=root)
+
+    return arr
+
 def reduce(obj, comm, op=None, root=0):
     '''
     Reduce python object to root.

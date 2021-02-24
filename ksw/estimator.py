@@ -432,6 +432,8 @@ class KSW():
             if verbose:
                 print('rank {:3}: loading {}'.format(comm.Get_rank(), alm_file))
             alm = alm_loader(alm_file)
+            if verbose:
+                print('rank {:3}: done loading'.format(comm.Get_rank()))
             grad_t = self._step_new(alm, **kwargs)
 
             if mc_gt_loc is None:
