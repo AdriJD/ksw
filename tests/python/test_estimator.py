@@ -2410,6 +2410,7 @@ class TestKSW_64(unittest.TestCase):
                 
         lmax = 5
         npol = 1
+        fsky = 0.4
         data = self.FakeData()
         data.lmax = lmax
         data.pol = ('T')
@@ -2431,7 +2432,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic()
+        fisher = estimator.compute_fisher_isotropic(fsky=fsky)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             # Correct for 3 powers of beam.
@@ -2440,7 +2441,7 @@ class TestKSW_64(unittest.TestCase):
         def icov(ell, pidx1, pidx2):
             return 1.
 
-        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
+        fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov) * fsky
 
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 

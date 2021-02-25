@@ -359,7 +359,7 @@ class KSW():
                                grad_t, self.nphi)
 
         # Turn back into healpy shape.
-        grad_t = utils.a_ell_m2alm(grad_t).astype(np.complex128)
+        grad_t = utils.a_ell_m2alm(grad_t).astype(self.cdtype)
 
         return grad_t
 
@@ -842,7 +842,8 @@ class KSW():
         alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
         return utils.contract_almxblm(alm, self.icov(np.conj(self.mc_gt)))
 
-    def compute_fisher_isotropic(self, lensed=False, return_matrix=False, comm=None):
+    def compute_fisher_isotropic(self, lensed=False, return_matrix=False, fsky=1, 
+                                 comm=None):
         '''
         Return Fisher information assuming diagonal inverse noise + signal
         covariance.
@@ -853,6 +854,9 @@ class KSW():
             If set, use lensed signal covariance.
         return_matrix : bool, optonal
             If set, also return nfact x nfact Fisher matrix.
+        fsky : float
+            Scale fisher information by this number representing the fraction
+            of sky observed.
         comm : MPI communicator, optional        
 
         Returns
@@ -897,11 +901,11 @@ class KSW():
             ct_weight = ct_weights_per_rank[tidx]
             y_ell_0 = y_theta_ell_0[tidx,:]
 
-            fisher_nxn += ct_weight * self._compute_fisher_nxn(
+            fisher_nxn += ct_weight * fsky * self._compute_fisher_nxn(
                 icov_ell_sym, y_ell_0, x_i_ell, y_i_ell, z_i_ell)
 
         fisher_nxn = utils.reduce_array(fisher_nxn, comm)
-        
+
         if comm.Get_rank() == 0:
             fisher = np.sum(fisher_nxn)
         else:
