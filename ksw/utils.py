@@ -323,7 +323,7 @@ def allreduce_array(arr, comm, op=None):
 
 def bcast_array(arr, comm, root=0):
     '''
-    Reduce numpy array to root.
+    Broadcast array.
 
     Parameters
     ----------

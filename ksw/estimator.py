@@ -30,7 +30,8 @@ class KSW():
     icov : callable, None
         Function takes (npol, nelem) alm-like complex array
         and returns the inverse-variance-weighted version of
-        that array.
+        that array. Specifically: (B^{-1} N B^{-1} + S)^{-1} B^{-1} a, where 
+        a = B s + n.
     mc_idx : int
         Counter for Monte Carlo estimates.
     mc_gt : (npol, nelem) complex array, None
@@ -54,13 +55,17 @@ class KSW():
         The FFT from n_ell_phi to m_ell_m.
     '''
 
-    def __init__(self, data, icov=None, precision='single'):
+    def __init__(self, data, icov=None, beam=None, precision='single'):
 
         self.data = data
         self.cosmology = data.cosmology
         if icov is None:
-            icov = data.icov_diag_nonlensed
+            icov = data.icov_diag_nonlensed        
         self.icov = icov
+
+        if beam is None:
+            beam = lambda alm : alm
+        self.beam = beam
         self.mc_idx = 0
         self.mc_gt = None
         self.mc_gt_sq = None
@@ -390,7 +395,7 @@ class KSW():
         else:
             self.__mc_gt += grad_t
 
-        mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
+        mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(self.beam(np.conj(grad_t))))
 
         if self.mc_gt_sq is None:
             self.mc_gt_sq = mc_gt_sq
@@ -441,7 +446,7 @@ class KSW():
             else:
                 mc_gt_loc += grad_t
 
-            mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
+            mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(self.beam(np.conj(grad_t))))
 
             if mc_gt_sq_loc is None:
                 mc_gt_sq_loc = mc_gt_sq
@@ -564,7 +569,7 @@ class KSW():
 
         estimates = np.zeros(len(alm_files))
 
-        # Split alm_file loop over ranks
+        # Split alm_file loop over ranks.
         for aidx in range(comm.Get_rank(), len(alm_files), comm.Get_size()):
         
             alm_file = alm_files[aidx]
@@ -580,7 +585,7 @@ class KSW():
             
         return utils.allreduce_array(estimates, comm)
                     
-    def compute_estimate_new(self, alm, theta_batch=25):
+    def compute_estimate_new(self, alm, theta_batch=25, fisher=None):
         '''
         Compute fNL estimate for input alm.
 
@@ -591,6 +596,8 @@ class KSW():
         theta_batch : int, optional
             Process loop over theta in batches of this size. Higher values
             take up more memory.
+        fisher : float, optional
+            If given, do not compute fisher from internal mc variables.
 
         Returns
         -------
@@ -608,12 +615,13 @@ class KSW():
         # and apply normalization.
 
         alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
+        alm = self.icov(alm)
 
         t_cubic = 0 # The cubic estimate.
-        fisher = self.compute_fisher()
-        lin_term = self.compute_linear_term(alm)
+        if fisher is None:
+            fisher = self.compute_fisher()
+        lin_term = self.compute_linear_term(alm, no_icov=True)
         
-        alm = self.icov(alm)
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
 
@@ -628,6 +636,7 @@ class KSW():
             t_cubic += estimator_core.compute_estimate(ct_weights_batch, rule, weights,
                                                        f_i_ell, a_ell_m, y_m_ell, self.nphi)
 
+        print(f't_cubic : {t_cubic}, lin : {lin_term}, fisher : {fisher}')
         return (t_cubic - lin_term) / fisher
 
     def compute_estimate(self, alm, comm=None):
@@ -795,7 +804,6 @@ class KSW():
         # Result must be added to a_ell_m.
         a_ell_m += self.m_ell_m[:,:,:self.data.lmax+1]
 
-    # Add cubic-only kwarg.
     def compute_fisher(self):
         '''
         Return Fisher information at current iteration.
@@ -810,13 +818,12 @@ class KSW():
             return None
 
         fisher = self.mc_gt_sq
-        fisher -= utils.contract_almxblm(self.mc_gt, self.icov(np.conj(self.mc_gt)))
-        #fisher += 2 * utils.contract_almxblm(self.mc_gt, self.icov(np.conj(self.mc_gt)))
+        fisher -= utils.contract_almxblm(self.mc_gt, self.icov(self.beam(np.conj(self.mc_gt))))
         fisher /= 3.
 
         return fisher
 
-    def compute_linear_term(self, alm):
+    def compute_linear_term(self, alm, no_icov=False):
         '''
         Return linear term at current iteration for input data alm.
 
@@ -824,6 +831,8 @@ class KSW():
         ----------
         alm : (npol, nelem) complex array
             Spherical harmonic coeffients of data.
+        no_icov : bool, optional
+            Do not icov filter input (i.e. input is already filtered).
 
         Returns
         -------
@@ -840,7 +849,11 @@ class KSW():
             return None
 
         alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
-        return utils.contract_almxblm(alm, self.icov(np.conj(self.mc_gt)))
+        
+        if no_icov:
+            return utils.contract_almxblm(alm, np.conj(self.mc_gt))
+        else:
+            return utils.contract_almxblm(self.icov(alm), np.conj(self.mc_gt))
 
     def compute_fisher_isotropic(self, lensed=False, return_matrix=False, fsky=1, 
                                  comm=None):
@@ -854,7 +867,7 @@ class KSW():
             If set, use lensed signal covariance.
         return_matrix : bool, optonal
             If set, also return nfact x nfact Fisher matrix.
-        fsky : float
+        fsky : float or (npol) array, optional
             Scale fisher information by this number representing the fraction
             of sky observed.
         comm : MPI communicator, optional        
@@ -900,9 +913,8 @@ class KSW():
             theta = thetas_per_rank[tidx]
             ct_weight = ct_weights_per_rank[tidx]
             y_ell_0 = y_theta_ell_0[tidx,:]
-
-            fisher_nxn += ct_weight * fsky * self._compute_fisher_nxn(
-                icov_ell_sym, y_ell_0, x_i_ell, y_i_ell, z_i_ell)
+            fisher_nxn += ct_weight * self._compute_fisher_nxn(
+                icov_ell_sym, y_ell_0, x_i_ell, y_i_ell, z_i_ell, fsky=fsky)
 
         fisher_nxn = utils.reduce_array(fisher_nxn, comm)
 
@@ -917,7 +929,7 @@ class KSW():
         return fisher
 
     @staticmethod
-    def _compute_fisher_nxn(icov_ell_sym, y_ell_0, x_i_ell, y_i_ell, z_i_ell):
+    def _compute_fisher_nxn(icov_ell_sym, y_ell_0, x_i_ell, y_i_ell, z_i_ell, fsky=1):
         '''
         Return contribution to nfact x nfact Fisher matrix for given theta.
 
@@ -933,17 +945,34 @@ class KSW():
             Reduced bispectrum factors for ell_2.
         z_i_ell : (nfact, npol, nell) array
             Reduced bispectrum factors for ell_3.
+        fsky : float or (npol) array, optional
+            Scale fisher information by this number representing the fraction
+            of sky observed.
 
         Returns
         -------
         fisher_nxn : (nfact, nfact) array
             nfact x nfact Fisher matrix.
+
+        Raises
+        ------
+        ValueError
+            If fsky shape does not match npol.
         '''
+
+        npol = icov_ell_sym.shape[0]
+        fsky = np.atleast_1d(fsky)
+        if fsky.size != npol and fsky.size != 1:
+            raise ValueError(f'fsky should be scalar or (npol,), got shape : {fsky.shape} '
+                             f'while npol = {npol}')
 
         ells = np.arange(x_i_ell.shape[-1], dtype=float)
         prefactor = y_ell_0 * np.sqrt((2 * ells + 1) / 4 / np.pi) * \
                     (2 * np.pi ** 2 / 9) ** (1/3)
-        icov_ell_sym = icov_ell_sym * prefactor[np.newaxis,np.newaxis,:]
+
+        prefactor = prefactor * (np.ones((npol, npol)) * \
+                np.sqrt(np.outer(fsky, fsky)) ** (1/3))[:,:,np.newaxis]
+        icov_ell_sym = icov_ell_sym * prefactor
 
         op = 'ijk, jlk, mlk -> im'
 
