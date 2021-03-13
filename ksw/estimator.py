@@ -857,7 +857,7 @@ class KSW():
             return utils.contract_almxblm(self.icov(alm), np.conj(self.mc_gt))
 
     def compute_fisher_isotropic_new(self, icov_ell, return_matrix=False, fsky=1, 
-                                     theta_batch=25, comm=None):
+                                     comm=None):
         '''
         Return Fisher information assuming diagonal inverse noise + signal
         covariance.
@@ -896,13 +896,13 @@ class KSW():
         nrule = rule.shape[0]
         fisher_nxn = np.zeros((nrule, nrule), dtype=self.dtype)
 
-        # MPI loop over theta batches
-        for tidx_start in range(0, len(self.thetas), theta_batch):
-            thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
-            ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
+        thetas_per_rank = np.array_split(
+            self.thetas, comm.Get_size())[comm.Get_rank()]
+        ct_weights_per_rank = np.array_split(
+            self.theta_weights, comm.Get_size())[comm.Get_rank()]
 
-            fisher_core.fisher_nxn(sqrt_icov_ell, f_ell_i, thetas_batch,
-                                   ct_weights_batch, rule, weights, fisher_nxn)
+        fisher_core.fisher_nxn(sqrt_icov_ell, f_ell_i, thetas_per_rank,
+                               ct_weights_per_rank, rule, weights, fisher_nxn)
 
         fisher_nxn = utils.allreduce_array(fisher_nxn, comm)
         fisher_nxn = np.triu(fisher_nxn, 1).T + np.triu(fisher_nxn)
