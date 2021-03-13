@@ -15,6 +15,7 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 - [h5py](https://pypi.org/project/h5py/)
 - [healpy](https://pypi.org/project/healpy/)
 - [camb](https://camb.readthedocs.io/en/latest/)
+- [optweight](https://github.com/AdriJD/optweight/tree/master/optweight)
 
 ### Installation
 

@@ -1,14 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <math.h>
-#include <complex.h>
-#include <omp.h>
+#include <ksw_common.h>
 #include <fftw3.h>
-#include <mkl_cblas.h>
-#include <ylmgen_c.h>
-
-#define PI 3.14159265358979323846
 
 /*
  * Compute sum_{i,phi} X_i_phi Y_i_phi Z_i_phi on single ring.

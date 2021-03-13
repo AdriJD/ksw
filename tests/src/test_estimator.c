@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <complex.h>
-#include <fftw3.h>
-#include <mkl_cblas.h>
-
 #include <ksw_estimator_internal.h>
 #include <ksw_estimator.h>
 #include <seatest.h>

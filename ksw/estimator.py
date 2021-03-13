@@ -2,9 +2,10 @@ import numpy as np
 from scipy.special import roots_legendre
 
 import healpy as hp
+from optweight import mat_utils
 import pyfftw
 
-from ksw import utils, legendre, estimator_core
+from ksw import utils, legendre, estimator_core, fisher_core
 
 class KSW():
     '''
@@ -855,6 +856,65 @@ class KSW():
         else:
             return utils.contract_almxblm(self.icov(alm), np.conj(self.mc_gt))
 
+    def compute_fisher_isotropic_new(self, icov_ell, return_matrix=False, fsky=1, 
+                                     theta_batch=25, comm=None):
+        '''
+        Return Fisher information assuming diagonal inverse noise + signal
+        covariance.
+        
+        Arguments
+        ---------
+        icov_ell : (npol, npol, nell) or (npol, nell) array
+            Inverse covariance matrix diagonal in ell.
+        return_matrix : bool, optonal
+            If set, also return nfact x nfact Fisher matrix.       
+        fsky : int or (npol,) array.
+            Fraction of sky observed, allowed to vary between polarizations.
+        comm : MPI communicator, optional        
+
+        Returns
+        -------
+        fisher : float, None
+            Fisher information.
+        fisher_nxn : (nfact, nfact) array, None
+            nfact x nfact Fisher matrix (only if return_matrix is set).
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        red_bisp = self.cosmology.red_bispectra[0]
+        f_i_ell, rule, weights = self._init_reduced_bispectrum_new(red_bisp)
+        f_ell_i = np.ascontiguousarray(np.transpose(f_i_ell, (2, 1, 0)))
+        del f_i_ell
+        f_ell_i *= np.atleast_1d(fsky ** (1/6))[np.newaxis,:,np.newaxis]
+
+        sqrt_icov_ell = mat_utils.matpow(icov_ell, 0.5)
+        sqrt_icov_ell = np.ascontiguousarray(np.transpose(sqrt_icov_ell, (2, 0, 1)),
+                                             dtype=self.dtype)
+        
+        nrule = rule.shape[0]
+        fisher_nxn = np.zeros((nrule, nrule), dtype=self.dtype)
+
+        # MPI loop over theta batches
+        for tidx_start in range(0, len(self.thetas), theta_batch):
+            thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
+            ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
+
+            fisher_core.fisher_nxn(sqrt_icov_ell, f_ell_i, thetas_batch,
+                                   ct_weights_batch, rule, weights, fisher_nxn)
+            print(fisher_nxn)
+
+        print(fisher_nxn)
+        fisher_nxn = utils.allreduce_array(fisher_nxn, comm)
+        fisher_nxn = np.triu(fisher_nxn, 1).T + np.triu(fisher_nxn)
+        fisher = np.sum(fisher_nxn)
+
+        if return_matrix:
+            return fisher, fisher_nxn 
+
+        return fisher
+
     def compute_fisher_isotropic(self, lensed=False, return_matrix=False, fsky=1, 
                                  comm=None):
         '''
@@ -885,6 +945,11 @@ class KSW():
 
         red_bisp = self.cosmology.red_bispectra[0]
         x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
+
+        #x_i_ell *= (fsky ** (1/6))[np.newaxis,:,np.newaxis]
+        #y_i_ell *= (fsky ** (1/6))[np.newaxis,:,np.newaxis]
+        #z_i_ell *= (fsky ** (1/6))[np.newaxis,:,np.newaxis]
+        #fsky = 1.
 
         if lensed:
             icov_ell = self.data.icov_ell_lensed
@@ -981,22 +1046,22 @@ class KSW():
         fisher_nxn *= np.einsum(op, z_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
 
         tmp = np.einsum(op, x_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
-        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, y_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
         tmp *= np.einsum(op, z_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
         fisher_nxn += tmp
 
         tmp = np.einsum(op, x_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
-        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, y_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
         tmp *= np.einsum(op, z_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
         fisher_nxn += tmp
 
         tmp = np.einsum(op, x_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
-        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, y_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
         tmp *= np.einsum(op, z_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
         fisher_nxn += tmp
 
         tmp = np.einsum(op, x_i_ell, icov_ell_sym, y_i_ell, optimize='optimal')
-        tmp *= np.einsum(op , y_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
+        tmp *= np.einsum(op, y_i_ell, icov_ell_sym, x_i_ell, optimize='optimal')
         tmp *= np.einsum(op, z_i_ell, icov_ell_sym, z_i_ell, optimize='optimal')
         fisher_nxn += tmp
 

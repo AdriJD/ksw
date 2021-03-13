@@ -292,7 +292,7 @@ float t_cubic_sp(const double *ct_weights, const long long *rule, const float *w
     fftwf_free(n_ell_phi);
     fftwf_free(f_i_phi);
 
-    } // End of parallel region
+    } // End of parallel region.
     
     fftwf_destroy_plan(plan_c2r);
 
