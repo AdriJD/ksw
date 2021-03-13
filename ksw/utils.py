@@ -321,25 +321,26 @@ def allreduce_array(arr, comm, op=None):
 
     return arr_out
 
-def bcast_array(arr, comm, root=0):
+def bcast_array_meta(arr, comm, root=0):
     '''
-    Broadcast array.
+    Broadcast shape and dtype of array.
 
     Parameters
     ----------
-    arr : array
+    arr : array, None
+        Array on root.
     comm : MPI communicator
     root : int, optional
-        Broadcast array from this rank.
+        Broadcast info from this rank.
     
     Returns
     -------
-    arr_out : array, None
-        Broadcasted array on all ranks.
+    shape : tuple
+    dtype : type
     '''
-  
+
     if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
-        return arr
+        return arr.shape, arr.dtype
 
     if comm.Get_rank() == root:
         shape = arr.shape
@@ -349,6 +350,31 @@ def bcast_array(arr, comm, root=0):
 
     shape = comm.bcast(shape, root=root)
     dtype = comm.bcast(dtype, root=root)
+
+    return shape, dtype
+    
+def bcast_array(arr, comm, root=0):
+    '''
+    Broadcast array.
+
+    Parameters
+    ----------
+    arr : array
+        Array on root.
+    comm : MPI communicator
+    root : int, optional
+        Broadcast array from this rank.
+    
+    Returns
+    -------
+    arr_out : array
+        Broadcasted array on all ranks.
+    '''
+  
+    if isinstance(comm, FakeMPIComm) or comm.Get_size() == 1:
+        return arr
+
+    shape, dtype = bcast_array_meta(arr, comm, root=root)
 
     if comm.Get_rank() != root:
         arr = np.zeros(shape, dtype=dtype)
