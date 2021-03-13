@@ -903,9 +903,7 @@ class KSW():
 
             fisher_core.fisher_nxn(sqrt_icov_ell, f_ell_i, thetas_batch,
                                    ct_weights_batch, rule, weights, fisher_nxn)
-            print(fisher_nxn)
 
-        print(fisher_nxn)
         fisher_nxn = utils.allreduce_array(fisher_nxn, comm)
         fisher_nxn = np.triu(fisher_nxn, 1).T + np.triu(fisher_nxn)
         fisher = np.sum(fisher_nxn)
@@ -945,11 +943,6 @@ class KSW():
 
         red_bisp = self.cosmology.red_bispectra[0]
         x_i_ell, y_i_ell, z_i_ell = self._init_reduced_bispectrum(red_bisp)
-
-        #x_i_ell *= (fsky ** (1/6))[np.newaxis,:,np.newaxis]
-        #y_i_ell *= (fsky ** (1/6))[np.newaxis,:,np.newaxis]
-        #z_i_ell *= (fsky ** (1/6))[np.newaxis,:,np.newaxis]
-        #fsky = 1.
 
         if lensed:
             icov_ell = self.data.icov_ell_lensed
