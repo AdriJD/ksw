@@ -460,7 +460,7 @@ class KSW():
         shape, dtype = utils.bcast_array_meta(mc_gt_loc, comm, root=0)
         if mc_gt_loc is None: mc_gt_loc = np.zeros(shape, dtype=dtype)
         if mc_gt_sq_loc is None: mc_gt_sq_loc = 0.
-        if mc_idx_loc is None: mc_idx_loc = 0.
+        if mc_idx_loc is None: mc_idx_loc = 0
 
         mc_gt = utils.allreduce_array(mc_gt_loc, comm)
         mc_gt_sq = utils.allreduce(mc_gt_sq_loc, comm)        
