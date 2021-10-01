@@ -46,7 +46,7 @@ LINK_COMMON = -lm
 FFTWROOT = /usr/local/fftw/intel-16.0/3.3.4/lib64
 LINK_FFTW = -L$(FFTWROOT) -lfftw3 -lfftw3f
 
-MKLROOT := /opt/intel/compilers_and_libraries_2019.1.144/linux/mkl
+MKLROOT := /opt/intel/compilers_and_libraries_2020.1.217/linux/mkl/
 LINK_MKL = -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
 
 all: $(LDIR)/libradial_functional.so ${LDIR}/libksw_estimator.so ${LDIR}/libksw_fisher.so
@@ -67,13 +67,13 @@ $(ODIR)/hyperspherical.o: $(HS_SDIR)/hyperspherical.c $(HS_IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(HS_IDIR)
 
 $(LDIR)/libksw_estimator.so: $(EST_OBJECTS) $(LP_OBJECTS) $(IDIR)/ksw_estimator.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
 
 $(LDIR)/libksw_fisher.so: $(FIS_OBJECTS) $(LP_OBJECTS) $(IDIR)/ksw_fisher.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
 
 $(ODIR)/estimator.o: $(SDIR)/estimator.c $(IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
 
 $(ODIR)/fisher.o: $(SDIR)/fisher.c $(IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) $(LINK_MKL)
