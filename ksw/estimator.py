@@ -132,7 +132,7 @@ class KSW():
 
         return thetas, ct_weights, nphi
 
-    def _init_reduced_bispectrum_new(self, red_bisp):
+    def _init_reduced_bispectrum(self, red_bisp):
         '''
         Prepare reduced bispectrum for estimation.
 
@@ -188,7 +188,7 @@ class KSW():
 
         return f_i_ell, rule, weights
 
-    def _step_new(self, alm, theta_batch=25):
+    def _step(self, alm, theta_batch=25):
         '''
         Calculate grad_t.
 
@@ -211,7 +211,7 @@ class KSW():
         grad_t = np.zeros_like(a_ell_m)
 
         red_bisp = self.cosmology.red_bispectra[0]
-        f_i_ell, rule, weights = self._init_reduced_bispectrum_new(red_bisp)
+        f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
 
         for tidx_start in range(0, len(self.thetas), theta_batch):
 
@@ -227,7 +227,7 @@ class KSW():
 
         return grad_t
 
-    def step_new(self, alm, theta_batch=25):
+    def step(self, alm, theta_batch=25):
         '''
         Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
         and <grad T (C^-1 a)> Monte Carlo estimates.
@@ -246,7 +246,7 @@ class KSW():
             If shape input alm is not understood.
         '''
 
-        grad_t = self._step_new(alm, theta_batch=theta_batch)
+        grad_t = self._step(alm, theta_batch=theta_batch)
 
         # Add to Monte Carlo estimates.
         if self.mc_gt is None:
@@ -261,7 +261,7 @@ class KSW():
         else:
             self.__mc_gt_sq += mc_gt_sq
 
-        self.mc_idx += 1        
+        self.mc_idx += 1
 
     def step_batch(self, alm_loader, alm_files, comm=None, verbose=False, **kwargs):
         '''
@@ -279,7 +279,7 @@ class KSW():
         verbose : bool, optional
             Print process.
         kwargs : dict, optional
-            Optional keyword arguments passed to "_step_new".        
+            Optional keyword arguments passed to "_step".        
         '''
 
         if comm is None:
@@ -298,7 +298,7 @@ class KSW():
             alm = alm_loader(alm_file)
             if verbose:
                 print('rank {:3}: done loading'.format(comm.Get_rank()))
-            grad_t = self._step_new(alm, **kwargs)
+            grad_t = self._step(alm, **kwargs)
 
             if mc_gt_loc is None:
                 mc_gt_loc = grad_t
@@ -352,7 +352,7 @@ class KSW():
         verbose : bool, optional
             Print process.
         kwargs : dict, optional
-            Optional keyword arguments passed to "compute_estimate_new".        
+            Optional keyword arguments passed to "compute_estimate".        
 
         Returns
         -------
@@ -374,7 +374,7 @@ class KSW():
                 print('rank {:3}: loading {}'.format(comm.Get_rank(), alm_file))
             alm = alm_loader(alm_file)
             
-            estimate = self.compute_estimate_new(alm, **kwargs)
+            estimate = self.compute_estimate(alm, **kwargs)
             if verbose:
                 print('rank {:3}: estimate : {}'.format(comm.Get_rank(), estimate))
 
@@ -382,7 +382,7 @@ class KSW():
             
         return utils.allreduce_array(estimates, comm)
                     
-    def compute_estimate_new(self, alm, theta_batch=25, fisher=None):
+    def compute_estimate(self, alm, theta_batch=25, fisher=None):
         '''
         Compute fNL estimate for input alm.
 
@@ -423,7 +423,7 @@ class KSW():
         a_ell_m = a_ell_m.astype(self.cdtype)
 
         red_bisp = self.cosmology.red_bispectra[0]
-        f_i_ell, rule, weights = self._init_reduced_bispectrum_new(red_bisp)
+        f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
 
         for tidx_start in range(0, len(self.thetas), theta_batch):
             thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
@@ -487,7 +487,7 @@ class KSW():
         else:
             return utils.contract_almxblm(self.icov(alm), np.conj(self.mc_gt))
 
-    def compute_fisher_isotropic_new(self, icov_ell, return_matrix=False, fsky=1, 
+    def compute_fisher_isotropic(self, icov_ell, return_matrix=False, fsky=1, 
                                      comm=None):
         '''
         Return Fisher information assuming diagonal inverse noise + signal
@@ -515,7 +515,7 @@ class KSW():
             comm = utils.FakeMPIComm()
 
         red_bisp = self.cosmology.red_bispectra[0]
-        f_i_ell, rule, weights = self._init_reduced_bispectrum_new(red_bisp)
+        f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
         f_ell_i = np.ascontiguousarray(np.transpose(f_i_ell, (2, 1, 0)))
         del f_i_ell
         f_ell_i *= np.atleast_1d(fsky ** (1/6))[np.newaxis,:,np.newaxis]

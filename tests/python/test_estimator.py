@@ -339,7 +339,7 @@ class TestKSW_64(unittest.TestCase):
         estimator = KSW(data, precision=self.precision)
 
         # Data bisp lmax is smaller than data lmax.
-        self.assertRaises(ValueError, estimator._init_reduced_bispectrum_new,
+        self.assertRaises(ValueError, estimator._init_reduced_bispectrum,
             estimator.cosmology.red_bispectra[0])
 
     def test_ksw_init_reduced_bispectrum(self):
@@ -372,7 +372,7 @@ class TestKSW_64(unittest.TestCase):
         rb.weights[:,1] = 2
         rb.weights[:,2] = 3
 
-        f_i_ell, rule, weights = estimator._init_reduced_bispectrum_new(
+        f_i_ell, rule, weights = estimator._init_reduced_bispectrum(
             estimator.cosmology.red_bispectra[0])
 
         np.testing.assert_allclose(rule, rb.rule)
@@ -423,7 +423,7 @@ class TestKSW_64(unittest.TestCase):
         rb.weights[:,1] = 2
         rb.weights[:,2] = 3
 
-        f_i_ell, rule, weights = estimator._init_reduced_bispectrum_new(
+        f_i_ell, rule, weights = estimator._init_reduced_bispectrum(
             estimator.cosmology.red_bispectra[0])
 
         np.testing.assert_allclose(rule, rb.rule)
@@ -474,7 +474,7 @@ class TestKSW_64(unittest.TestCase):
         rb.weights[:,1] = 2
         rb.weights[:,2] = 3
 
-        f_i_ell, rule, weights = estimator._init_reduced_bispectrum_new(
+        f_i_ell, rule, weights = estimator._init_reduced_bispectrum(
             estimator.cosmology.red_bispectra[0])
 
         np.testing.assert_allclose(rule, rb.rule)
@@ -615,7 +615,7 @@ class TestKSW_64(unittest.TestCase):
         np.testing.assert_array_almost_equal(estimator.mc_gt, mc_gt_copy,
                                              decimal=self.decimal)
 
-    def test_ksw_compute_fisher_isotropic_new_I_simple(self):
+    def test_ksw_compute_fisher_isotropic_I_simple(self):
                 
         lmax = 6
         npol = 1
@@ -641,7 +641,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic_new(data.icov_ell_nonlensed, fsky=fsky)
+        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed, fsky=fsky)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             # Correct for 3 powers of beam.
@@ -654,7 +654,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
-    def test_ksw_compute_fisher_isotropic_new_pol_simple(self):
+    def test_ksw_compute_fisher_isotropic_pol_simple(self):
                 
         lmax = 5
         npol = 2
@@ -679,7 +679,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic_new(data.icov_ell_nonlensed)
+        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             # Correct for 3 powers of beam.
@@ -692,7 +692,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
-    def test_ksw_compute_fisher_isotropic_new_I_simple_2d(self):
+    def test_ksw_compute_fisher_isotropic_I_simple_2d(self):
                 
         # Compare to direct 4 dimensional sum over (l,m).
         lmax = 5
@@ -721,7 +721,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic_new(data.icov_ell_nonlensed)
+        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             # Correct for 3 powers of beam.
@@ -734,7 +734,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
-    def test_ksw_compute_fisher_isotropic_new_pol_simple_2d(self):
+    def test_ksw_compute_fisher_isotropic_pol_simple_2d(self):
                 
         # Compare to direct 4 dimensional sum over (l,m).
         lmax = 5
@@ -766,7 +766,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic_new(data.icov_ell_nonlensed)
+        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             # Correct for 3 powers of beam.
@@ -787,7 +787,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
-    def test_ksw_compute_fisher_isotropic_new_I_local(self):
+    def test_ksw_compute_fisher_isotropic_I_local(self):
 
         lmax_transfer = 300
         radii = np.asarray([11000., 14000.])
@@ -818,7 +818,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology = cosmo
 
         estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic_new(data.icov_ell_nonlensed)
+        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             '''
@@ -868,7 +868,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
-    def test_ksw_compute_fisher_isotropic_new_pol_local(self):
+    def test_ksw_compute_fisher_isotropic_pol_local(self):
 
         lmax_transfer = 300
         radii = np.asarray([11000., 14000.])
@@ -901,7 +901,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology = cosmo
 
         estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic_new(data.icov_ell_nonlensed)
+        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             '''
@@ -957,7 +957,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
-    def test_ksw_compute_fisher_isotropic_new_matrix(self):
+    def test_ksw_compute_fisher_isotropic_matrix(self):
                 
         lmax = 5
         npol = 1
@@ -992,12 +992,12 @@ class TestKSW_64(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        fisher, fisher_nxn = estimator.compute_fisher_isotropic_new(
+        fisher, fisher_nxn = estimator.compute_fisher_isotropic(
             data.icov_ell_nonlensed, return_matrix=True)
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
         self.assertAlmostEqual(fisher, np.sum(fisher_nxn), places=self.decimal)
 
-    def test_ksw_compute_estimate_new_cubic_I_simple(self):
+    def test_ksw_compute_estimate_cubic_I_simple(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
 
@@ -1038,7 +1038,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate_new(alm.copy())
+        estimate = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1.
@@ -1048,7 +1048,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-    def test_ksw_compute_estimate_new_cubic_pol_simple(self):
+    def test_ksw_compute_estimate_cubic_pol_simple(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
 
@@ -1089,7 +1089,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate_new(alm.copy())
+        estimate = estimator.compute_estimate(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
             return 1 * 1 * 1
@@ -1121,7 +1121,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-    def test_ksw_compute_estimate_new_cubic_I_2d(self):
+    def test_ksw_compute_estimate_cubic_I_2d(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
         # For 2 term reduced bispectrum.
@@ -1166,7 +1166,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate_new(alm.copy())
+        estimate = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1 * 1 * 1 + 2 * 2 * 2
@@ -1176,7 +1176,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-    def test_ksw_compute_estimate_new_cubic_pol_2d(self):
+    def test_ksw_compute_estimate_cubic_pol_2d(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
         # For 2 term reduced bispectrum.
@@ -1223,7 +1223,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate_new(alm.copy())
+        estimate = estimator.compute_estimate(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
             return 1 * 1 * 1 + 3 * 3 * 3
@@ -1255,7 +1255,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-    def test_ksw_compute_estimate_new_cubic_local_I(self):
+    def test_ksw_compute_estimate_cubic_local_I(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
         # For local reduced bispectrum.
@@ -1303,7 +1303,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate_new(alm.copy())
+        estimate = estimator.compute_estimate(alm.copy())
 
         print(f'estimate : {estimate}')
 
@@ -1355,7 +1355,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-    def test_ksw_compute_estimate_new_cubic_local_pol(self):
+    def test_ksw_compute_estimate_cubic_local_pol(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
         # For local reduced bispectrum.
@@ -1402,7 +1402,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate_new(alm.copy())
+        estimate = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             '''
@@ -1470,7 +1470,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-    def test_ksw_compute_estimate_new_cubic_equilateral_I(self):
+    def test_ksw_compute_estimate_cubic_equilateral_I(self):
 
         # Compare to direct 5 dimensional sum over (l,m).
         # For equilateral reduced bispectrum.
@@ -1518,7 +1518,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate_new(alm.copy())
+        estimate = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             '''
@@ -1612,7 +1612,7 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
 
-    def test_ksw_step_new_I_simple(self):
+    def test_ksw_step_I_simple(self):
 
         np.random.seed(1)
 
@@ -1645,7 +1645,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        estimator.step_new(alm.copy())
+        estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1.
@@ -1665,7 +1665,7 @@ class TestKSW_64(unittest.TestCase):
         np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
                                              decimal=self.decimal)
 
-    def test_ksw_step_new_pol_simple(self):
+    def test_ksw_step_pol_simple(self):
 
         np.random.seed(1)
 
@@ -1697,7 +1697,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        estimator.step_new(alm.copy())
+        estimator.step(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
             return 1 * 1 * 1
@@ -1750,7 +1750,7 @@ class TestKSW_64(unittest.TestCase):
         np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
                                              decimal=self.decimal)
 
-    def test_ksw_step_new_I_simple_2d(self):
+    def test_ksw_step_I_simple_2d(self):
 
         np.random.seed(1)
 
@@ -1786,7 +1786,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        estimator.step_new(alm.copy())
+        estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1 * 1 * 1 + 2 * 2 * 2
@@ -1806,7 +1806,7 @@ class TestKSW_64(unittest.TestCase):
         np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
                                              decimal=self.decimal)
 
-    def test_ksw_step_new_pol_simple_2d(self):
+    def test_ksw_step_pol_simple_2d(self):
 
         np.random.seed(1)
 
@@ -1843,7 +1843,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology.red_bispectra[0] = rb
 
         estimator = KSW(data, precision=self.precision)
-        estimator.step_new(alm.copy())
+        estimator.step(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
             return 1 * 1 * 1 + 3 * 3 * 3
@@ -1896,7 +1896,7 @@ class TestKSW_64(unittest.TestCase):
         np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
                                              decimal=self.decimal)
 
-    def test_ksw_step_new_local_I(self):
+    def test_ksw_step_local_I(self):
 
         # Compare to direct 4 dimensional sum over (l,m).
         # For local reduced bispectrum.
@@ -1935,7 +1935,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology = cosmo
 
         estimator = KSW(data, precision=self.precision)
-        estimator.step_new(alm.copy())
+        estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             '''
@@ -1992,7 +1992,7 @@ class TestKSW_64(unittest.TestCase):
         np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
                                              decimal=self.decimal)
 
-    def test_ksw_step_new_local_pol(self):
+    def test_ksw_step_local_pol(self):
 
         # Compare to direct 4 dimensional sum over (l,m).
         # For local reduced bispectrum.
@@ -2032,7 +2032,7 @@ class TestKSW_64(unittest.TestCase):
         data.cosmology = cosmo
 
         estimator = KSW(data, precision=self.precision)
-        estimator.step_new(alm.copy())
+        estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             '''
