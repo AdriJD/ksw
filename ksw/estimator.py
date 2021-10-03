@@ -17,9 +17,11 @@ class KSW():
     data : ksw.Data instance
         Data instance containing a cosmology instance, beams and covariance.
     icov : callable, None
-        Function takes (npol, nelem) alm-like complex array
-        and returns the inverse-variance-weighted version of
-        that array. Defaults to diagonal weighting.
+        Function takes (npol, nelem) alm-like complex array "a" and returns the 
+        inverse-variance-weighted version of that array. Specifically: 
+        (B^{-1} N B^{-1} + S)^{-1} B^{-1} a, where a = B s + n, B is the beam
+        and N^{-1} and S^{-1} are the inverse noise and signal covariance
+        matrices, respectively.
     beam : callable, None
         Function takes (npol, nelem) alm-like complex array
         and returns beam-convolved version of that array. Defaults to no beam.
@@ -32,10 +34,7 @@ class KSW():
     data : ksw.Data instance
         Data instance.
     icov : callable, None
-        Function takes (npol, nelem) alm-like complex array
-        and returns the inverse-variance-weighted version of
-        that array. Specifically: (B^{-1} N B^{-1} + S)^{-1} B^{-1} a, where 
-        a = B s + n.
+        The inverse variance weighting.
     mc_idx : int
         Counter for Monte Carlo estimates.
     mc_gt : (npol, nelem) complex array, None
@@ -49,6 +48,12 @@ class KSW():
         Weight for each isolatitude ring.
     nphi : int
         Number of phi points.
+    dtype : type
+        Dtype for real quantities, i.e. np.float32/np.float64 if precision is 
+        "single"/"double".
+    cdtype : type
+        Dtype for complex quantities, i.e. np.complexx64/np.complex128 if 
+        precision is "single"/"double".
     '''
 
     def __init__(self, data, icov=None, beam=None, precision='single'):
@@ -190,8 +195,10 @@ class KSW():
 
     def _step(self, alm, theta_batch=25):
         '''
-        Calculate grad_t.
+        Calculate grad T (C^-1 a).
 
+        Parameters
+        ----------
         alm : (nelem) or (npol, nelem) complex array
             Healpix-ordered unfiltered alm array. Will be overwritten!
         theta_batch : int, optional
@@ -229,8 +236,8 @@ class KSW():
 
     def step(self, alm, theta_batch=25):
         '''
-        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
-        and <grad T (C^-1 a)> Monte Carlo estimates.
+        Add iteration to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*> and 
+        <grad T (C^-1 a)> Monte Carlo estimates.
 
         Parameters
         ----------
@@ -265,9 +272,9 @@ class KSW():
 
     def step_batch(self, alm_loader, alm_files, comm=None, verbose=False, **kwargs):
         '''
-        Add iterations to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
-        and <grad T (C^-1 a)> Monte Carlo estimates by loading and 
-        processing several alms in parallel using MPI.
+        Add iterations to <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*> and 
+        <grad T (C^-1 a)> Monte Carlo estimates by loading and processing several 
+        alms in parallel using MPI.
 
         Arguments
         ---------
@@ -357,8 +364,7 @@ class KSW():
         Returns
         -------
         estimates : (nalm_files) array, None
-            Estimates for each input file in same order as
-            "alm_files".            
+            Estimates for each input file in same order as "alm_files".            
         '''
 
         if comm is None:
@@ -490,13 +496,15 @@ class KSW():
     def compute_fisher_isotropic(self, icov_ell, return_matrix=False, fsky=1, 
                                      comm=None):
         '''
-        Return Fisher information assuming diagonal inverse noise + signal
-        covariance.
+        Return Fisher information assuming that inverse noise + signal
+        covariance is diagonal in harmonic space.
         
         Arguments
         ---------
         icov_ell : (npol, npol, nell) or (npol, nell) array
-            Inverse covariance matrix diagonal in ell.
+            Inverse covariance matrix diagonal in ell. Unlike "icov" this 
+            should be: 1 / (S_ell + (b^{-1} N b^{-1})_ell), so no beam in 
+            the numerator.
         return_matrix : bool, optonal
             If set, also return nfact x nfact Fisher matrix.       
         fsky : int or (npol,) array.
