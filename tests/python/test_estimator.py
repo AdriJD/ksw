@@ -257,14 +257,21 @@ class TestKSW_64(unittest.TestCase):
         pass
 
     def test_ksw_init(self):
+        
+        pol = ('T', 'E')
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
 
-        data = self.FakeData()
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
 
-        self.assertIs(estimator.data, data)
-        self.assertIs(estimator.cosmology, data.cosmology)
+        self.assertIs(estimator.red_bispectra[0], red_bispectra[0])
+
         self.assertTrue(callable(estimator.icov))
-        self.assertEqual(estimator.icov, data.icov_diag_nonlensed)
+        self.assertTrue(callable(estimator.beam))
+        self.assertEqual(estimator.icov, icov)
+        self.assertEqual(estimator.beam, beam)
 
         self.assertEqual(estimator.mc_idx, 0)
         self.assertIs(estimator.mc_gt, None)
@@ -272,17 +279,68 @@ class TestKSW_64(unittest.TestCase):
 
         self.assertEqual(estimator.thetas.size, estimator.theta_weights.size)
 
-        self.assertTrue(callable(estimator.beam))
-        # Beam should default to identity matrix.
-        alm = np.ones((1, 3), dtype=np.complex64)
-        alm_out = estimator.beam(alm)
-        np.testing.assert_allclose(alm_out, alm)
-        self.assertTrue(np.shares_memory(alm_out, alm))
+        self.assertEqual(estimator.pol, ('T', 'E'))
+        self.assertEqual(estimator.npol, 2)
+
+        self.assertEqual(estimator.lmax, lmax)
+
+        if self.precision == 'double':
+            self.assertEqual(estimator.dtype, np.float64)
+            self.assertEqual(estimator.cdtype, np.complex128)
+        elif self.precision == 'single':
+            self.assertEqual(estimator.dtype, np.float32)
+            self.assertEqual(estimator.cdtype, np.complex64)
+
+    def test_ksw_init_pol(self):
+        
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+
+        pol = ('T', 'E')
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        self.assertEqual(estimator.pol, ('T', 'E'))
+        self.assertEqual(estimator.npol, 2)
+
+        pol = ['T', 'E']
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        self.assertEqual(estimator.pol, ('T', 'E'))
+        self.assertEqual(estimator.npol, 2)
+
+        pol = ('E', 'T')
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        self.assertEqual(estimator.pol, ('T', 'E'))
+        self.assertEqual(estimator.npol, 2)
+
+        pol = ('T',)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        self.assertEqual(estimator.pol, ('T',))
+        self.assertEqual(estimator.npol, 1)
+
+        pol = 'T'
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        self.assertEqual(estimator.pol, ('T',))
+        self.assertEqual(estimator.npol, 1)
+
+        pol = ('E',)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        self.assertEqual(estimator.pol, ('E',))
+        self.assertEqual(estimator.npol, 1)
+
+        pol = ('B',)
+        self.assertRaises(ValueError, KSW, red_bispectra, icov, beam, lmax, pol,
+                          precision=self.precision)
 
     def test_ksw_mc_gt_sq(self):
 
-        data = self.FakeData()
-        estimator = KSW(data, precision=self.precision)
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('T', 'E')
+
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
 
         self.assertIs(estimator.mc_gt_sq, None)
 
@@ -297,12 +355,17 @@ class TestKSW_64(unittest.TestCase):
 
     def test_ksw_mc_gt(self):
 
-        data = self.FakeData()
-        estimator = KSW(data, precision=self.precision)
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('T', 'E')
+
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
 
         self.assertIs(estimator.mc_gt, None)
 
-        mc_gt = np.ones((data.npol, hp.Alm.getsize(data.lmax)),
+        mc_gt = np.ones((len(pol), hp.Alm.getsize(lmax)),
                                       dtype=complex)
         estimator.mc_gt = mc_gt.copy() * 10
         estimator.mc_idx = 1
@@ -317,16 +380,21 @@ class TestKSW_64(unittest.TestCase):
 
     def test_ksw_get_coords(self):
 
-        data = self.FakeData()
-        estimator = KSW(data, precision=self.precision)
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('T', 'E')
 
-        self.assertEqual(estimator.thetas.size, (3 * data.lmax) // 2 + 1)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+
+        self.assertEqual(estimator.thetas.size, (3 * lmax) // 2 + 1)
         self.assertTrue(np.all(0 <= estimator.thetas))
         self.assertTrue(np.all(estimator.thetas <= np.pi))
-        self.assertTrue(estimator.nphi >= 3 * data.lmax + 1)
+        self.assertTrue(estimator.nphi >= 3 * lmax + 1)
 
         # Updating lmax will result in different coords.
-        data.lmax = 10
+        estimator.lmax = 10
         thetas, tw, nphi = estimator.get_coords()
         self.assertEqual(thetas.size, (3 * 10) // 2 + 1)
         self.assertTrue(np.all(0 <= thetas))
@@ -335,22 +403,29 @@ class TestKSW_64(unittest.TestCase):
 
     def test_ksw_init_reduced_bispectrum_err(self):
 
-        data = self.FakeData()
-        estimator = KSW(data, precision=self.precision)
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('T', 'E')
 
-        # Data bisp lmax is smaller than data lmax.
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+
+        # Bisp lmax is smaller than estimator lmax.
         self.assertRaises(ValueError, estimator._init_reduced_bispectrum,
-            estimator.cosmology.red_bispectra[0])
+            estimator.red_bispectra[0])
 
     def test_ksw_init_reduced_bispectrum(self):
 
-        beam = lambda alm : 2 * alm # Note, this beam does nothing..
+        lmax = 6
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('T', 'E')
 
-        data = self.FakeData()
-        data.lmax = 6
-        estimator = KSW(data, precision=self.precision, beam=beam)
-        
-        rb = estimator.cosmology.red_bispectra[0]
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+
+        rb = estimator.red_bispectra[0]
         nell = rb.factors.shape[-1]
         # Shape = (3, npol, red_bisp.nell).
         rb.factors[:,:,:] = np.arange(nell, dtype=float)
@@ -373,7 +448,7 @@ class TestKSW_64(unittest.TestCase):
         rb.weights[:,2] = 3
 
         f_i_ell, rule, weights = estimator._init_reduced_bispectrum(
-            estimator.cosmology.red_bispectra[0])
+            estimator.red_bispectra[0])
 
         np.testing.assert_allclose(rule, rb.rule)
         self.assertTrue(np.shares_memory(rule, rb.rule))
@@ -382,26 +457,25 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(weights.dtype, estimator.dtype)
         
         nufact = rb.factors.shape[0]
-        npol = data.npol
-        lmax = data.lmax
+        npol = len(pol)
         
         self.assertEqual(f_i_ell.shape, (nufact, npol, lmax + 1))
         self.assertEqual(f_i_ell.dtype, estimator.dtype)
         f_i_ell_exp = np.zeros((nufact, npol, lmax + 1), dtype=estimator.dtype)
-        f_i_ell_exp[:,:,2:] = rb.factors[:,:,:lmax+1-2] * 0.1 # 0.1 is beam factor.
+        f_i_ell_exp[:,:,2:] = rb.factors[:,:,:lmax+1-2]
         np.testing.assert_allclose(f_i_ell, f_i_ell_exp)
 
     def test_ksw_init_reduced_bispectrum_I(self):
 
-        beam = lambda alm : 2 * alm # Note, this beam does nothing..
+        lmax = 6
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('T',)
 
-        data = self.FakeData()
-        data.pol = ['T']
-        data.npol = 1
-        data.lmax = 6
-        estimator = KSW(data, precision=self.precision, beam=beam)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
 
-        rb = estimator.cosmology.red_bispectra[0]
+        rb = estimator.red_bispectra[0]
         nell = rb.factors.shape[-1]
         # Shape = (3, npol, red_bisp.nell).
         rb.factors[:,:,:] = np.arange(nell, dtype=float)
@@ -424,7 +498,7 @@ class TestKSW_64(unittest.TestCase):
         rb.weights[:,2] = 3
 
         f_i_ell, rule, weights = estimator._init_reduced_bispectrum(
-            estimator.cosmology.red_bispectra[0])
+            estimator.red_bispectra[0])
 
         np.testing.assert_allclose(rule, rb.rule)
         self.assertTrue(np.shares_memory(rule, rb.rule))
@@ -433,26 +507,26 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(weights.dtype, estimator.dtype)
         
         nufact = rb.factors.shape[0]
-        npol = data.npol
-        lmax = data.lmax
+        npol = len(pol)
         
         self.assertEqual(f_i_ell.shape, (nufact, npol, lmax + 1))
         self.assertEqual(f_i_ell.dtype, estimator.dtype)
         f_i_ell_exp = np.zeros((nufact, npol, lmax + 1), dtype=estimator.dtype)
-        f_i_ell_exp[:,:,2:] = rb.factors[:,0:1,:lmax+1-2] * 0.1 # 0.1 is beam factor.
+        #f_i_ell_exp[:,:,2:] = rb.factors[:,0:1,:lmax+1-2] * 0.1 # 0.1 is beam factor.
+        f_i_ell_exp[:,:,2:] = rb.factors[:,0:1,:lmax+1-2]
         np.testing.assert_allclose(f_i_ell, f_i_ell_exp)
 
     def test_ksw_init_reduced_bispectrum_E(self):
 
-        beam = lambda alm : 2 * alm # Note, this beam does nothing..
+        lmax = 6
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('E',)
 
-        data = self.FakeData()
-        data.pol = ['E']
-        data.npol = 1
-        data.lmax = 6
-        estimator = KSW(data, precision=self.precision, beam=beam)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
 
-        rb = estimator.cosmology.red_bispectra[0]
+        rb = estimator.red_bispectra[0]
         nell = rb.factors.shape[-1]
         # Shape = (3, npol, red_bisp.nell).
         rb.factors[:,:,:] = np.arange(nell, dtype=float)
@@ -475,7 +549,7 @@ class TestKSW_64(unittest.TestCase):
         rb.weights[:,2] = 3
 
         f_i_ell, rule, weights = estimator._init_reduced_bispectrum(
-            estimator.cosmology.red_bispectra[0])
+            estimator.red_bispectra[0])
 
         np.testing.assert_allclose(rule, rb.rule)
         self.assertTrue(np.shares_memory(rule, rb.rule))
@@ -484,28 +558,29 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(weights.dtype, estimator.dtype)
         
         nufact = rb.factors.shape[0]
-        npol = data.npol
-        lmax = data.lmax
+        npol = len(pol)
         
         self.assertEqual(f_i_ell.shape, (nufact, npol, lmax + 1))
         self.assertEqual(f_i_ell.dtype, estimator.dtype)
         f_i_ell_exp = np.zeros((nufact, npol, lmax + 1), dtype=estimator.dtype)
-        f_i_ell_exp[:,:,2:] = rb.factors[:,1:2,:lmax+1-2] * 0.1 # 0.1 is beam factor.
+        f_i_ell_exp[:,:,2:] = rb.factors[:,1:2,:lmax+1-2]
         np.testing.assert_allclose(f_i_ell, f_i_ell_exp)
 
     def test_ksw_compute_fisher(self):
 
-        data = self.FakeData()
-        estimator = KSW(data, precision=self.precision)
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         def icov(alm):
             alm *= 2
             return alm
-        estimator.icov = icov
+
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
 
         self.assertIs(estimator.compute_fisher(), None)
 
-        mc_gt = np.ones((data.npol, hp.Alm.getsize(data.lmax)),
-                                      dtype=complex)
+        mc_gt = np.ones((len(pol), hp.Alm.getsize(lmax)), dtype=complex)
         mc_gt *= 10
         mc_gt_sq = 5
         mc_idx = 4
@@ -522,7 +597,7 @@ class TestKSW_64(unittest.TestCase):
         # See utils.contract_almxblm
         fisher_exp -= 2 * np.real(np.sum(mc_gt / mc_idx * icov(mc_gt.copy() / mc_idx)))
         fisher_exp -= -(np.real(np.sum((mc_gt / mc_idx * icov(mc_gt.copy() / mc_idx))
-                                       [...,:data.lmax+1])))
+                                       [...,:lmax+1])))
         fisher_exp /= 3
 
         fisher = estimator.compute_fisher()
@@ -535,14 +610,17 @@ class TestKSW_64(unittest.TestCase):
 
     def test_ksw_compute_linear_term(self):
 
-        data = self.FakeData()
-        estimator = KSW(data, precision=self.precision)
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         def icov(alm):
             alm *= 2
             return alm
-        estimator.icov = icov
 
-        alm = np.zeros((data.npol, hp.Alm.getsize(data.lmax)),
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+
+        alm = np.zeros((len(pol), hp.Alm.getsize(lmax)),
                       dtype=complex)
         alm[:] += np.arange(alm.size, dtype=alm.dtype).reshape(alm.shape)
 
@@ -562,7 +640,7 @@ class TestKSW_64(unittest.TestCase):
         # Using second line of Eq. 57.
         lin_term_exp = 2 * np.real(np.sum(alm * icov(mc_gt.copy() / mc_idx)))
         lin_term_exp -= np.real(np.sum((alm * icov(mc_gt.copy() / mc_idx))
-                                       [...,:data.lmax+1]))
+                                       [...,:lmax+1]))
         lin_term = estimator.compute_linear_term(alm)
 
         self.assertAlmostEqual(lin_term, lin_term_exp, places=self.decimal)
@@ -575,23 +653,23 @@ class TestKSW_64(unittest.TestCase):
     def test_ksw_compute_linear_term_1d(self):
 
         # Check if still works with (nelem) input array.
-
-        data = self.FakeData()
-        data.pol = ('T')
-        data.npol = 1
-        estimator = KSW(data, precision=self.precision)
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         def icov(alm):
             alm *= 2
             return alm
-        estimator.icov = icov
 
-        alm = np.zeros(hp.Alm.getsize(data.lmax),
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+
+        alm = np.zeros(hp.Alm.getsize(lmax),
                       dtype=complex)
         alm[:] += np.arange(alm.size, dtype=alm.dtype).reshape(alm.shape)
 
         self.assertIs(estimator.compute_linear_term(alm), None)
 
-        mc_gt = np.ones((1, hp.Alm.getsize(data.lmax)), dtype=alm.dtype)
+        mc_gt = np.ones((1, hp.Alm.getsize(lmax)), dtype=alm.dtype)
         mc_gt *= 10
         mc_gt_sq = 5
         mc_idx = 4
@@ -605,7 +683,7 @@ class TestKSW_64(unittest.TestCase):
         # Using second line of Eq. 57.
         lin_term_exp = 2 * np.real(np.sum(alm * icov(mc_gt.copy() / mc_idx)))
         lin_term_exp -= np.real(np.sum((alm * icov(mc_gt.copy() / mc_idx))
-                                       [...,:data.lmax+1]))
+                                       [...,:lmax+1]))
         lin_term = estimator.compute_linear_term(alm)
 
         self.assertAlmostEqual(lin_term, lin_term_exp, places=self.decimal)
@@ -616,18 +694,19 @@ class TestKSW_64(unittest.TestCase):
                                              decimal=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_I_simple(self):
-                
+
         lmax = 6
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
+        icov = lambda alm: alm
+        icov_ell = np.ones((1, lmax + 1))
+                
         fsky = 0.4
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
-        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
 
         # Create a reduced bispectrum that is just b_l1l2l3 = 1.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 1
         rb.nfact = 1
         rb.ells_sparse = np.arange(lmax + 1)
@@ -638,14 +717,11 @@ class TestKSW_64(unittest.TestCase):
         rb.rule = np.zeros((1, 3), dtype=int)
         rb.weights = np.ones((1, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed, fsky=fsky)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        fisher = estimator.compute_fisher_isotropic(icov_ell, fsky=fsky)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
-            # Correct for 3 powers of beam.
-            return 0.1 ** 3 * 1. 
+            return 1. 
             
         def icov(ell, pidx1, pidx2):
             return 1.
@@ -655,17 +731,17 @@ class TestKSW_64(unittest.TestCase):
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_pol_simple(self):
-                
-        lmax = 5
-        npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
-        data.icov_ell_nonlensed = np.ones((npol, npol, lmax + 1))
 
+        lmax = 5
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
+        npol = 2
+        icov = lambda alm: alm
+        icov_ell = np.ones((npol, npol, lmax + 1))
+                
         # Create a reduced bispectrum that is just b_l1l2l3 = 1.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = npol
         rb.nfact = 1
         rb.ells_sparse = np.arange(lmax + 1)
@@ -676,35 +752,32 @@ class TestKSW_64(unittest.TestCase):
         rb.rule = np.zeros((1, 3), dtype=int)
         rb.weights = np.ones((1, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        fisher = estimator.compute_fisher_isotropic(icov_ell)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
-            # Correct for 3 powers of beam.
-            return 0.1 ** 3 * 1. 
+            return 1.
             
         def icov(ell, pidx1, pidx2):
             return 1.
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
+        self.assertAlmostEqual(fisher / fisher_exp, 1, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_I_simple_2d(self):
-                
+
         # Compare to direct 4 dimensional sum over (l,m).
         lmax = 5
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
-        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
-
+        icov = lambda alm: alm
+        icov_ell = np.ones((1, lmax + 1))
+                
         # Create a reduced bispectrum that is b_l1l2l3 = 1 * 1 * 1 + 2 * 2 * 2.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 1
         rb.nfact = 2
         rb.ells_sparse = np.arange(lmax + 1)
@@ -718,36 +791,33 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[1] = 1
         rb.weights = np.ones((2, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        fisher = estimator.compute_fisher_isotropic(icov_ell)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
-            # Correct for 3 powers of beam.
-            return 0.1 ** 3 * (1 * 1 * 1 + 2 * 2 * 2)
-            
+            return (1 * 1 * 1 + 2 * 2 * 2)
+
         def icov(ell, pidx1, pidx2):
             return 1.
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
+        self.assertAlmostEqual(fisher / fisher_exp, 1, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_pol_simple_2d(self):
-                
+
         # Compare to direct 4 dimensional sum over (l,m).
         lmax = 5
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
-        data.icov_ell_nonlensed = np.ones((2, 2, lmax + 1))
-
+        icov = lambda alm: alm
+        icov_ell = np.ones((2, 2, lmax + 1))
+                                
         # Create a reduced bispectrum that is sum of 1 for I and 2 for E
         # and 3 for I and 6 for E.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = npol
         rb.nfact = 2
         rb.ells_sparse = np.arange(lmax + 1)
@@ -763,13 +833,10 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[1] = 1
         rb.weights = np.ones((2, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        fisher = estimator.compute_fisher_isotropic(icov_ell)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
-            # Correct for 3 powers of beam.
             b1_l1 = 2 if pidx1 else 1
             b1_l2 = 2 if pidx2 else 1
             b1_l3 = 2 if pidx3 else 1
@@ -778,14 +845,14 @@ class TestKSW_64(unittest.TestCase):
             b2_l2 = 6 if pidx2 else 3
             b2_l3 = 6 if pidx3 else 3
 
-            return 0.1 ** 3 * (b1_l1 * b1_l2 * b1_l3 + b2_l1 * b2_l2 * b2_l3)
+            return b1_l1 * b1_l2 * b1_l3 + b2_l1 * b2_l2 * b2_l3
             
         def icov(ell, pidx1, pidx2):
             return 1.
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
-
-        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
+        
+        self.assertAlmostEqual(fisher / fisher_exp, 1, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_I_local(self):
 
@@ -809,16 +876,15 @@ class TestKSW_64(unittest.TestCase):
 
         # Lmax and pol of data should overrule those of bispectrum.
         lmax = 5
+        red_bispectra = [rb]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
-        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
-        data.cosmology = cosmo
+        icov = lambda alm: alm
+        icov_ell = np.ones((1, lmax + 1))
 
-        estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        fisher = estimator.compute_fisher_isotropic(icov_ell)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             '''
@@ -858,15 +924,14 @@ class TestKSW_64(unittest.TestCase):
 
             ret *= amp
 
-            # Correct for beam.
-            return ret * (0.1) ** 3
+            return ret
 
         def icov(ell, pidx1, pidx2):
             return 1.
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
+        self.assertAlmostEqual(fisher / fisher_exp, 1, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_pol_local(self):
 
@@ -890,18 +955,17 @@ class TestKSW_64(unittest.TestCase):
 
         # Lmax and pol of data should overrule those of bispectrum.
         lmax = 5
+        red_bispectra = [rb]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
-        data.icov_ell_nonlensed = np.ones((2, 2, lmax + 1))
-        data.icov_ell_nonlensed[0,1] = 0.4
-        data.icov_ell_nonlensed[1,0] = 0.4
-        data.cosmology = cosmo
+        icov = lambda alm: alm
+        icov_ell = np.ones((2, 2, lmax + 1))
+        icov_ell[0,1] = 0.4
+        icov_ell[1,0] = 0.4
 
-        estimator = KSW(data, precision=self.precision)
-        fisher = estimator.compute_fisher_isotropic(data.icov_ell_nonlensed)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        fisher = estimator.compute_fisher_isotropic(icov_ell)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             '''
@@ -944,8 +1008,7 @@ class TestKSW_64(unittest.TestCase):
 
             ret *= amp
 
-            # Correct for beam.
-            return ret * (0.1) ** 3
+            return ret
 
         def icov(ell, pidx1, pidx2):
             if pidx1 == pidx2:
@@ -955,20 +1018,20 @@ class TestKSW_64(unittest.TestCase):
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
-        self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
+        self.assertAlmostEqual(fisher / fisher_exp, 1, places=self.decimal)
 
     def test_ksw_compute_fisher_isotropic_matrix(self):
-                
+        
         lmax = 5
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
-        data.icov_ell_nonlensed = np.ones((1, lmax + 1))
+        icov = lambda alm: alm
+        icov_ell = np.ones((1, lmax + 1))
 
         # Create a reduced bispectrum that is just b_l1l2l3 = 1.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = npol
         rb.nfact = 1
         rb.ells_sparse = np.arange(lmax + 1)
@@ -979,21 +1042,20 @@ class TestKSW_64(unittest.TestCase):
         rb.rule = np.zeros((1, 3), dtype=int)
         rb.weights = np.ones((1, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+        fisher = estimator.compute_fisher_isotropic(icov_ell)
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
-            # Correct for 3 powers of beam.
-            return 0.1 ** 3 * 1. 
-            
+            return 1.
+
         def icov(ell, pidx1, pidx2):
             return 1.
 
         fisher_exp = self.fisher_direct(lmax, npol, red_bisp, icov)
 
         fisher, fisher_nxn = estimator.compute_fisher_isotropic(
-            data.icov_ell_nonlensed, return_matrix=True)
+            icov_ell, return_matrix=True)
+
         self.assertAlmostEqual(fisher, fisher_exp, places=self.decimal)
         self.assertAlmostEqual(fisher, np.sum(fisher_nxn), places=self.decimal)
 
@@ -1008,14 +1070,15 @@ class TestKSW_64(unittest.TestCase):
         alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
         alm = alm.reshape((1, alm.size))
 
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
+        icov = lambda alm: alm
+        icov_ell = np.ones((1, lmax + 1))
 
         # Create a reduced bispectrum that is just b_l1l2l3 = 1.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 1
         rb.nfact = 1
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1026,9 +1089,7 @@ class TestKSW_64(unittest.TestCase):
         rb.rule = np.zeros((1, 3), dtype=int)
         rb.weights = np.ones((1, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1043,7 +1104,7 @@ class TestKSW_64(unittest.TestCase):
         def red_bisp(ell1, ell2, ell3):
             return 1.
 
-        alm = hp.almxfl(alm[0], data.b_ell[0])
+        alm = alm[0]
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
         self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
@@ -1058,14 +1119,15 @@ class TestKSW_64(unittest.TestCase):
         alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
         alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
 
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
+        icov = lambda alm: alm
+        icov_ell = np.ones((2, 2, lmax + 1))
 
         # Create a reduced bispectrum with factors that are 1 for I and 2 for E.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 2
         rb.nfact = 1
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1077,9 +1139,8 @@ class TestKSW_64(unittest.TestCase):
         rb.rule = np.zeros((1, 3), dtype=int)
         rb.weights = np.ones((1, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        #estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1108,8 +1169,9 @@ class TestKSW_64(unittest.TestCase):
         def red_bisp_EEE(ell1, ell2, ell3):
             return 2 * 2 * 2
 
-        alm_I = hp.almxfl(alm[0], data.b_ell[0])
-        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        alm_I = alm[0]
+        alm_E = alm[1]
+
         estimate_exp = self.cubic_term_direct(alm_I, alm_I, alm_I, red_bisp_III)
         estimate_exp += self.cubic_term_direct(alm_I, alm_I, alm_E, red_bisp_IIE)
         estimate_exp += self.cubic_term_direct(alm_I, alm_E, alm_I, red_bisp_IEI)
@@ -1119,7 +1181,7 @@ class TestKSW_64(unittest.TestCase):
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_I, red_bisp_EEI)
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_E, red_bisp_EEE)
 
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_I_2d(self):
 
@@ -1133,14 +1195,15 @@ class TestKSW_64(unittest.TestCase):
         alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
         alm = alm.reshape((1, alm.size))
 
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
+        icov = lambda alm: alm
+        icov_ell = np.ones((1, lmax + 1))
 
         # Create a reduced bispectrum that is b_l1l2l3 = 1 * 1 * 1 + 2 * 2 * 2.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 1
         rb.nfact = 2
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1154,9 +1217,7 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[1] = 1
         rb.weights = np.ones((2, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1171,10 +1232,10 @@ class TestKSW_64(unittest.TestCase):
         def red_bisp(ell1, ell2, ell3):
             return 1 * 1 * 1 + 2 * 2 * 2
 
-        alm = hp.almxfl(alm[0], data.b_ell[0])
+        alm = alm[0]
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_pol_2d(self):
 
@@ -1186,16 +1247,17 @@ class TestKSW_64(unittest.TestCase):
         alm += np.random.randn(alm.size).reshape(alm.shape)
         alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
         alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
-
+        
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
+        icov = lambda alm: alm
+        icov_ell = np.ones((2, 2, lmax + 1))
 
         # Create a reduced bispectrum that is sum of 1 for I and 2 for E
         # and 3 for I and 6 for E.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 1
         rb.nfact = 2
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1211,9 +1273,7 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[1] = 1
         rb.weights = np.ones((2, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1242,8 +1302,9 @@ class TestKSW_64(unittest.TestCase):
         def red_bisp_EEE(ell1, ell2, ell3):
             return 2 * 2 * 2 + 6 * 6 * 6
 
-        alm_I = hp.almxfl(alm[0], data.b_ell[0])
-        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        alm_I = alm[0]
+        alm_E = alm[1]
+
         estimate_exp = self.cubic_term_direct(alm_I, alm_I, alm_I, red_bisp_III)
         estimate_exp += self.cubic_term_direct(alm_I, alm_I, alm_E, red_bisp_IIE)
         estimate_exp += self.cubic_term_direct(alm_I, alm_E, alm_I, red_bisp_IEI)
@@ -1253,7 +1314,7 @@ class TestKSW_64(unittest.TestCase):
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_I, red_bisp_EEI)
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_E, red_bisp_EEE)
 
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_local_I(self):
 
@@ -1286,14 +1347,14 @@ class TestKSW_64(unittest.TestCase):
         alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
         alm = alm.reshape((1, alm.size))
 
+        red_bispectra = [rb]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
-        data.cosmology = cosmo
+        icov = lambda alm: alm
+        icov_ell = np.ones((1, lmax + 1))
 
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1304,8 +1365,6 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
         estimate = estimator.compute_estimate(alm.copy())
-
-        print(f'estimate : {estimate}')
 
         def red_bisp(ell1, ell2, ell3):
             '''
@@ -1350,10 +1409,10 @@ class TestKSW_64(unittest.TestCase):
 
             return ret
 
-        alm = hp.almxfl(alm[0], data.b_ell[0])
+        alm = alm[0]
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_local_pol(self):
 
@@ -1385,14 +1444,13 @@ class TestKSW_64(unittest.TestCase):
         alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
         alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
 
+        red_bispectra = [rb]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
-        data.cosmology = cosmo
+        icov = lambda alm: alm
 
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1456,9 +1514,10 @@ class TestKSW_64(unittest.TestCase):
         red_bisp_EIE = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 0, 1)
         red_bisp_EEI = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 1, 0)
         red_bisp_EEE = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 1, 1)
-            
-        alm_I = hp.almxfl(alm[0], data.b_ell[0])
-        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        
+        alm_I = alm[0]
+        alm_E = alm[1]
+
         estimate_exp = self.cubic_term_direct(alm_I, alm_I, alm_I, red_bisp_III)
         estimate_exp += self.cubic_term_direct(alm_I, alm_I, alm_E, red_bisp_IIE)
         estimate_exp += self.cubic_term_direct(alm_I, alm_E, alm_I, red_bisp_IEI)
@@ -1468,7 +1527,7 @@ class TestKSW_64(unittest.TestCase):
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_I, red_bisp_EEI)
         estimate_exp += self.cubic_term_direct(alm_E, alm_E, alm_E, red_bisp_EEE)
 
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_equilateral_I(self):
 
@@ -1481,7 +1540,6 @@ class TestKSW_64(unittest.TestCase):
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
         pars = camb.CAMBparams(**cosmo_opts)
-
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)
 
@@ -1501,14 +1559,13 @@ class TestKSW_64(unittest.TestCase):
         alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
         alm = alm.reshape((1, alm.size))
 
+        red_bispectra = [rb]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
-        data.cosmology = cosmo
+        icov = lambda alm: alm
 
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.mc_idx = 1
 
         # Make sure Fisher is 1 and linear term is 0.
@@ -1607,10 +1664,10 @@ class TestKSW_64(unittest.TestCase):
 
             return ret
 
-        alm = hp.almxfl(alm[0], data.b_ell[0])
+        alm = alm[0]
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
 
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_step_I_simple(self):
 
@@ -1624,14 +1681,14 @@ class TestKSW_64(unittest.TestCase):
         alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
         alm = alm.reshape((1, alm.size))
 
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
+        icov = lambda alm: alm
 
         # Create a reduced bispectrum that is just b_l1l2l3 = 1.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 1
         rb.nfact = 1
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1642,19 +1699,14 @@ class TestKSW_64(unittest.TestCase):
         rb.rule = np.zeros((1, 3), dtype=int)
         rb.weights = np.ones((1, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1.
 
-        alm = hp.almxfl(alm[0], data.b_ell[0])
+        alm = alm[0]
         grad_exp = self.grad_direct(alm, alm, red_bisp)
-        # Bispectrum in grad still has 3 b_ell terms, so 
-        # add one term for fair comparison.
-        grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
 
         np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
                                              decimal=self.decimal)
@@ -1662,9 +1714,9 @@ class TestKSW_64(unittest.TestCase):
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
         mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq / mc_gt_sq_exp,
+                                             np.ones_like(mc_gt_sq_exp), 
                                              decimal=self.decimal)
-
     def test_ksw_step_pol_simple(self):
 
         np.random.seed(1)
@@ -1675,14 +1727,14 @@ class TestKSW_64(unittest.TestCase):
         alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
         alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
 
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
+        icov = lambda alm: alm
 
         # Create a reduced bispectrum with factors that are 1 for I and 2 for E.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 2
         rb.nfact = 1
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1694,9 +1746,7 @@ class TestKSW_64(unittest.TestCase):
         rb.rule = np.zeros((1, 3), dtype=int)
         rb.weights = np.ones((1, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
@@ -1716,8 +1766,8 @@ class TestKSW_64(unittest.TestCase):
         def red_bisp_EEE(ell1, ell2, ell3):
             return 2 * 2 * 2
 
-        alm_I = hp.almxfl(alm[0], data.b_ell[0])
-        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        alm_I = alm[0]
+        alm_E = alm[1]
         
         # Grad is now 2d and is sum of all pol combinations.
         grad_exp_I = self.grad_direct(alm_I, alm_I, red_bisp_III)
@@ -1729,11 +1779,6 @@ class TestKSW_64(unittest.TestCase):
         grad_exp_E += self.grad_direct(alm_I, alm_E, red_bisp_EIE)
         grad_exp_E += self.grad_direct(alm_E, alm_I, red_bisp_EEI)
         grad_exp_E += self.grad_direct(alm_E, alm_E, red_bisp_EEE)
-
-        # Bispectrum in grad still has 3 b_ell terms, so 
-        # add one term for fair comparison.
-        grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
-        grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
 
         np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I, 
                                              decimal=self.decimal)
@@ -1747,9 +1792,9 @@ class TestKSW_64(unittest.TestCase):
         mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
         mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq / mc_gt_sq_exp, 
+                                             np.ones_like(mc_gt_sq_exp),
                                              decimal=self.decimal)
-
     def test_ksw_step_I_simple_2d(self):
 
         np.random.seed(1)
@@ -1762,14 +1807,14 @@ class TestKSW_64(unittest.TestCase):
         alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
         alm = alm.reshape((1, alm.size))
 
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
+        icov = lambda alm: alm
 
         # Create a reduced bispectrum that is b_l1l2l3 = 1 * 1 * 1 + 2 * 2 * 2.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 1
         rb.nfact = 2
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1783,19 +1828,14 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[1] = 1
         rb.weights = np.ones((2, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1 * 1 * 1 + 2 * 2 * 2
 
-        alm = hp.almxfl(alm[0], data.b_ell[0])
+        alm = alm[0]
         grad_exp = self.grad_direct(alm, alm, red_bisp)
-        # Bispectrum in grad still has 3 b_ell terms, so 
-        # add one term for fair comparison.
-        grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
 
         np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
                                              decimal=self.decimal)
@@ -1803,7 +1843,8 @@ class TestKSW_64(unittest.TestCase):
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
         mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq / mc_gt_sq_exp, 
+                                             np.ones_like(mc_gt_sq_exp),
                                              decimal=self.decimal)
 
     def test_ksw_step_pol_simple_2d(self):
@@ -1816,15 +1857,15 @@ class TestKSW_64(unittest.TestCase):
         alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
         alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
 
+        red_bispectra = [self.FakeReducedBispectrum()]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
+        icov = lambda alm: alm
 
         # Create a reduced bispectrum that is sum of 1 for I and 2 for E
         # and 3 for I and 6 for E.
-        rb = self.FakeReducedBispectrum
+        rb = red_bispectra[0]
         rb.npol = 2
         rb.nfact = 2
         rb.ells_sparse = np.arange(lmax + 1)
@@ -1840,9 +1881,7 @@ class TestKSW_64(unittest.TestCase):
         rb.rule[1] = 1
         rb.weights = np.ones((2, 3))
 
-        data.cosmology.red_bispectra[0] = rb
-
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
@@ -1862,8 +1901,8 @@ class TestKSW_64(unittest.TestCase):
         def red_bisp_EEE(ell1, ell2, ell3):
             return 2 * 2 * 2 + 6 * 6 * 6
 
-        alm_I = hp.almxfl(alm[0], data.b_ell[0])
-        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        alm_I = alm[0]
+        alm_E = alm[1]
         
         # Grad is now 2d and is sum of all pol combinations.
         grad_exp_I = self.grad_direct(alm_I, alm_I, red_bisp_III)
@@ -1876,14 +1915,11 @@ class TestKSW_64(unittest.TestCase):
         grad_exp_E += self.grad_direct(alm_E, alm_I, red_bisp_EEI)
         grad_exp_E += self.grad_direct(alm_E, alm_E, red_bisp_EEE)
 
-        # Bispectrum in grad still has 3 b_ell terms, so 
-        # add one term for fair comparison.
-        grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
-        grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
-
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I,
+        np.testing.assert_array_almost_equal(estimator.mc_gt[0] / grad_exp_I,
+                                             np.ones_like(grad_exp_I),
                                              decimal=self.decimal)
-        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
+        np.testing.assert_array_almost_equal(estimator.mc_gt[1] / grad_exp_E, 
+                                             np.ones_like(grad_exp_E),
                                              decimal=self.decimal)
 
         # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
@@ -1893,7 +1929,8 @@ class TestKSW_64(unittest.TestCase):
         mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
         mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq / mc_gt_sq_exp, 
+                                             np.ones_like(mc_gt_sq_exp),
                                              decimal=self.decimal)
 
     def test_ksw_step_local_I(self):
@@ -1927,14 +1964,13 @@ class TestKSW_64(unittest.TestCase):
         alm[:lmax+1] = alm[:lmax+1].real # Make sure m=0 is real.
         alm = alm.reshape((1, alm.size))
 
+        red_bispectra = [rb]
+        beam = lambda alm : alm
+        pol = ('T',)
         npol = 1
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T')
-        data.npol = npol
-        data.cosmology = cosmo
+        icov = lambda alm: alm
 
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
@@ -1977,19 +2013,17 @@ class TestKSW_64(unittest.TestCase):
 
             return ret
 
-        alm = hp.almxfl(alm[0], data.b_ell[0])
+        alm = alm[0]
         grad_exp = self.grad_direct(alm, alm, red_bisp)
-        # Bispectrum in grad still has 3 b_ell terms, so 
-        # add one term for fair comparison.
-        grad_exp = hp.almxfl(grad_exp, data.b_ell[0])
 
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp, 
-                                             decimal=self.decimal)
+        np.testing.assert_allclose(estimator.mc_gt[0] , grad_exp, 
+                                   rtol=10 ** -self.decimal)
 
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp * np.conj(grad_exp)))
         mc_gt_sq_exp -= np.sum(grad_exp[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
+        np.testing.assert_array_almost_equal(estimator.mc_gt_sq /  mc_gt_sq_exp, 
+                                             np.ones_like(mc_gt_sq_exp),
                                              decimal=self.decimal)
 
     def test_ksw_step_local_pol(self):
@@ -2024,14 +2058,13 @@ class TestKSW_64(unittest.TestCase):
         alm += np.random.randn(alm.size).reshape(alm.shape) * 1j
         alm[:,:lmax+1] = alm[:,:lmax+1].real # Make sure m=0 is real.
 
+        red_bispectra = [rb]
+        beam = lambda alm : alm
+        pol = ('T', 'E')
         npol = 2
-        data = self.FakeData()
-        data.lmax = lmax
-        data.pol = ('T', 'E')
-        data.npol = npol
-        data.cosmology = cosmo
+        icov = lambda alm: alm
 
-        estimator = KSW(data, precision=self.precision)
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         estimator.step(alm.copy())
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
@@ -2087,8 +2120,8 @@ class TestKSW_64(unittest.TestCase):
         red_bisp_EEI = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 1, 0)
         red_bisp_EEE = lambda ell1, ell2, ell3: red_bisp(ell1, ell2, ell3, 1, 1, 1)
 
-        alm_I = hp.almxfl(alm[0], data.b_ell[0])
-        alm_E = hp.almxfl(alm[1], data.b_ell[1])
+        alm_I = alm[0]
+        alm_E = alm[1]
         
         # Grad is now 2d and is sum of all pol combinations.
         grad_exp_I = self.grad_direct(alm_I, alm_I, red_bisp_III)
@@ -2101,15 +2134,10 @@ class TestKSW_64(unittest.TestCase):
         grad_exp_E += self.grad_direct(alm_E, alm_I, red_bisp_EEI)
         grad_exp_E += self.grad_direct(alm_E, alm_E, red_bisp_EEE)
 
-        # Bispectrum in grad still has 3 b_ell terms, so 
-        # add one term for fair comparison.
-        grad_exp_I = hp.almxfl(grad_exp_I, data.b_ell[0])
-        grad_exp_E = hp.almxfl(grad_exp_E, data.b_ell[0])
-
-        np.testing.assert_array_almost_equal(estimator.mc_gt[0], grad_exp_I, 
-                                             decimal=self.decimal)
-        np.testing.assert_array_almost_equal(estimator.mc_gt[1], grad_exp_E, 
-                                             decimal=self.decimal)
+        np.testing.assert_allclose(estimator.mc_gt[0], grad_exp_I, 
+                                   rtol=10 ** -self.decimal)
+        np.testing.assert_allclose(estimator.mc_gt[1], grad_exp_E, 
+                                   rtol=10 ** -self.decimal)
 
         # We use diagonal cov in ell, m and pol in this example, so just sum of the two.
         mc_gt_sq_exp = np.sum(2 * np.real(grad_exp_I * np.conj(grad_exp_I)))
@@ -2118,8 +2146,8 @@ class TestKSW_64(unittest.TestCase):
         mc_gt_sq_exp += np.sum(2 * np.real(grad_exp_E * np.conj(grad_exp_E)))
         mc_gt_sq_exp -= np.sum(grad_exp_E[:lmax+1].real ** 2 )
         
-        np.testing.assert_array_almost_equal(estimator.mc_gt_sq, mc_gt_sq_exp, 
-                                             decimal=self.decimal)
+        np.testing.assert_allclose(estimator.mc_gt_sq, mc_gt_sq_exp, 
+                                   rtol=10 ** -self.decimal)
 
 class TestKSW_32(TestKSW_64):
 

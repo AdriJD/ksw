@@ -14,34 +14,44 @@ class KSW():
 
     Parameters
     ----------
-    data : ksw.Data instance
-        Data instance containing a cosmology instance, beams and covariance.
-    icov : callable, None
+    red_bispctra : (list of) ksw.ReducedBispectrum instance(s)
+        Estimate fNL for these reduced bispectra.
+    icov : callable
         Function takes (npol, nelem) alm-like complex array "a" and returns the 
         inverse-variance-weighted version of that array. Specifically: 
         (B^{-1} N B^{-1} + S)^{-1} B^{-1} a, where a = B s + n, B is the beam
         and N^{-1} and S^{-1} are the inverse noise and signal covariance
         matrices, respectively.
-    beam : callable, None
+    beam : callable
         Function takes (npol, nelem) alm-like complex array
         and returns beam-convolved version of that array. Defaults to no beam.
+    lmax : int
+        Max multipole used in estimator. Should match shape of alms.
+    pol : str or array-like of strings.
+        Data polarization, e.g. "E", or ["T", "E"]. Should match shape of alms.
     precision : str, optional
         Use either "single" precision or "double" precision data types 
         for internal calculations.
 
     Attributes
     ----------
-    data : ksw.Data instance
-        Data instance.
+    red_bispectra : list of ksw.ReducedBispectrum instances
+        Reduced bispectra templates.
     icov : callable, None
-        The inverse variance weighting.
+        The inverse variance weighting operation.
+    beam : callable
+        The beam convolution operation.
+    lmax : int
+        Max multipole used in estimator.
+    pol : tuple
+        Data polarizations.
     mc_idx : int
         Counter for Monte Carlo estimates.
     mc_gt : (npol, nelem) complex array, None
         Current <grad T (C^-1 a)> Monte Carlo estimate (eq 60 Smith Zaldarriaga).
     mc_gt_sq : float, None
-        Current <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*> Monte Carlo
-        estimate (eq 61 Smith Zaldarriaga).
+        Current <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*> Monte Carlo estimate 
+        (eq 61 Smith Zaldarriaga).
     thetas : (ntheta) array
         Coordinates of isolatitude rings.
     theta_weights (ntheta) array
@@ -52,24 +62,21 @@ class KSW():
         Dtype for real quantities, i.e. np.float32/np.float64 if precision is 
         "single"/"double".
     cdtype : type
-        Dtype for complex quantities, i.e. np.complexx64/np.complex128 if 
+        Dtype for complex quantities, i.e. np.complex64/np.complex128 if 
         precision is "single"/"double".
     '''
 
-    def __init__(self, data, icov=None, beam=None, precision='single'):
+    def __init__(self, red_bispectra, icov, beam, lmax, pol, precision='single'):
 
-        self.data = data
-        self.cosmology = data.cosmology
-        if icov is None:
-            icov = data.icov_diag_nonlensed        
+        self.red_bispectra = red_bispectra
         self.icov = icov
-
-        if beam is None:
-            beam = lambda alm : alm
         self.beam = beam
         self.mc_idx = 0
         self.mc_gt = None
         self.mc_gt_sq = None
+
+        self.lmax = lmax
+        self.pol = pol
 
         if precision == 'single':
             self.dtype = np.float32
@@ -80,10 +87,32 @@ class KSW():
         else:
             raise ValueError('precision {} not understood'.format(precision))
 
-        if len(self.cosmology.red_bispectra) > 1:
+        if len(red_bispectra) > 1:
             raise NotImplementedError('no joint estimation for now.')
 
         self.thetas, self.theta_weights, self.nphi = self.get_coords()
+
+    @property
+    def pol(self):
+        return self.__pol
+    
+    @pol.setter
+    def pol(self, pol):
+        '''Check input and make sorted tuple.'''
+        pol = list(np.atleast_1d(pol))
+        sort_order = {"T": 0, "E": 1}
+
+        if pol.count('T') + pol.count('E') != len(pol):
+            raise ValueError(f'Pol={pol}, but may only contain T and/or E.')
+        elif pol.count('T') != 1 and pol.count('E') != 1:
+            raise ValueError(f'Pol={pol}, cannot contain duplicates.')
+
+        pol.sort(key=lambda val: sort_order[val[0]])
+        self.__pol = tuple(pol)
+
+    @property
+    def npol(self):
+        return len(self.pol)
 
     @property
     def mc_gt(self):
@@ -127,12 +156,10 @@ class KSW():
         We use Gauss-Legendre weights for isolatitude rings, see astro-ph/0305537.
         '''
 
-        lmax = self.data.lmax
-
-        cos_thetas, ct_weights = roots_legendre(int(np.floor(1.5 * lmax) + 1))
+        cos_thetas, ct_weights = roots_legendre(int(np.floor(1.5 * self.lmax) + 1))
         thetas = np.arccos(cos_thetas)
 
-        nphi_min = 3 * lmax + 1
+        nphi_min = 3 * self.lmax + 1
         nphi = utils.compute_fftlen_fftw(nphi_min, even=True)
 
         return thetas, ct_weights, nphi
@@ -144,6 +171,7 @@ class KSW():
         Parameters
         ----------
         red_bisp : ksw.ReducedBispectrum instance
+            Assumed to have both T and E.
         
         Returns
         -------
@@ -157,35 +185,33 @@ class KSW():
         Raises
         ------
         ValueError
-            If lmax of reduced bispectrum < lmax of data.
+            If lmax of reduced bispectrum < lmax.
         '''
         
-        # We use lmax data as reference.
-        if red_bisp.lmax < self.data.lmax:
-            raise ValueError('lmax bispectrum ({}) < lmax data ({})'.format(
-                red_bisp.lmax, self.data.lmax))
+        if red_bisp.lmax < self.lmax:
+            raise ValueError('lmax bispectrum ({}) < lmax ({})'.format(
+                red_bisp.lmax, self.lmax))
 
         nufact = red_bisp.factors.shape[0]
-        f_i_ell = np.zeros((nufact, self.data.npol, self.data.lmax + 1),
+        f_i_ell = np.zeros((nufact, self.npol, self.lmax + 1),
                            dtype=self.dtype)
 
         # Find index of lmax data in ells of red. bisp.
         try:
-            end_ells_full = np.where(red_bisp.ells_full == self.data.lmax)[0][0] + 1
+            end_ells_full = np.where(red_bisp.ells_full == self.lmax)[0][0] + 1
         except IndexError:
             end_ells_full = None
 
         # Slice corresponding to data pol. Assume red. bisp. has T and E.
-        if self.data.npol == 1 and 'T' in self.data.pol:
+        if self.npol == 1 and 'T' in self.pol:
             pslice = slice(0, 1, None)
-        elif self.data.npol == 1 and 'E' in self.data.pol:
+        elif self.npol == 1 and 'E' in self.pol:
             pslice = slice(1, 2, None)
         else:
             pslice = slice(0, 2, None)
 
         f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[:,pslice,:end_ells_full]
-        f_i_ell *= self.data.b_ell
         f_i_ell = f_i_ell.astype(self.dtype)
 
         rule = red_bisp.rule
@@ -211,20 +237,20 @@ class KSW():
             Healpix-ordered alm array.
         '''
 
-        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
+        alm = utils.alm_return_2d(alm, self.npol, self.lmax)
         alm = self.icov(alm)
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
         grad_t = np.zeros_like(a_ell_m)
 
-        red_bisp = self.cosmology.red_bispectra[0]
+        red_bisp = self.red_bispectra[0]
         f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
 
         for tidx_start in range(0, len(self.thetas), theta_batch):
 
             thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
             ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
-            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.data.lmax,
+            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.lmax,
                                                  dtype=self.dtype)
             estimator_core.step(ct_weights_batch, rule, weights, f_i_ell, a_ell_m, y_m_ell,
                                grad_t, self.nphi)
@@ -417,7 +443,7 @@ class KSW():
         # Similar to step, but only do backward transform, multiply alm with linear term
         # and apply normalization.
 
-        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
+        alm = utils.alm_return_2d(alm, self.npol, self.lmax)
         alm = self.icov(alm)
 
         t_cubic = 0 # The cubic estimate.
@@ -428,13 +454,13 @@ class KSW():
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
 
-        red_bisp = self.cosmology.red_bispectra[0]
+        red_bisp = self.red_bispectra[0]
         f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
 
         for tidx_start in range(0, len(self.thetas), theta_batch):
             thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
             ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
-            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.data.lmax,
+            y_m_ell = estimator_core.compute_ylm(thetas_batch, self.lmax,
                                                  dtype=self.dtype)            
             t_cubic += estimator_core.compute_estimate(ct_weights_batch, rule, weights,
                                                        f_i_ell, a_ell_m, y_m_ell, self.nphi)
@@ -486,7 +512,7 @@ class KSW():
         if self.mc_gt is None:
             return None
 
-        alm = utils.alm_return_2d(alm, self.data.npol, self.data.lmax)
+        alm = utils.alm_return_2d(alm, self.npol, self.lmax)
         
         if no_icov:
             return utils.contract_almxblm(alm, np.conj(self.mc_gt))
@@ -522,7 +548,7 @@ class KSW():
         if comm is None:
             comm = utils.FakeMPIComm()
 
-        red_bisp = self.cosmology.red_bispectra[0]
+        red_bisp = self.red_bispectra[0]
         f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
         f_ell_i = np.ascontiguousarray(np.transpose(f_i_ell, (2, 1, 0)))
         del f_i_ell
