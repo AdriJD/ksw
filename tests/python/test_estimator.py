@@ -1106,8 +1106,7 @@ class TestKSW_64(unittest.TestCase):
 
         alm = alm[0]
         estimate_exp = self.cubic_term_direct(alm, alm, alm, red_bisp)
-
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_I_fisher_lin_term(self):
 
@@ -1161,7 +1160,7 @@ class TestKSW_64(unittest.TestCase):
         alm = alm[0]
         estimate_exp = (self.cubic_term_direct(alm, alm, alm, red_bisp) - lin_term) / fisher
 
-        self.assertAlmostEqual(estimate, estimate_exp, places=self.decimal)
+        self.assertAlmostEqual(estimate / estimate_exp, 1, places=self.decimal)
 
     def test_ksw_compute_estimate_cubic_pol_simple(self):
 
