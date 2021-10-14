@@ -414,7 +414,7 @@ class KSW():
             
         return utils.allreduce_array(estimates, comm)
                     
-    def compute_estimate(self, alm, theta_batch=25, fisher=None):
+    def compute_estimate(self, alm, theta_batch=25, fisher=None, lin_term=None):
         '''
         Compute fNL estimate for input alm.
 
@@ -427,6 +427,9 @@ class KSW():
             take up more memory.
         fisher : float, optional
             If given, do not compute fisher from internal mc variables.
+        lin_term : float, optional
+            If given, do not compute linear term from alm and internal mc
+            variables.
 
         Returns
         -------
@@ -449,7 +452,8 @@ class KSW():
         t_cubic = 0 # The cubic estimate.
         if fisher is None:
             fisher = self.compute_fisher()
-        lin_term = self.compute_linear_term(alm, no_icov=True)
+        if lin_term is None:
+            lin_term = self.compute_linear_term(alm, no_icov=True)
         
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
