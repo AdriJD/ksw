@@ -323,7 +323,7 @@ class KSW():
         mc_gt_sq_loc = None
         mc_gt_loc = None
 
-        # Split alm_file loop over ranks
+        # Split alm_file loop over ranks.
         for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
 
             if verbose:
@@ -347,6 +347,7 @@ class KSW():
         
             mc_idx_loc += 1
 
+        print(f'rank : {comm.rank} waiting in step_batch')
         # To allow allreduce when number of ranks > alm files.
         shape, dtype = utils.bcast_array_meta(mc_gt_loc, comm, root=0)
         if mc_gt_loc is None: mc_gt_loc = np.zeros(shape, dtype=dtype)
@@ -356,6 +357,7 @@ class KSW():
         mc_gt = utils.allreduce_array(mc_gt_loc, comm)
         mc_gt_sq = utils.allreduce(mc_gt_sq_loc, comm)        
         mc_idx = utils.allreduce(mc_idx_loc, comm)
+        print(f'rank : {comm.rank} after reduce in step_batch')
 
         # All ranks get to update the internal mc variables themselves.
         if self.mc_gt is None:
@@ -484,7 +486,7 @@ class KSW():
 
         if self.mc_gt_sq is None or self.mc_gt is None:
             return None
-
+        
         fisher = self.mc_gt_sq
         fisher -= utils.contract_almxblm(self.mc_gt, self.icov(self.beam(np.conj(self.mc_gt))))
         fisher /= 3.
