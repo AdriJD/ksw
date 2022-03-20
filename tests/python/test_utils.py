@@ -244,6 +244,9 @@ class TestUtils(unittest.TestCase):
         comm = utils.FakeMPIComm()
         self.assertEqual(comm.Get_rank(), 0)
         self.assertEqual(comm.Get_size(), 1)
+        self.assertEqual(comm.rank, 0)
+        self.assertEqual(comm.size, 1)
+        self.assertTrue(callable(comm.Barrier))
 
     def test_utils_reduce_array_fake(self):
 

@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+import pathlib
+import os
 import numpy as np
 
 import healpy as hp
@@ -17,6 +20,9 @@ class TestKSW_64(unittest.TestCase):
 
     def setUp(self):
         # Is called before each test.
+
+        # Get location of this script.
+        self.path = pathlib.Path(__file__).parent.absolute()
 
         class FakeReducedBispectrum():
             def __init__(self):
@@ -2202,6 +2208,45 @@ class TestKSW_64(unittest.TestCase):
         
         np.testing.assert_allclose(estimator.mc_gt_sq, mc_gt_sq_exp, 
                                    rtol=10 ** -self.decimal)
+
+    def test_ksw_read_write_state(self):
+
+        lmax = 300
+        red_bispectra = [self.FakeReducedBispectrum()]
+        icov = self.FakeData().icov_diag_nonlensed
+        beam = lambda alm : alm
+        pol = ('T', 'E')
+
+        estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
+
+        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
+            
+            filename = os.path.join(tmpdirname, 'state')
+            estimator.write_state(filename)
+
+            estimator.start_from_read_state(filename)
+
+        self.assertEqual(estimator.mc_idx, 0)
+        self.assertIs(estimator.mc_gt_sq, None)
+        self.assertIs(estimator.mc_gt, None)
+        
+        # Now update state and repeat.
+        mc_gt = np.ones((len(pol), hp.Alm.getsize(lmax)),
+                        dtype=complex) * 10
+        estimator.mc_gt = mc_gt.copy()
+        estimator.mc_gt_sq = 100
+        estimator.mc_idx = 5
+
+        with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:
+            
+            filename = os.path.join(tmpdirname, 'state')
+            estimator.write_state(filename)
+
+            estimator.start_from_read_state(filename)
+
+        self.assertEqual(estimator.mc_idx, 5)
+        self.assertAlmostEqual(estimator.mc_gt_sq, 100 / 5)
+        np.testing.assert_allclose(estimator.mc_gt, mc_gt / 5)
 
 class TestKSW_32(TestKSW_64):
 

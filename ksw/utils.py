@@ -463,19 +463,18 @@ def bcast(obj, comm, root=0):
     return comm.bcast(obj, root=root)
 
 class FakeMPIComm():
-    '''
-    Mimic an actual MPI communicator.
-
-    Attributes
-    ----------
-    size : int
-    rank : int
-    '''
+    ''' Mimic an actual MPI communicator.'''
     
     def __init__(self):
-        pass
+        
+        self.rank = 0
+        self.size = 1
     
     def Get_size(self):
-        return 1
+        return self.size
+
     def Get_rank(self):        
-        return 0
+        return self.rank
+        
+    def Barrier(self):
+        pass

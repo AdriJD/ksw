@@ -1,9 +1,11 @@
+import os
 import numpy as np
 from scipy.special import roots_legendre
 
 import healpy as hp
 from optweight import mat_utils
 import pyfftw
+import h5py
 
 from ksw import utils, legendre, estimator_core, fisher_core
 
@@ -583,3 +585,116 @@ class KSW():
             return fisher, fisher_nxn 
 
         return fisher
+
+    def write_state(self, filename, comm=None):
+        '''
+        Write internal state, i.e. mc_gt, mc_gt_sq and mc_idx, to hdf5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to output file.
+        comm : MPI communicator, optional
+            If provided, rank 0 is assumed to do the writing, so must be present.
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        if comm.Get_rank() == 0:
+            # Remove file extension to be consistent.
+            filename, _ = os.path.splitext(filename)
+
+            mc_idx_to_save = np.asarray([self.mc_idx], dtype=np.int64)
+
+            if self.__mc_gt_sq is None:
+                mc_gt_sq_to_save = np.asarray([np.nan], dtype=np.float64)
+            else:
+                mc_gt_sq_to_save = np.asarray([self.__mc_gt_sq], dtype=np.float64)            
+
+            if self.__mc_gt is None:
+                mc_gt_to_save = np.asarray([np.nan], dtype=self.cdtype)
+            else:
+                mc_gt_to_save = self.__mc_gt
+
+            with h5py.File(filename + '.hdf5', 'w') as f:
+                f.create_dataset('mc_idx', data=mc_idx_to_save)
+                f.create_dataset('mc_gt_sq', data=mc_gt_sq_to_save)
+                f.create_dataset('mc_gt', data=mc_gt_to_save)
+        
+    def _read_state(self, filename, comm=None):
+        '''
+        Read internal state, i.e. mc_gt, mc_gt_sq and mc_idx, from hdf5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to output file.
+        comm : MPI communicator, optional
+            If provided, rank 0 is assumed to do the reading, result will be 
+            broadcasted to all ranks.
+
+        Returns
+        -------
+        mc_idx : int
+            Counter for Monte Carlo estimates.
+        mc_gt_sq : float, None
+            <grad T (C^-1 a) C^-1 grad T(C^-1 a)^*>
+        mc_gt : (npol, nelem) complex array, None
+            <grad T (C^-1 a)> Monte Carlo estimate.
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        if comm.Get_rank() == 0:
+            # Remove file extension to be consistent.
+            filename, _ = os.path.splitext(filename)
+
+            with h5py.File(filename + '.hdf5', 'r') as f:
+                mc_idx_read = f['mc_idx'][()]
+                mc_gt_sq_read = f['mc_gt_sq'][()]
+                mc_gt_read = f['mc_gt'][()]
+
+            assert mc_idx_read.size == 1, (f'mc_idx has to be single int, got '
+                                      f'{mc_idx.size}-sized array')
+            mc_idx_read = int(mc_idx_read)
+                        
+        else:
+            mc_idx_read = None
+            mc_gt_sq_read = None
+            mc_gt_read = None
+
+        mc_idx_read = utils.bcast(mc_idx_read, comm, root=0)
+        mc_gt_sq_read = utils.bcast_array(mc_gt_sq_read, comm, root=0)
+        mc_gt_read = utils.bcast_array(mc_gt_read, comm, root=0)
+
+        if mc_gt_sq_read.size == 1 and np.isnan(mc_gt_sq_read)[0]:
+            mc_gt_sq_read = None
+        else:
+            mc_gt_sq_read = float(mc_gt_sq_read)
+
+        if mc_gt_read.size == 1 and np.isnan(mc_gt_read)[0]:
+            mc_gt_read = None
+        
+        return mc_idx_read, mc_gt_sq_read, mc_gt_read
+        
+    def start_from_read_state(self, filename, comm=None):
+        '''
+        Update estimator state with mc_gt, mc_gt_sq and mc_idx read from .hdf5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to output file.
+        comm : MPI communicator, optional
+            If provided, rank 0 is assumed to do the reading, result will be 
+            broadcasted to all ranks.
+        '''
+        
+        mc_idx_read, mc_gt_sq_read, mc_gt_read = self._read_state(
+            filename, comm=comm)
+        
+        self.mc_idx = mc_idx_read
+        self.__mc_gt_sq = mc_gt_sq_read
+        self.__mc_gt = mc_gt_read
