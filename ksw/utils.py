@@ -379,7 +379,8 @@ def bcast_array(arr, comm, root=0):
     if comm.Get_rank() != root:
         arr = np.zeros(shape, dtype=dtype)
 
-    comm.Bcast(arr, root=root)
+    mpi_type = numpy_to_mpi_type(arr.dtype)
+    comm.Bcast([arr, mpi_type], root=root)
 
     return arr
 
@@ -461,6 +462,26 @@ def bcast(obj, comm, root=0):
         return obj
     
     return comm.bcast(obj, root=root)
+
+def numpy_to_mpi_type(dtype):
+    '''
+    Convert numpy dtype to MPI data_type.
+
+    Paramters
+    ---------
+    dtype : dtype
+        Numpy dtype
+
+    Returns
+    -------
+    data_type : mpi4py.MPI.Datatype
+        Corresponding MPI data type.
+    '''
+
+    # Will crash if no MPI, but OK, this function should not have been called.
+    from mpi4py import MPI
+    # Could also used mpi.util.dtlib. But was only added in mpi4py 3.1.0.
+    return MPI._typedict[np.dtype(dtype).char]    
 
 class FakeMPIComm():
     ''' Mimic an actual MPI communicator.'''

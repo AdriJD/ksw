@@ -279,3 +279,38 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(obj, obj_out)
         
+    def test_utils_numpy_to_mpi_type(self):
+        
+        dtype = np.float32
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.FLOAT)
+
+        dtype = np.ones(1, dtype=np.float32).dtype
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.FLOAT)
+
+        dtype = np.float64
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.DOUBLE)
+
+        dtype = np.ones(1, dtype=np.float64).dtype
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.DOUBLE)
+
+        dtype = np.complex64
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.C_FLOAT_COMPLEX)
+
+        dtype = np.ones(1, dtype=np.complex64).dtype
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.C_FLOAT_COMPLEX)
+
+        dtype = np.complex128
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.C_DOUBLE_COMPLEX)
+
+        dtype = np.ones(1, dtype=np.complex128).dtype
+        data_type = utils.numpy_to_mpi_type(dtype)
+        self.assertEqual(data_type, MPI.C_DOUBLE_COMPLEX)
+
+        
