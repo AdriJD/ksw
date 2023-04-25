@@ -265,6 +265,7 @@ float t_cubic_sp(const double *ct_weights, const long long *rule, const float *w
 
     #pragma omp parallel 
     {
+    mkl_set_num_threads_local(1);
         
     float complex *m_ell_m = fftwf_malloc(sizeof *m_ell_m * npol * nell * nm);
     float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
@@ -292,6 +293,7 @@ float t_cubic_sp(const double *ct_weights, const long long *rule, const float *w
     fftwf_free(n_ell_phi);
     fftwf_free(f_i_phi);
 
+    mkl_set_num_threads_local(0);
     } // End of parallel region.
     
     fftwf_destroy_plan(plan_c2r);
@@ -333,7 +335,8 @@ void step_sp(const double *ct_weights, const long long *rule, const float *weigh
 
     #pragma omp parallel 
     {
-        
+    mkl_set_num_threads_local(1);        
+
     float complex *m_ell_m = fftwf_malloc(sizeof *m_ell_m * npol * nell * nm);
     float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
     float *f_i_phi = fftwf_malloc(sizeof *f_i_phi * nufact * nphi);
@@ -378,6 +381,7 @@ void step_sp(const double *ct_weights, const long long *rule, const float *weigh
     fftwf_free(work_i_phi);
     fftwf_free(grad_t_priv);
 
+    mkl_set_num_threads_local(0);
     } // End of parallel region
     
     fftwf_destroy_plan(plan_c2r);
@@ -661,7 +665,8 @@ double t_cubic_dp(const double *ct_weights, const long long *rule, const double 
 
     #pragma omp parallel 
     {
-        
+    mkl_set_num_threads_local(1);
+
     double complex *m_ell_m = fftw_malloc(sizeof *m_ell_m * npol * nell * nm);
     double *n_ell_phi = fftw_malloc(sizeof *n_ell_phi * npol * nell * nphi);
     double *f_i_phi = fftw_malloc(sizeof *f_i_phi * nufact * nphi);
@@ -688,6 +693,7 @@ double t_cubic_dp(const double *ct_weights, const long long *rule, const double 
     fftw_free(n_ell_phi);
     fftw_free(f_i_phi);
 
+    mkl_set_num_threads_local(0);
     } // End of parallel region
     
     fftw_destroy_plan(plan_c2r);
@@ -729,6 +735,7 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
 
     #pragma omp parallel 
     {
+    mkl_set_num_threads_local(1);
         
     double complex *m_ell_m = fftw_malloc(sizeof *m_ell_m * npol * nell * nm);
     double *n_ell_phi = fftw_malloc(sizeof *n_ell_phi * npol * nell * nphi);
@@ -774,6 +781,7 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
     fftw_free(work_i_phi);
     fftw_free(grad_t_priv);
 
+    mkl_set_num_threads_local(0);
     } // End of parallel region
     
     fftw_destroy_plan(plan_c2r);

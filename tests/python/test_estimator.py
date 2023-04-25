@@ -799,7 +799,7 @@ class TestKSW_64(unittest.TestCase):
 
         estimator = KSW(red_bispectra, icov, beam, lmax, pol, precision=self.precision)
         fisher = estimator.compute_fisher_isotropic(icov_ell)
-
+        
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             return (1 * 1 * 1 + 2 * 2 * 2)
 
@@ -867,7 +867,9 @@ class TestKSW_64(unittest.TestCase):
         dr = ((radii[1] - radii[0]) / 2.)
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
-        pars = camb.CAMBparams(**cosmo_opts)
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**cosmo_opts)
+
 
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)
@@ -946,7 +948,9 @@ class TestKSW_64(unittest.TestCase):
         dr = ((radii[1] - radii[0]) / 2.)
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
-        pars = camb.CAMBparams(**cosmo_opts)
+        #pars = camb.CAMBparams(**cosmo_opts)
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**cosmo_opts)
 
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)
@@ -1385,7 +1389,13 @@ class TestKSW_64(unittest.TestCase):
         dr = ((radii[1] - radii[0]) / 2.)
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
-        pars = camb.CAMBparams(**cosmo_opts)
+#        cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
+#                               omk=0, TCMB=2.7255)
+
+#        pars = camb.CAMBparams(**cosmo_opts)
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**cosmo_opts)
+
 
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)
@@ -1483,7 +1493,9 @@ class TestKSW_64(unittest.TestCase):
         dr = ((radii[1] - radii[0]) / 2.)
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
-        pars = camb.CAMBparams(**cosmo_opts)
+#        pars = camb.CAMBparams(**cosmo_opts)
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**cosmo_opts)
 
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)
@@ -1598,7 +1610,9 @@ class TestKSW_64(unittest.TestCase):
         dr = ((radii[1] - radii[0]) / 2.)
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
-        pars = camb.CAMBparams(**cosmo_opts)
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**cosmo_opts)
+
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)
 
@@ -2002,7 +2016,8 @@ class TestKSW_64(unittest.TestCase):
         dr = ((radii[1] - radii[0]) / 2.)
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
-        pars = camb.CAMBparams(**cosmo_opts)
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**cosmo_opts)
 
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)
@@ -2097,7 +2112,8 @@ class TestKSW_64(unittest.TestCase):
         dr = ((radii[1] - radii[0]) / 2.)
         cosmo_opts = dict(H0=67.5, ombh2=0.022, omch2=0.122,
                                mnu=0.06, omk=0, tau=0.06, TCMB=2.7255)
-        pars = camb.CAMBparams(**cosmo_opts)
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**cosmo_opts)
 
         cosmo = Cosmology(pars)
         cosmo.compute_transfer(lmax_transfer)

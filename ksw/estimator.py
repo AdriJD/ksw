@@ -230,7 +230,7 @@ class KSW():
         alm : (nelem) or (npol, nelem) complex array
             Healpix-ordered unfiltered alm array. Will be overwritten!
         theta_batch : int, optional
-            Process loop over theta in batches of this size. Higher values
+            Process loops over theta in batches of this size. Higher values
             take up more memory.
         
         Returns
@@ -272,7 +272,7 @@ class KSW():
         alm : (nelem) or (npol, nelem) complex array
             Healpix-ordered unfiltered alm array. Will be overwritten!
         theta_batch : int, optional
-            Process loop over theta in batches of this size. Higher values
+            Process loops over theta in batches of this size. Higher values
             take up more memory.
 
         Raises
@@ -304,8 +304,8 @@ class KSW():
         <grad T (C^-1 a)> Monte Carlo estimates by loading and processing several 
         alms in parallel using MPI.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         alm_loader : callable
             Function that returns alms on rank given filename as first argument.
         alm_files : array_like
@@ -379,8 +379,8 @@ class KSW():
         '''
         Compute fNL estimates for a collection of maps in parallel using MPI.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         alm_loader : callable
             Function that returns alms on rank given filename as first argument.
         alm_files : array_like

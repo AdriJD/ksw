@@ -4,6 +4,8 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 
 ### Dependencies
 
+- Python>=3.7
+- Intel MKL library 
 - a C compiler (tested with gcc and icc)
 - fftw (please check the FFTWROOT variable in the Makefile and update if needed)
 - intel MKL library (please check the MKLROOT variable in the Makefile and update if needed)
@@ -20,6 +22,11 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 - [optweight](https://github.com/AdriJD/optweight)
 
 ### Installation
+
+Start by making sure the MKL library is loaded in your environment. On most clusters this can be achieved by loading a predefined module. On the Princeton `della` and `tiger` clusters you can use `module load intel-mkl` (see [here](https://researchcomputing.princeton.edu/faq/how-to-build-using-intel-mkl) for more information). On `NERSC` you can use `load intel` (see [here](https://docs-dev.nersc.gov/cgpu/software/math/)). Once you have loaded the module, check if the `MKLROOT` environment variable has been set (`echo $MKLROOT`).
+
+Once the MKL environment has been set, `git clone` this repository, go into the directory and run:
+
 
 ```
 $ make

@@ -143,6 +143,7 @@ void fisher_nxn_sp(const float *sqrt_icov_ell, const float *f_ell_i, const doubl
     
     #pragma omp parallel 
     {
+    mkl_set_num_threads_local(1);
 
     float *work_i = malloc(sizeof *work_i * npol * nufact);
     float *unique_nxn = malloc(sizeof *unique_nxn * nufact * nufact);
@@ -178,6 +179,7 @@ void fisher_nxn_sp(const float *sqrt_icov_ell, const float *f_ell_i, const doubl
     free(unique_nxn);
     free(fisher_nxn_priv);
 
+    mkl_set_num_threads_local(0);
     } // End of parallel region
 
     free(p_theta_ell);
@@ -318,9 +320,10 @@ void fisher_nxn_dp(const double *sqrt_icov_ell, const double *f_ell_i, const dou
     }
 
     compute_associated_legendre_dp(thetas, p_theta_ell, ntheta, lmax);
-    
+
     #pragma omp parallel 
     {
+    mkl_set_num_threads_local(1);
 
     double *work_i = malloc(sizeof *work_i * npol * nufact);
     double *unique_nxn = malloc(sizeof *unique_nxn * nufact * nufact);
@@ -332,13 +335,13 @@ void fisher_nxn_dp(const double *sqrt_icov_ell, const double *f_ell_i, const dou
 	free(fisher_nxn_priv);
 	exit(1);
     }
-
+    
     #pragma omp for schedule(dynamic)
     for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
 
 	unique_nxn_on_ring_dp(sqrt_icov_ell, f_ell_i, p_theta_ell + tidx * nell, 
 	    prefactor, work_i, unique_nxn, nufact, nell, npol);
-		
+	
 	fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn_priv,
 			      ct_weights[tidx], nufact, nrule);
     }
@@ -351,11 +354,12 @@ void fisher_nxn_dp(const double *sqrt_icov_ell, const double *f_ell_i, const dou
         }
     }	
     }
-
+    
     free(work_i);
     free(unique_nxn);
     free(fisher_nxn_priv);
 
+    mkl_set_num_threads_local(0);
     } // End of parallel region
 
     free(p_theta_ell);

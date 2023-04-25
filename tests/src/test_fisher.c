@@ -88,6 +88,7 @@ void test_unique_nxn_on_ring_sp(void){
     free(sqrt_icov_ell);
     free(f_ell_i);
     free(p_ell);
+    free(prefactor);
     free(work_i);
     free(unique_nxn);    
 }
@@ -323,6 +324,7 @@ void test_fisher_nxn_sp(void){
     free(sqrt_icov_ell);
     free(f_ell_i);
     free(thetas);
+    free(ct_weights);
     free(rule);
     free(weights);
     free(fisher_nxn);
@@ -416,6 +418,7 @@ void test_unique_nxn_on_ring_dp(void){
     free(sqrt_icov_ell);
     free(f_ell_i);
     free(p_ell);
+    free(prefactor);
     free(work_i);
     free(unique_nxn);    
 }
@@ -547,6 +550,7 @@ void test_fisher_nxn_dp(void){
     free(sqrt_icov_ell);
     free(f_ell_i);
     free(thetas);
+    free(ct_weights);
     free(rule);
     free(weights);
     free(fisher_nxn);

@@ -441,6 +441,8 @@ void test_forward_sp(void){
     free(work_i_phi);
     free(rule);
     free(weights);
+    fftwf_destroy_plan(plan_r2c);
+    fftw_cleanup();
 }
 
 void test_step_sp(void){
@@ -991,6 +993,8 @@ void test_forward_dp(void){
     free(work_i_phi);
     free(rule);
     free(weights);
+    fftw_destroy_plan(plan_r2c);
+    fftw_cleanup();
 }
 
 void test_step_dp(void){
