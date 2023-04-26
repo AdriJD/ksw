@@ -6,7 +6,7 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 
 - Python>=3.7
 - a C compiler (tested with gcc and icc)
-- fftw
+- FFTW
 - intel MKL library (see instructions below)
 - Python>=3.6
 - [numpy](https://pypi.org/project/numpy/)
