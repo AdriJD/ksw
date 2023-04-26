@@ -518,7 +518,6 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(f_i_ell.shape, (nufact, npol, lmax + 1))
         self.assertEqual(f_i_ell.dtype, estimator.dtype)
         f_i_ell_exp = np.zeros((nufact, npol, lmax + 1), dtype=estimator.dtype)
-        #f_i_ell_exp[:,:,2:] = rb.factors[:,0:1,:lmax+1-2] * 0.1 # 0.1 is beam factor.
         f_i_ell_exp[:,:,2:] = rb.factors[:,0:1,:lmax+1-2]
         np.testing.assert_allclose(f_i_ell, f_i_ell_exp)
 
