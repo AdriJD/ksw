@@ -42,10 +42,7 @@ TEST_OBJECTS = $(TDIR)/obj/seatest.o \
                $(TDIR)/obj/run_tests.o
 
 LINK_COMMON = -lm
-
-FFTWROOT = /usr/local/fftw/intel-16.0/3.3.4/lib64
 LINK_FFTW = -L$(FFTWROOT) -lfftw3 -lfftw3f
-
 LINK_MKL = -L${MKLROOT}/lib/intel64 -lmkl_rt -Wl,--no-as-needed -lpthread -lm -ldl
 CFLAGS_MKL = -m64  -I"${MKLROOT}/include"
 
@@ -55,7 +52,7 @@ python: $(LDIR)/libradial_functional.so setup.py $(CDIR)/radial_functional.pyx $
 	python setup.py build_ext --inplace
 
 $(LDIR)/libradial_functional.so: $(RF_OBJECTS)
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $(LDIR)/libradial_functional.so $(RF_OBJECTS)
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -shared -o $(LDIR)/libradial_functional.so $(RF_OBJECTS) $(LINK_COMMON) -lgomp
 
 $(ODIR)/radial_functional.o: $(SDIR)/radial_functional.c $(IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR)

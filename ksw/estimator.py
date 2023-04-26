@@ -4,7 +4,6 @@ from scipy.special import roots_legendre
 
 import healpy as hp
 from optweight import mat_utils
-import pyfftw
 import h5py
 
 from ksw import utils, legendre, estimator_core, fisher_core

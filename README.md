@@ -6,7 +6,7 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 
 - Python>=3.7
 - a C compiler (tested with gcc and icc)
-- fftw (please check the FFTWROOT variable in the Makefile and update if needed)
+- fftw
 - intel MKL library (see instructions below)
 - Python>=3.6
 - [numpy](https://pypi.org/project/numpy/)
@@ -14,7 +14,6 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 - [cython](https://pypi.org/project/Cython/)
 - [pytest](https://pypi.org/project/pytest/)
 - [mpi4py](https://pypi.org/project/mpi4py/)
-- [pyfftw](https://pypi.org/project/pyFFTW/)
 - [h5py](https://pypi.org/project/h5py/)
 - [healpy](https://pypi.org/project/healpy/)
 - [camb](https://camb.readthedocs.io/en/latest/)

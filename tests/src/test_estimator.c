@@ -451,7 +451,6 @@ void test_step_sp(void){
     int npol = 2;
     int nell = 3;
     int nphi = 5;
-    int nm = nphi / 2 + 1;
     int nrule = 3;
     int ntheta = 2;
 
@@ -1003,7 +1002,6 @@ void test_step_dp(void){
     int npol = 2;
     int nell = 3;
     int nphi = 5;
-    int nm = nphi / 2 + 1;
     int nrule = 3;
     int ntheta = 2;
 

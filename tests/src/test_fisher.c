@@ -202,7 +202,6 @@ void test_fisher_nxn_on_ring_sp(void){
     int nufact = 3;
     int nrule = 4;
     int npol = 2;
-    int nell = 2;
     float delta = 1e-6;
 
     float prefac = 2 * PI * PI / 9;
@@ -427,7 +426,6 @@ void test_fisher_nxn_on_ring_dp(void){
 
     int nufact = 3;
     int nrule = 4;
-    int npol = 2;
     int nell = 2;
     double delta = 1e-6;
 

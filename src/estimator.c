@@ -307,7 +307,6 @@ void step_sp(const double *ct_weights, const long long *rule, const float *weigh
 	     int nufact, int nphi){
  
     int nm = nphi / 2 + 1;
-    float t_cubic = 0.0;
     int nffts[1] = {nphi};
     fftwf_plan plan_c2r, plan_r2c;
     int nw = get_forward_array_size(rule, nrule);
@@ -707,7 +706,6 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
 	     int nufact, int nphi){
  
     int nm = nphi / 2 + 1;
-    double t_cubic = 0.0;
     int nffts[1] = {nphi};
     fftw_plan plan_c2r, plan_r2c;
     int nw = get_forward_array_size(rule, nrule);
