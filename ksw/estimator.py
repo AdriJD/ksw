@@ -23,9 +23,6 @@ class KSW():
         (B^{-1} N B^{-1} + S)^{-1} B^{-1} a, where a = B s + n, B is the beam
         and N^{-1} and S^{-1} are the inverse noise and signal covariance
         matrices, respectively.
-    beam : callable
-        Function takes (npol, nelem) alm-like complex array
-        and returns beam-convolved version of that array. Defaults to no beam.
     lmax : int
         Max multipole used in estimator. Should match shape of alms.
     pol : str or array-like of strings.
@@ -40,8 +37,6 @@ class KSW():
         Reduced bispectra templates.
     icov : callable, None
         The inverse variance weighting operation.
-    beam : callable
-        The beam convolution operation.
     lmax : int
         Max multipole used in estimator.
     pol : tuple
@@ -67,11 +62,10 @@ class KSW():
         precision is "single"/"double".
     '''
 
-    def __init__(self, red_bispectra, icov, beam, lmax, pol, precision='single'):
+    def __init__(self, red_bispectra, icov, lmax, pol, precision='single'):
 
         self.red_bispectra = red_bispectra
         self.icov = icov
-        self.beam = beam
         self.mc_idx = 0
         self.mc_gt = None
         self.mc_gt_sq = None
@@ -239,7 +233,8 @@ class KSW():
         '''
 
         alm = utils.alm_return_2d(alm, self.npol, self.lmax)
-        alm = self.icov(alm)
+        #alm = self.icov(alm)
+        alm = alm
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
         grad_t = np.zeros_like(a_ell_m)
@@ -287,8 +282,9 @@ class KSW():
             self.mc_gt = grad_t
         else:
             self.__mc_gt += grad_t
-
-        mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(self.beam(np.conj(grad_t))))
+        # NOTE SUSPICIOUS
+        #mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
+        mc_gt_sq = utils.contract_almxblm(grad_t, np.conj(self.icov(grad_t)))
 
         if self.mc_gt_sq is None:
             self.mc_gt_sq = mc_gt_sq
@@ -339,7 +335,9 @@ class KSW():
             else:
                 mc_gt_loc += grad_t
 
-            mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(self.beam(np.conj(grad_t))))
+            # NOTE SUSPICOUS
+            #mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
+            mc_gt_sq = utils.contract_almxblm(grad_t, np.conj(self.icov(grad_t)))
 
             if mc_gt_sq_loc is None:
                 mc_gt_sq_loc = mc_gt_sq
@@ -450,7 +448,8 @@ class KSW():
         # and apply normalization.
 
         alm = utils.alm_return_2d(alm, self.npol, self.lmax)
-        alm = self.icov(alm)
+        #alm = self.icov(alm)
+        alm = alm
 
         t_cubic = 0 # The cubic estimate.
         if fisher is None:
@@ -472,10 +471,11 @@ class KSW():
             t_cubic += estimator_core.compute_estimate(ct_weights_batch, rule, weights,
                                                        f_i_ell, a_ell_m, y_m_ell, self.nphi)
 
-        print(f't_cubic : {t_cubic}, lin : {lin_term}, fisher : {fisher}')
-        return (t_cubic - lin_term) / fisher
+        fnl = (t_cubic - lin_term) / fisher
+        print(f'fnl : {fnl}, t_cubic : {t_cubic}, lin : {lin_term}, fisher : {fisher}')
+        return fnl
 
-    def compute_fisher(self):
+    def compute_fisher(self, return_icov_mc_gt=False):
         '''
         Return Fisher information at current iteration.
 
@@ -488,11 +488,23 @@ class KSW():
         if self.mc_gt_sq is None or self.mc_gt is None:
             return None
         
-        fisher = self.mc_gt_sq
-        fisher -= utils.contract_almxblm(self.mc_gt, self.icov(self.beam(np.conj(self.mc_gt))))
-        fisher /= 3.
+        # NOTE THIS CONJ SEEMS SUSPICIOUS.
+        #icov_mc_gt = self.icov(np.conj(self.mc_gt))
 
-        return fisher
+        icov_mc_gt = self.icov(self.mc_gt)
+
+        #fisher = self.mc_gt_sq
+        #fisher -= utils.contract_almxblm(self.mc_gt, self.icov(np.conj(self.mc_gt)))
+        #fisher -= utils.contract_almxblm(self.mc_gt, np.conj(icov_mc_gt))
+        mc_gt_icov_mc_gt = utils.contract_almxblm(self.mc_gt, np.conj(icov_mc_gt))
+        fisher = (self.mc_gt_sq - mc_gt_icov_mc_gt) / 3.
+        #fisher /= 3.
+        print(f'fisher : {fisher}, mc_gt_sq : {self.mc_gt_sq}, mc_gt_icov_mc_gt : {mc_gt_icov_mc_gt}')
+
+        if return_icov_mc_gt:
+            return fisher, icov_mc_gt
+        else:
+            return fisher
 
     def compute_linear_term(self, alm, no_icov=False):
         '''
@@ -525,6 +537,7 @@ class KSW():
             return utils.contract_almxblm(alm, np.conj(self.mc_gt))
         else:
             return utils.contract_almxblm(self.icov(alm), np.conj(self.mc_gt))
+        #return utils.contract_almxblm(alm, icov(np.conj(self.mc_gt)))
 
     def compute_fisher_isotropic(self, icov_ell, return_matrix=False, fsky=1, 
                                      comm=None):
