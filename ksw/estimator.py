@@ -2,7 +2,6 @@ import os
 import numpy as np
 from scipy.special import roots_legendre
 
-import healpy as hp
 from optweight import mat_utils
 import h5py
 
@@ -19,10 +18,7 @@ class KSW():
         Estimate fNL for these reduced bispectra.
     icov : callable
         Function takes (npol, nelem) alm-like complex array "a" and returns the 
-        inverse-variance-weighted version of that array. Specifically: 
-        (B^{-1} N B^{-1} + S)^{-1} B^{-1} a, where a = B s + n, B is the beam
-        and N^{-1} and S^{-1} are the inverse noise and signal covariance
-        matrices, respectively.
+        inverse-covariance-weighted version of that array.
     lmax : int
         Max multipole used in estimator. Should match shape of alms.
     pol : str or array-like of strings.
@@ -36,7 +32,7 @@ class KSW():
     red_bispectra : list of ksw.ReducedBispectrum instances
         Reduced bispectra templates.
     icov : callable, None
-        The inverse variance weighting operation.
+        The inverse covariance weighting operation.
     lmax : int
         Max multipole used in estimator.
     pol : tuple
@@ -60,6 +56,18 @@ class KSW():
     cdtype : type
         Dtype for complex quantities, i.e. np.complex64/np.complex128 if 
         precision is "single"/"double".
+
+    Notes
+    -----
+    The inverse-covariance operation should correspond to:
+
+    x^icov = S^{-1} (S^{-1} + P^H N^{-1} P)^{-1} P^H N^{-1} P s,
+
+    where data = P s + n, where s are the spherical harmonic coefficients
+    of the signal. P = M Y B, where B is the beam, Y is spherical harmonic
+    synthesis (alm2map) and M is the pixel mask and any custom filters. 
+    N^{-1} and S^{-1} are the inverse noise and signal covariance matrices,
+    respectively. ^H denotes the Hermitian transpose.
     '''
 
     def __init__(self, red_bispectra, icov, lmax, pol, precision='single'):
@@ -80,7 +88,7 @@ class KSW():
             self.dtype = np.float64
             self.cdtype = np.complex128
         else:
-            raise ValueError('precision {} not understood'.format(precision))
+            raise ValueError(f'{precision=} is not supported')
 
         if len(red_bispectra) > 1:
             raise NotImplementedError('no joint estimation for now.')
@@ -98,9 +106,9 @@ class KSW():
         sort_order = {"T": 0, "E": 1}
 
         if pol.count('T') + pol.count('E') != len(pol):
-            raise ValueError(f'Pol={pol}, but may only contain T and/or E.')
+            raise ValueError(f'{pol=}, but may only contain T and/or E.')
         elif pol.count('T') != 1 and pol.count('E') != 1:
-            raise ValueError(f'Pol={pol}, cannot contain duplicates.')
+            raise ValueError(f'{pol=}, cannot contain duplicates.')
 
         pol.sort(key=lambda val: sort_order[val[0]])
         self.__pol = tuple(pol)
@@ -171,7 +179,7 @@ class KSW():
         Returns
         -------
         f_i_ell : (nufact, npol, nell) array
-            Unique factors of bispectrum scaled by beam.
+            Unique factors of bispectrum.
         rule : (nfact, 3) array
             Rule to map unique factors to bispectrum.
         weights : (nfact, 3) array
@@ -207,7 +215,7 @@ class KSW():
 
         f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[:,pslice,:end_ells_full]
-        f_i_ell = f_i_ell.astype(self.dtype)
+        f_i_ell = f_i_ell.astype(self.dtype, copy=False)
 
         rule = red_bisp.rule
         weights = red_bisp.weights.astype(self.dtype)
@@ -221,7 +229,7 @@ class KSW():
         Parameters
         ----------
         alm : (nelem) or (npol, nelem) complex array
-            Healpix-ordered unfiltered alm array. Will be overwritten!
+            HEALPix-ordered inverse-covariance filtered data.
         theta_batch : int, optional
             Process loops over theta in batches of this size. Higher values
             take up more memory.
@@ -229,12 +237,10 @@ class KSW():
         Returns
         -------
         grad_t : (nelem) or (npol, nelem) complex array
-            Healpix-ordered alm array.
+            HEALPix-ordered alm array.
         '''
 
         alm = utils.alm_return_2d(alm, self.npol, self.lmax)
-        #alm = self.icov(alm)
-        alm = alm
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
         grad_t = np.zeros_like(a_ell_m)
@@ -251,7 +257,7 @@ class KSW():
             estimator_core.step(ct_weights_batch, rule, weights, f_i_ell, a_ell_m, y_m_ell,
                                grad_t, self.nphi)
 
-        # Turn back into healpy shape.
+        # Turn back into HEALPix shape.
         grad_t = utils.a_ell_m2alm(grad_t).astype(self.cdtype)
 
         return grad_t
@@ -264,7 +270,7 @@ class KSW():
         Parameters
         ----------
         alm : (nelem) or (npol, nelem) complex array
-            Healpix-ordered unfiltered alm array. Will be overwritten!
+            HEALPix-ordered inverse-covariance filtered data.
         theta_batch : int, optional
             Process loops over theta in batches of this size. Higher values
             take up more memory.
@@ -282,8 +288,7 @@ class KSW():
             self.mc_gt = grad_t
         else:
             self.__mc_gt += grad_t
-        # NOTE SUSPICIOUS
-        #mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
+
         mc_gt_sq = utils.contract_almxblm(grad_t, np.conj(self.icov(grad_t)))
 
         if self.mc_gt_sq is None:
@@ -315,7 +320,7 @@ class KSW():
         if comm is None:
             comm = utils.FakeMPIComm()
 
-        # Monte carlo quantities local to rank.
+        # Monte Carlo quantities local to rank.
         mc_idx_loc = 0
         mc_gt_sq_loc = None
         mc_gt_loc = None
@@ -324,10 +329,10 @@ class KSW():
         for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
 
             if verbose:
-                print('rank {:3}: loading {}'.format(comm.Get_rank(), alm_file))
+                print(f'rank {comm.rank:3}: loading {alm_file}')
             alm = alm_loader(alm_file)
             if verbose:
-                print('rank {:3}: done loading'.format(comm.Get_rank()))
+                print(f'rank {comm.rank:3}: done loading')
             grad_t = self._step(alm, **kwargs)
 
             if mc_gt_loc is None:
@@ -335,8 +340,6 @@ class KSW():
             else:
                 mc_gt_loc += grad_t
 
-            # NOTE SUSPICOUS
-            #mc_gt_sq = utils.contract_almxblm(grad_t, self.icov(np.conj(grad_t)))
             mc_gt_sq = utils.contract_almxblm(grad_t, np.conj(self.icov(grad_t)))
 
             if mc_gt_sq_loc is None:
@@ -346,7 +349,7 @@ class KSW():
         
             mc_idx_loc += 1
 
-        print(f'rank : {comm.rank} waiting in step_batch')
+        print(f'rank : {comm.rank:3} waiting in step_batch')
         # To allow allreduce when number of ranks > alm files.
         shape, dtype = utils.bcast_array_meta(mc_gt_loc, comm, root=0)
         if mc_gt_loc is None: mc_gt_loc = np.zeros(shape, dtype=dtype)
@@ -356,7 +359,7 @@ class KSW():
         mc_gt = utils.allreduce_array(mc_gt_loc, comm)
         mc_gt_sq = utils.allreduce(mc_gt_sq_loc, comm)        
         mc_idx = utils.allreduce(mc_idx_loc, comm)
-        print(f'rank : {comm.rank} after reduce in step_batch')
+        print(f'rank : {comm.rank:3} after reduce in step_batch')
 
         # All ranks get to update the internal mc variables themselves.
         if self.mc_gt is None:
@@ -404,12 +407,12 @@ class KSW():
         
             alm_file = alm_files[aidx]
             if verbose:
-                print('rank {:3}: loading {}'.format(comm.Get_rank(), alm_file))
+                print(f'rank {comm.rank:3}: loading {alm_file}')
             alm = alm_loader(alm_file)
             
             estimate = self.compute_estimate(alm, **kwargs)
             if verbose:
-                print('rank {:3}: estimate : {}'.format(comm.Get_rank(), estimate))
+                print(f'rank {comm.rank:3}: {estimate=}')
 
             estimates[aidx] = estimate
             
@@ -422,7 +425,7 @@ class KSW():
         Parameters
         ----------
         alm : (npol, nelem) array
-            Healpix-ordered unfiltered alm array. Will be overwritten!
+            HEALPix-ordered inverse-covariance filtered data.        
         theta_batch : int, optional
             Process loop over theta in batches of this size. Higher values
             take up more memory.
@@ -442,20 +445,20 @@ class KSW():
         ValueError
             If shape input alm is not understood.
             If Monte Carlo quantities are not iterated yet.
+
+        Notes
+        -----
+        Similar to step, but only do backward transform, multiply alm
+        with linear term and apply normalization.        
         '''
 
-        # Similar to step, but only do backward transform, multiply alm with linear term
-        # and apply normalization.
-
         alm = utils.alm_return_2d(alm, self.npol, self.lmax)
-        #alm = self.icov(alm)
-        alm = alm
 
         t_cubic = 0 # The cubic estimate.
         if fisher is None:
             fisher = self.compute_fisher()
         if lin_term is None:
-            lin_term = self.compute_linear_term(alm, no_icov=True)
+            lin_term = self.compute_linear_term(alm)
         
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
@@ -472,7 +475,7 @@ class KSW():
                                                        f_i_ell, a_ell_m, y_m_ell, self.nphi)
 
         fnl = (t_cubic - lin_term) / fisher
-        print(f'fnl : {fnl}, t_cubic : {t_cubic}, lin : {lin_term}, fisher : {fisher}')
+        print(f'{fnl=}, {t_cubic=}, {lin_term=}, {fisher=}')
         return fnl
 
     def compute_fisher(self, return_icov_mc_gt=False):
@@ -488,35 +491,27 @@ class KSW():
         if self.mc_gt_sq is None or self.mc_gt is None:
             return None
         
-        # NOTE THIS CONJ SEEMS SUSPICIOUS.
-        #icov_mc_gt = self.icov(np.conj(self.mc_gt))
-
         icov_mc_gt = self.icov(self.mc_gt)
 
-        #fisher = self.mc_gt_sq
-        #fisher -= utils.contract_almxblm(self.mc_gt, self.icov(np.conj(self.mc_gt)))
-        #fisher -= utils.contract_almxblm(self.mc_gt, np.conj(icov_mc_gt))
         mc_gt_icov_mc_gt = utils.contract_almxblm(self.mc_gt, np.conj(icov_mc_gt))
         fisher = (self.mc_gt_sq - mc_gt_icov_mc_gt) / 3.
-        #fisher /= 3.
-        print(f'fisher : {fisher}, mc_gt_sq : {self.mc_gt_sq}, mc_gt_icov_mc_gt : {mc_gt_icov_mc_gt}')
+
+        print(f'{fisher=}, {self.mc_gt_sq=}, {mc_gt_icov_mc_gt=}')
 
         if return_icov_mc_gt:
             return fisher, icov_mc_gt
         else:
             return fisher
 
-    def compute_linear_term(self, alm, no_icov=False):
+    def compute_linear_term(self, alm):
         '''
         Return linear term at current iteration for input data alm.
 
         Parameters
         ----------
         alm : (npol, nelem) complex array
-            Spherical harmonic coeffients of data.
-        no_icov : bool, optional
-            Do not icov filter input (i.e. input is already filtered).
-
+            HEALPix-ordered inverse-covariance filtered data.
+        
         Returns
         -------
         lin_term : float, None
@@ -532,12 +527,8 @@ class KSW():
             return None
 
         alm = utils.alm_return_2d(alm, self.npol, self.lmax)
-        
-        if no_icov:
-            return utils.contract_almxblm(alm, np.conj(self.mc_gt))
-        else:
-            return utils.contract_almxblm(self.icov(alm), np.conj(self.mc_gt))
-        #return utils.contract_almxblm(alm, icov(np.conj(self.mc_gt)))
+            
+        return utils.contract_almxblm(alm, np.conj(self.mc_gt))
 
     def compute_fisher_isotropic(self, icov_ell, return_matrix=False, fsky=1, 
                                      comm=None):

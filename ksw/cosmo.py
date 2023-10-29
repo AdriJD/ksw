@@ -264,16 +264,16 @@ class Cosmology:
         extract from CAMB are for the curvature perturbation zeta instead of the
         Bardeen potential phi (see shape.py, we use phi to match the Planck 
         conventions). We also have to take into account that the scalar amplitude
-        As extracted from CAMB is different than the value A in the Planck convention.
+        "As" extracted from CAMB is different than the value "A" in the Planck convention.
 
         During matter domination on superhorizon scales we have for adiabatic 
         perturbations: zeta = (5 / 3) phi. 
 
-        Planck defines A as <phi_k1 phik_2> = (2pi)^3 delta(k12) A / k^3.
+        Planck defines A as <phi_k1 phi_k2> = (2pi)^3 delta(k12) A / k^3.
         CAMB defines As as <zeta_k2 zeta_k2> = (2pi)^3 delta(k12) 2 * pi^2 As / k^3.
         So A = (3/5)^2 * 2 * pi^2 As.
 
-        The radiation transfer functions have to be multiplied by (5/3) to intepret
+        The radiation transfer functions have to be multiplied by (5/3) to interpret
         them as phi transfer functions. So the 3 factors of (5/3) from the 3 transfer
         functions in b_l1l2l3 partly cancel with the 4 factors of (3/5) from A^2.
 

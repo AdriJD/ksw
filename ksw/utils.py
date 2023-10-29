@@ -88,7 +88,7 @@ def alm2a_ell_m(alm, out=None, mmax=None):
     Parameters
     ----------
     alm : (..., nelem) array
-        Healpix ordered (m-major) alm array.
+        Triangular m-major (HEALPix)-ordered alm array.
     out : (..., nell, nm) array, optional
         ell-major alm array to be filled.
     mmax : int, None
@@ -146,7 +146,7 @@ def a_ell_m2alm(arr, out=None):
     Returns
     -------
     alm : (..., nelem) array
-        Healpix ordered (m-major) alm array        
+        Triangular m-major (HEALPix)-ordered alm array.
 
     Raises
     ------
