@@ -589,6 +589,92 @@ class KSW():
 
         return fisher
 
+    def compute_ng_sim(self, alm, theta_batch=25):
+        '''
+        Compute non-Gaussian perturbation to input simulation. 
+
+        Parameters
+        ----------
+        alm : (nelem) or (npol, nelem) complex array
+            HEALPix-ordered inverse-signal-covariance filtered alms of
+            input Gaussian field.
+        theta_batch : int, optional
+            Process loops over theta in batches of this size. Higher values
+            take up more memory.
+
+        Raises
+        ------
+        ValueError
+            If shape input alm is not understood.
+
+        Notes
+        -----
+        Follwing Eq. 83 in Smith and Zaldarriaga. This function only
+        computes the non-Gaussian component: 1 / 3 grad T [Cl^{-1} a].
+        '''
+
+        grad_t = self._step(alm, theta_batch=theta_batch)
+        grad_t /= 3
+        
+        return grad_t
+
+    def compute_ng_sim_batch(self, alm_loader, alm_files, alm_writer,
+                             oalm_files, comm=None, verbose=False, **kwargs):
+        '''
+        Compute non-Gaussian perturbation to input simulation by loading
+        and processing several alms in parallel using MPI.
+
+        Parameters
+        ----------
+        alm_loader : callable
+            Function that returns alms on rank given filename as first argument.
+        alm_files : array_like
+            List of alm files to load.
+        alm_writer : callable
+            Function that writes alms to disk given filename as first argument
+            and alm array as second.
+        oalm_files : array_like
+            List of output filepaths for eatch input alm file.
+        comm : MPI communicator, optional
+        verbose : bool, optional
+            Print process.
+        kwargs : dict, optional
+            Optional keyword arguments passed to "compute_ng_sim".
+
+        Raises
+        ------
+        ValueError
+            If alm_files and oalm_files do not match.
+        '''
+
+        if len(alm_files) != len(oalm_files):
+            raise ValueError(f'{len(alm_files=} != {oalm_files=}')
+        
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        idx_on_rank = np.arange(comm.rank, len(alm_files), comm.size)
+        for idx in idx_on_rank:
+
+            alm_file = alm_files[idx]
+            oalm_file = oalm_files[idx]
+
+            if verbose:
+                print(f'rank {comm.rank:3}: loading {alm_file}')
+            alm = alm_loader(alm_file)
+            if verbose:
+                print(f'rank {comm.rank:3}: done loading')
+                
+            alm_ng = self.compute_ng_sim(alm, **kwargs)
+
+            if verbose:
+                print(f'rank {comm.rank:3}: writing {oalm_file}')
+                
+            alm_writer(oalm_file, alm_ng)
+
+            if verbose:
+                print(f'rank {comm.rank:3}: done writing')
+            
     def write_state(self, filename, comm=None):
         '''
         Write internal state, i.e. mc_gt, mc_gt_sq and mc_idx, to hdf5 file.
