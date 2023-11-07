@@ -1088,7 +1088,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate(alm.copy())
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1.
@@ -1140,7 +1140,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
         # Test if giving fisher and linear terms manually works.
-        estimate = estimator.compute_estimate(alm.copy(), fisher=fisher, lin_term=lin_term)
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy(), fisher=fisher, lin_term=lin_term)
 
         def red_bisp(ell1, ell2, ell3):
             return 1.
@@ -1190,7 +1190,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate(alm.copy())
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
             return 1 * 1 * 1
@@ -1266,7 +1266,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate(alm.copy())
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             return 1 * 1 * 1 + 2 * 2 * 2
@@ -1321,7 +1321,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate(alm.copy())
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy())
 
         def red_bisp_III(ell1, ell2, ell3):
             return 1 * 1 * 1 + 3 * 3 * 3
@@ -1402,7 +1402,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate(alm.copy())
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             '''
@@ -1498,7 +1498,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate(alm.copy())
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3, pidx1, pidx2, pidx3):
             '''
@@ -1615,7 +1615,7 @@ class TestKSW_64(unittest.TestCase):
         self.assertEqual(estimator.compute_fisher(), 1)
         self.assertEqual(estimator.compute_linear_term(alm), 0.)
 
-        estimate = estimator.compute_estimate(alm.copy())
+        estimate, _, _, _ = estimator.compute_estimate(alm.copy())
 
         def red_bisp(ell1, ell2, ell3):
             '''

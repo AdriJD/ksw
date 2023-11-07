@@ -393,14 +393,23 @@ class KSW():
 
         Returns
         -------
-        estimates : (nalm_files) array, None
-            Estimates for each input file in same order as "alm_files".            
+        estimates : (nalm_files) array
+            Estimates for each input file in same order as "alm_files".
+        cubic_terms : (nalm_files) array
+            Cubic term for each input file in same order as "alm_files".
+        lin_terms : (nalm_files) array
+            Linear terms for each input file in same order as "alm_files".
+        fishers : (nalm_files) array
+            Fisher information for each input file in same order as "alm_files".
         '''
 
         if comm is None:
             comm = utils.FakeMPIComm()
 
         estimates = np.zeros(len(alm_files))
+        cubic_terms = np.zeros(len(alm_files))
+        lin_terms = np.zeros(len(alm_files))
+        fishers = np.zeros(len(alm_files))        
 
         # Split alm_file loop over ranks.
         for aidx in range(comm.Get_rank(), len(alm_files), comm.Get_size()):
@@ -410,13 +419,21 @@ class KSW():
                 print(f'rank {comm.rank:3}: loading {alm_file}')
             alm = alm_loader(alm_file)
             
-            estimate = self.compute_estimate(alm, **kwargs)
+            estimate, cubic, lin_term, fisher = self.compute_estimate(alm, **kwargs)
             if verbose:
                 print(f'rank {comm.rank:3}: {estimate=}')
 
             estimates[aidx] = estimate
+            cubic_terms[aidx] = cubic
+            lin_terms[aidx] = lin_term
+            fishers[aidx] = fisher          
             
-        return utils.allreduce_array(estimates, comm)
+        estimates = utils.allreduce_array(estimates, comm)
+        cubic_terms = utils.allreduce_array(cubic_terms, comm)
+        lin_terms = utils.allreduce_array(lin_terms, comm)
+        fishers = utils.allreduce_array(fishers, comm)
+
+        return estimates, cubic_terms, lin_terms, fishers
                     
     def compute_estimate(self, alm, theta_batch=25, fisher=None, lin_term=None):
         '''
@@ -437,9 +454,15 @@ class KSW():
 
         Returns
         -------
-        estimate : scalar, None
+        estimate : float
             fNL estimate.
-
+        cubic : float
+            Cubic term.
+        lin_term : float
+            Linear term.
+        fisher : float
+            Fisher information.
+        
         Raises
         ------
         ValueError
@@ -476,7 +499,7 @@ class KSW():
 
         fnl = (t_cubic - lin_term) / fisher
         print(f'{fnl=}, {t_cubic=}, {lin_term=}, {fisher=}')
-        return fnl
+        return fnl, t_cubic, lin_term, fisher
 
     def compute_fisher(self, return_icov_mc_gt=False):
         '''
