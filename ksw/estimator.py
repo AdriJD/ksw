@@ -602,6 +602,11 @@ class KSW():
             Process loops over theta in batches of this size. Higher values
             take up more memory.
 
+        Returns
+        -------
+        alm_ng : (nelem) or (npol, nelem) complex array
+            Non-Gaussian perturbation.
+        
         Raises
         ------
         ValueError
@@ -613,10 +618,10 @@ class KSW():
         computes the non-Gaussian component: 1 / 3 grad T [Cl^{-1} a].
         '''
 
-        grad_t = self._step(alm, theta_batch=theta_batch)
-        grad_t /= 3
+        alm_ng = self._step(alm, theta_batch=theta_batch)
+        alm_ng /= 3
         
-        return grad_t
+        return alm_ng
 
     def compute_ng_sim_batch(self, alm_loader, alm_files, alm_writer,
                              oalm_files, comm=None, verbose=False, **kwargs):
@@ -648,12 +653,13 @@ class KSW():
         '''
 
         if len(alm_files) != len(oalm_files):
-            raise ValueError(f'{len(alm_files=} != {oalm_files=}')
+            raise ValueError(f'{len(alm_files)=} != {oalm_files=}')
         
         if comm is None:
             comm = utils.FakeMPIComm()
 
-        idx_on_rank = np.arange(comm.rank, len(alm_files), comm.size)
+        idx_on_rank = np.array_split(
+            np.arange(len(alm_files)), comm.size)[comm.rank]
         for idx in idx_on_rank:
 
             alm_file = alm_files[idx]
@@ -663,7 +669,7 @@ class KSW():
                 print(f'rank {comm.rank:3}: loading {alm_file}')
             alm = alm_loader(alm_file)
             if verbose:
-                print(f'rank {comm.rank:3}: done loading')
+                print(f'rank {comm.rank:3}: done loading {alm_file}')
                 
             alm_ng = self.compute_ng_sim(alm, **kwargs)
 
@@ -673,7 +679,7 @@ class KSW():
             alm_writer(oalm_file, alm_ng)
 
             if verbose:
-                print(f'rank {comm.rank:3}: done writing')
+                print(f'rank {comm.rank:3}: done writing {oalm_file}')
             
     def write_state(self, filename, comm=None):
         '''
