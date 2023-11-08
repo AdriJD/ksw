@@ -38,8 +38,8 @@ def fisher_nxn(sqrt_icov_ell, f_ell_i, thetas, ct_weights, rule, weights, fisher
                          f'do not match npol of f_ell_i : {npol}')
 
     if sqrt_icov_ell.shape[0] != nell:
-        raise ValueError(f'nell dimension of sqrt_icov : {sqrt_icov_ell.shape[-2:]} '
-                         f'do not match nell of f_ell_i {npol}')
+        raise ValueError(f'nell dimension of sqrt_icov : {sqrt_icov_ell.shape[0]} '
+                         f'do not match nell of f_ell_i {nell}')
 
     if thetas.size != ct_weights.size:
         raise ValueError(f'Size thetas : {thetas.size} is not equal to size '
