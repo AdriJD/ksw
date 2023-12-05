@@ -411,6 +411,8 @@ class KSW():
         lin_terms = np.zeros(len(alm_files))
         fishers = np.zeros(len(alm_files))        
 
+        # NOTE, silly to recompute fisher for each aidx.
+        
         # Split alm_file loop over ranks.
         for aidx in range(comm.Get_rank(), len(alm_files), comm.Get_size()):
         

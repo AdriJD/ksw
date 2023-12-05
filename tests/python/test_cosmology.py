@@ -131,7 +131,6 @@ class TestCosmo(unittest.TestCase):
         pars = camb.CAMBparams()
         pars.set_cosmology(**self.cosmo_opts)
 
-
         cosmo = Cosmology(pars)
 
         self.assertRaises(ValueError, cosmo.compute_transfer, lmax)
@@ -142,7 +141,6 @@ class TestCosmo(unittest.TestCase):
         pars = camb.CAMBparams()
         pars.set_cosmology(**self.cosmo_opts)
 
-
         cosmo = Cosmology(pars)
 
         cosmo.compute_transfer(lmax)
@@ -150,20 +148,28 @@ class TestCosmo(unittest.TestCase):
 
         ells_unlensed = cosmo.c_ell['unlensed_scalar']['ells']
         np.testing.assert_equal(ells_unlensed, np.arange(lmax+1,dtype=int))
+        
         ells_lensed = cosmo.c_ell['lensed_scalar']['ells']
-        np.testing.assert_equal(ells_lensed, np.arange(ells_lensed.size,
-                                                       dtype=int))
+        np.testing.assert_equal(
+            ells_lensed, np.arange(ells_lensed.size, dtype=int))
+
+        ells_phi = cosmo.c_ell['lenspotential']['ells']
+        np.testing.assert_equal(
+            ells_phi, np.arange(ells_phi.size, dtype=int))
+        
         c_ell_unlensed = cosmo.c_ell['unlensed_scalar']['c_ell']
-        self.assertEqual(c_ell_unlensed.shape, (lmax+1, 4))
-        self.assertEqual(c_ell_unlensed.dtype, float)
+        self.assertEqual(c_ell_unlensed.shape, (lmax + 1, 4))
+        self.assertEqual(c_ell_unlensed.dtype, np.float64)
 
         c_ell_lensed = cosmo.c_ell['lensed_scalar']['c_ell']
-        self.assertEqual(c_ell_unlensed.shape, (lmax+1, 4))
-        self.assertEqual(c_ell_lensed.dtype, float)
+        self.assertEqual(c_ell_unlensed.shape, (lmax + 1, 4))
+        self.assertEqual(c_ell_lensed.dtype, np.float64)
 
+        c_ell_phi = cosmo.c_ell['lenspotential']['c_ell']
+        self.assertEqual(c_ell_phi.shape, (lmax + 1, 3))
+        self.assertEqual(c_ell_phi.dtype, np.float64)
+        
         # EE amplitude at ell=300 is approximately 50e-5 uK^2.
-        print(c_ell_unlensed[300,1])
-        print(c_ell_lensed[300,1])
         self.assertTrue(40e-5 < c_ell_unlensed[300,1] < 65e-5)
         self.assertTrue(40e-5 < c_ell_lensed[300,1] < 65e-5)
 
@@ -178,6 +184,25 @@ class TestCosmo(unittest.TestCase):
         np.testing.assert_almost_equal(c_ell_lensed[:,2],
                                        exp_BB_cl, decimal=1)
 
+        # Phi Phi power spectrum should be approx 1.4 * 10^-7
+        # in units of [ell (ell + 1)]^2/2/pi at ell = 40.
+        exp_phiphi_amp = 1.4e-7 / ((40 * 41) ** 2 / 2 / np.pi)
+        np.testing.assert_almost_equal(
+            exp_phiphi_amp / c_ell_phi[40,0], 1., decimal=1)
+        
+        # Phi T power spectrum should be approx 2.5 * 10^-3
+        # in units of [ell (ell + 1)]^1.5 / 2 / pi uK at ell = 10.
+        exp_phiT_amp = 2.5e-3 / ((10 * 11) ** 1.5 / 2 / np.pi)
+        np.testing.assert_almost_equal(
+            exp_phiT_amp / c_ell_phi[10,1], 1., decimal=1)
+
+        # Phi E power spectrum should be approx -1.3 * 10^-5
+        # in units of [ell (ell + 1)]^1.5 / 2 / pi uK at ell = 3.
+        # This is of course highly dependent on tau.
+        exp_phiE_amp = -1.3e-5 / ((3 * 4) ** 1.5 / 2 / np.pi)
+        np.testing.assert_almost_equal(
+            exp_phiE_amp / c_ell_phi[3,2], 1., decimal=1)
+        
     def test_cosmology_compute_transfer_power(self):
 
         # Check if transfer functions obey Eq. C5 in the BTT paper.
@@ -295,13 +320,13 @@ class TestCosmo(unittest.TestCase):
 
         self.assertEqual(red_bisp.factors.shape,
                          (ncomp * nr, npol, nell))
-        self.assertEqual(red_bisp.factors.dtype, float)
+        self.assertEqual(red_bisp.factors.dtype, np.float64)
 
         self.assertEqual(red_bisp.rule.shape, (nfact, 3))
         self.assertEqual(red_bisp.rule.dtype, int)
 
         self.assertEqual(red_bisp.weights.shape, (nfact, 3))
-        self.assertEqual(red_bisp.weights.dtype, float)
+        self.assertEqual(red_bisp.weights.dtype, np.float64)
 
         ells = np.arange(2, lmax+1)
         np.testing.assert_equal(red_bisp.ells_full, ells)
@@ -392,21 +417,25 @@ class TestCosmoIO(unittest.TestCase):
         npol = 2
         ncomp = 2
         nr = 3
-        tr_ell_k = np.ones((nell, nk, npol), dtype=float)
-        k = np.arange(nk, dtype=float)
+        tr_ell_k = np.ones((nell, nk, npol), dtype=np.float64)
+        k = np.arange(nk, dtype=np.float64)
         ells = np.arange(nell, dtype=int)
-        radii = np.arange(nr, dtype=float)
-        red_bisp =  np.ones((nr, nell, npol, ncomp), dtype=float)
+        radii = np.arange(nr, dtype=np.float64)
+        red_bisp =  np.ones((nr, nell, npol, ncomp), dtype=np.float64)
 
         cosmo.transfer = {'tr_ell_k' : tr_ell_k,
                           'k' : k, 'ells' : ells}
 
-        c_ell_lensed = np.ones((nell, 4), dtype=float)
-        c_ell_unlensed = np.ones((nell, 4), dtype=float) * 2.
+        c_ell_lensed = np.ones((nell, 4), dtype=np.float64)
+        c_ell_unlensed = np.ones((nell, 4), dtype=np.float64) * 2.
+        c_ell_lenspotential = np.ones((nell, 3), dtype=np.float64) * 3.
         cosmo.c_ell = {'lensed_scalar' : {'ells' : ells,
-                                        'c_ell' : c_ell_lensed},
-                     'unlensed_scalar' : {'ells' : ells,
-                                          'c_ell' : c_ell_unlensed}}
+                                          'c_ell' : c_ell_lensed},
+                       'unlensed_scalar' : {'ells' : ells,
+                                            'c_ell' : c_ell_unlensed},
+                       'lenspotential' : {'ells' : ells,
+                                          'c_ell' : c_ell_lenspotential}
+                       }
         cosmo.red_bisp = {'red_bisp' : red_bisp,
                           'radii' : radii,
                           'ells' : ells}
@@ -473,6 +502,14 @@ class TestCosmoIO(unittest.TestCase):
                 cosmo_new.c_ell['unlensed_scalar']['ells'],
                 self.cosmo.c_ell['unlensed_scalar']['ells'])
 
+            np.testing.assert_almost_equal(
+                cosmo_new.c_ell['lenspotential']['c_ell'],
+                self.cosmo.c_ell['lenspotential']['c_ell'])
+
+            np.testing.assert_equal(
+                cosmo_new.c_ell['lenspotential']['ells'],
+                self.cosmo.c_ell['lenspotential']['ells'])            
+            
     def test_cosmo_io_write_camb_params(self):
 
         with tempfile.TemporaryDirectory(dir=self.path) as tmpdirname:

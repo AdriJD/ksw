@@ -219,8 +219,9 @@ class Cosmology:
         Notes
         -----
         Spectra are CAMB output and are therefore column-major
-        (nell, npol). The pol order is TT, EE, BB, TE. nell can
-        be different for lensed and unlensed spectra. The monopole
+        (nell, npol). The pol order is TT, EE, BB, TE for the CMB
+        spectra and phiphi, phiT, phiE for the lenspotential. Nell can
+        be different for each type of spectra. The monopole
         and dipole are included. Units are muK^2.
         '''
 
@@ -232,8 +233,12 @@ class Cosmology:
         c_ell_lensed_scalar = self._camb_data.get_lensed_scalar_cls(
             lmax=None, CMB_unit='muK', raw_cl=True)
 
+        c_ell_lenspotential = self._camb_data.get_lens_potential_cls(
+            lmax=None, CMB_unit='muK', raw_cl=True)
+        
         ells_unlensed = np.arange(c_ell_unlensed_scalar.shape[0])
         ells_lensed = np.arange(c_ell_lensed_scalar.shape[0])
+        ells_lenspotential = np.arange(c_ell_lenspotential.shape[0])        
 
         self.c_ell['unlensed_scalar'] = {}
         self.c_ell['unlensed_scalar']['ells'] = ells_unlensed
@@ -243,6 +248,10 @@ class Cosmology:
         self.c_ell['lensed_scalar']['ells'] = ells_lensed
         self.c_ell['lensed_scalar']['c_ell'] = c_ell_lensed_scalar
 
+        self.c_ell['lenspotential'] = {}
+        self.c_ell['lenspotential']['ells'] = ells_lenspotential
+        self.c_ell['lenspotential']['c_ell'] = c_ell_lenspotential
+        
     def add_prim_reduced_bispectrum(self, prim_shape, radii, name=None):
         '''
         Compute the factors of the reduced bispectrum for a given
@@ -351,7 +360,7 @@ class Cosmology:
             nperm = self.num_permutations(ru)
             amp_per_r = (amp * dr * nperm)
 
-            # Note each factor gets 1/3 power of overall amplitude sucht that 
+            # Note each factor gets 1/3 power of overall amplitude such that 
             # fl1 * fl2 * fl3 has correct amplitude.
 
             # If amp * dr is negative you get complex answers to the 3rd root.
@@ -472,6 +481,12 @@ class Cosmology:
                     data=self.c_ell['unlensed_scalar']['ells'])
             unlens_scal.create_dataset('c_ell',
                     data=self.c_ell['unlensed_scalar']['c_ell'])
+            
+            lenspotential = f.create_group('lenspotential')
+            lenspotential.create_dataset('ells',
+                    data=self.c_ell['lenspotential']['ells'])
+            lenspotential.create_dataset('c_ell',
+                    data=self.c_ell['lenspotential']['c_ell'])
 
     def read_c_ell(self, filename, comm=None):
         '''
@@ -503,6 +518,12 @@ class Cosmology:
                 self.c_ell['unlensed_scalar'] = {}
                 self.c_ell['unlensed_scalar']['ells'] = ells
                 self.c_ell['unlensed_scalar']['c_ell'] = c_ell
+
+                ells = f['lenspotential/ells'][()]
+                c_ell = f['lenspotential/c_ell'][()]
+                self.c_ell['lenspotential'] = {}
+                self.c_ell['lenspotential']['ells'] = ells
+                self.c_ell['lenspotential']['c_ell'] = c_ell                
         else:
             self.c_ell = None
     
@@ -547,7 +568,7 @@ class Cosmology:
 class ReducedBispectrum:
     '''
     A ReducedBispectrum instance represents a reduced bispectrum
-    that consists of a sum of terms that are each seperable in
+    that consists of a sum of terms that are each separable in
     the l1, l2, l3 multipoles:
 
     b_l1_l2_l3 = (1/6) sum_i^nfact X(i)_l1 Y(i)_l1 Z(i)_l1 + 5 perm.
@@ -555,7 +576,7 @@ class ReducedBispectrum:
     Parameters
     ----------
     factors = (n, npol, nell_sparse)
-        Unique f_ells (e.g. X(i)_ell, Y(i)_elll) that make up the reduced 
+        Unique f_ells (e.g. X(i)_ell, Y(i)_ell) that make up the reduced 
         bispectrum.
     rule : (nfact, 3) int array
         Indices to first dimension of unique factors array that
@@ -563,7 +584,7 @@ class ReducedBispectrum:
     weights : (nfact, 3) float array
         Weights for each element in rule.
     ells : (nell_sparse) array
-        Possibily sparse array of monotonicially increasing
+        Potentially sparse array of monotonicially increasing
         multipoles.
     name : str
         A name to identify the reduced bispectrum.
@@ -578,7 +599,7 @@ class ReducedBispectrum:
     weights : (nfact, 3) float array
         Weights for each element in rule.
     ells_sparse : (nell_sparse) int array
-        Possibily sparse array of monotonicially increasing
+        Potentially sparse array of monotonicially increasing
         multipoles.
     ells_full : (nell) int array
         Fully sampled array of multipoles.

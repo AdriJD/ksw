@@ -256,7 +256,7 @@ def alm_return_2d(alm, npol, lmax):
         raise ValueError('Expected alm lmax = {}, got {}'.format(lmax_in, lmax))
 
     return alm
- 
+
 def reduce_array(arr, comm, op=None, root=0):
     '''
     Reduce numpy array to root.
