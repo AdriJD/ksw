@@ -381,6 +381,38 @@ class TestCosmo(unittest.TestCase):
         ans = red_bisp.factors[cidx*nr+ridx,pidx,lidx_full]
         self.assertAlmostEqual(ans, ans_expec, places=6)
 
+    def test_cosmology_add_ttt_lensing_bispectrum(self):
+
+        lmax = 300
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**self.cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo.compute_transfer(lmax)
+        cosmo.compute_c_ell(lmax=100) # Note, lower than lmax.
+
+        self.assertTrue(len(cosmo.red_bispectra) == 0)
+        cosmo.add_ttt_lensing_bispectrum()
+        self.assertTrue(len(cosmo.red_bispectra) == 1)
+
+        red_bisp = cosmo.red_bispectra[0]
+
+        rule_exp = np.asarray([[0, 1, 2],
+                               [0, 5, 3],
+                               [4, 5, 2]])
+
+        weights_exp = np.ones((3, 3))
+        weights_exp *= 3 ** (1 / 3)
+        weights_exp[-1] *= -1
+                
+        np.testing.assert_array_equal(red_bisp.rule, rule_exp)
+        np.testing.assert_array_equal(red_bisp.weights, weights_exp)
+
+        for r in red_bisp.rule:
+            print(r, np.prod(red_bisp.factors[r,0], axis=0)[::10])
+
+        assert False
+        
     def test_cosmology_num_permutations(self):
 
         rule = [3, 3, 3]

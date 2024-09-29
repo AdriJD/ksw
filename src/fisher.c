@@ -89,31 +89,31 @@ void fisher_nxn_on_ring_sp(const float *unique_nxn, const long long *rule,
 	    float wpz = weights[rjdx*3+2];
 	    
 	    // r and rp are indices into unique_nxn. Min/max to only acces uppper tri part.
-	    float tmp = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)] 
-		      * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)] 
+	    float tmp = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
+		      * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		      * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)];
 	    
 	    // + 5 permutations.
-	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] 
-		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] 
+	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
+		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
 		 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)];
 
-	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] 
-		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] 
+	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)]
+		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)]
 		 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)];
 
-	    tmp += unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)] 
-		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] 
+	    tmp += unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
+		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)]
 		 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)];
 
-	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] 
-		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] 
+	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)]
+		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
 		 * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)];
 
-	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] 
-		 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)] 
+	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
+		 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)];
-
+	    
 	    fisher_nxn[ridx*nrule+rjdx] += tmp * wx * wy * wz
 		* wpx * wpy * wpz * (float) (ct_weight * 2 * PI * PI / 9);
 	}
@@ -237,7 +237,7 @@ void unique_nxn_on_ring_dp(const double *sqrt_icov_ell, const double *f_ell_i, c
 		    1.0, sqrt_icov_ell + lidx * npol * npol, npol,
 		    f_ell_i + lidx * npol * nufact, nufact, 0.0, work_i, nufact);
 
-	// P * work^T x work -> unique_nxn.
+	// P * work^T @ work -> unique_nxn.
 	cblas_dsyrk(CblasRowMajor, CblasUpper, CblasTrans, nufact, npol,
 	    p_ell[lidx] * prefactor[lidx], work_i, nufact, 1.0, unique_nxn, nufact);
     }
@@ -269,33 +269,34 @@ void fisher_nxn_on_ring_dp(const double *unique_nxn, const long long *rule,
 	    double wpz = weights[rjdx*3+2];
 	    
 	    // r and rp are indices into unique_nxn. Min/max to only acces uppper tri part.
-	    double tmp = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)] 
-		      * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)] 
+	    double tmp = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
+		      * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		      * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)];
 	    
 	    // + 5 permutations.
-	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] 
-		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] 
+	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
+		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
 		 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)];
 
-	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] 
-		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] 
+	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)]
+		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)]
 		 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)];
 
-	    tmp += unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)] 
-		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] 
+	    tmp += unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
+		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)]
 		 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)];
 
-	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] 
-		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] 
+	    tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)]
+		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
 		 * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)];
 
-	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] 
-		 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)] 
+	    tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
+		 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)];
-
+	    
 	    fisher_nxn[ridx*nrule+rjdx] += tmp * wx * wy * wz
 		* wpx * wpy * wpz * (ct_weight * 2 * PI * PI / 9);
+
 	}
     }
 }

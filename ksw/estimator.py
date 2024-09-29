@@ -216,7 +216,7 @@ class KSW():
         f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
             red_bisp.factors[:,pslice,:end_ells_full]
         f_i_ell = f_i_ell.astype(self.dtype, copy=False)
-
+        
         rule = red_bisp.rule
         weights = red_bisp.weights.astype(self.dtype)
 
@@ -556,7 +556,7 @@ class KSW():
         return utils.contract_almxblm(alm, np.conj(self.mc_gt))
 
     def compute_fisher_isotropic(self, icov_ell, return_matrix=False, fsky=1, 
-                                     comm=None):
+                                 comm=None):
         '''
         Return Fisher information assuming that inverse noise + signal
         covariance is diagonal in harmonic space.
@@ -593,7 +593,7 @@ class KSW():
         sqrt_icov_ell = mat_utils.matpow(icov_ell, 0.5)
         sqrt_icov_ell = np.ascontiguousarray(np.transpose(sqrt_icov_ell, (2, 0, 1)),
                                              dtype=self.dtype)
-        
+
         nrule = rule.shape[0]
         fisher_nxn = np.zeros((nrule, nrule), dtype=self.dtype)
 
@@ -604,11 +604,15 @@ class KSW():
 
         fisher_core.fisher_nxn(sqrt_icov_ell, f_ell_i, thetas_per_rank,
                                ct_weights_per_rank, rule, weights, fisher_nxn)
-
+        
         fisher_nxn = utils.allreduce_array(fisher_nxn, comm)
         fisher_nxn = np.triu(fisher_nxn, 1).T + np.triu(fisher_nxn)
-        fisher = np.sum(fisher_nxn)
 
+        fisher = np.sum(fisher_nxn)
+        with np.printoptions(threshold=np.inf):
+            print(f'{fisher_nxn=}')
+        print(f'{fisher=}')
+        
         if return_matrix:
             return fisher, fisher_nxn 
 

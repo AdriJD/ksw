@@ -211,7 +211,7 @@ class Cosmology:
         self.transfer['k'] = tr.q
         self.transfer['ells'] = ells # Probably sparse.
 
-    def compute_c_ell(self):
+    def compute_c_ell(self, lmax=None):
         '''
         Calculate angular power spectra (Cls) using precomputed
         transfer functions.
@@ -228,13 +228,13 @@ class Cosmology:
         self._camb_data.power_spectra_from_transfer()
 
         c_ell_unlensed_scalar = self._camb_data.get_unlensed_scalar_cls(
-            lmax=None, CMB_unit='muK', raw_cl=True)
+            lmax=lmax, CMB_unit='muK', raw_cl=True)
 
         c_ell_lensed_scalar = self._camb_data.get_lensed_scalar_cls(
-            lmax=None, CMB_unit='muK', raw_cl=True)
+            lmax=lmax, CMB_unit='muK', raw_cl=True)
 
         c_ell_lenspotential = self._camb_data.get_lens_potential_cls(
-            lmax=None, CMB_unit='muK', raw_cl=True)
+            lmax=lmax, CMB_unit='muK', raw_cl=True)
         
         ells_unlensed = np.arange(c_ell_unlensed_scalar.shape[0])
         ells_lensed = np.arange(c_ell_lensed_scalar.shape[0])
@@ -376,10 +376,50 @@ class Cosmology:
 
         return factors, rule, weights
 
+    def add_ttt_lensing_bispectrum(self):
+        '''
+        Compute the factors of the reduced bispectrum due to the correlation
+        between the lensing potential phi and the late-time ISW effect and add
+        to internal list of reduced bispectra.
+
+        Notes
+        -----
+        This is not the full ISW-lensing bispectrum, because pol is ignored.
+
+        Implements: B_l1l2l3^TTT = Cl2^Tphi * tilde(C)l3^TT fl1l2l3^T + 5 perm.
+        see first line of Eq. 38 in Planck NG 2018.        
+        '''
+
+        ells = self.c_ell['lensed_scalar']['ells']
+        assert np.allclose(ells, self.c_ell['lenspotential']['ells'])
+        
+        c_ell_tt = self.c_ell['lensed_scalar']['c_ell'][:,0]
+        c_ell_tphi = self.c_ell['lenspotential']['c_ell'][:,1]
+
+        factors = np.zeros((6, 2, ells.size))
+        # We include the E part of the factors, but it is always zero.
+        factors[0,0,:] = np.ones(ells.size)
+        factors[1,0,:] = c_ell_tphi * ells * (ells + 1)# * 1e12
+        factors[2,0,:] = c_ell_tt# * 1e3
+        factors[3,0,:] = c_ell_tt * ells * (ells + 1)# * 1e3
+        factors[4,0,:] = ells * (ells + 1)
+        factors[5,0,:] = c_ell_tphi# * 1e12
+
+        # Set all monopoles and dipoles to zero.
+        factors[:,:,:2] = 0
+        
+        rule = np.asarray([[0, 1, 2], [0, 5, 3], [4, 5, 2]])        
+        weights = np.asarray([[1., 1., 1.], [1., 1., 1.], [-1., -1., -1.]])
+        weights *= 3 ** (1 / 3)# * 1e-5 # 5 = 18/3.
+        name = 'ttt_lensing'
+
+        self.red_bispectra.append(
+            ReducedBispectrum(factors, rule, weights, ells, name))
+
     @staticmethod
     def num_permutations(rule):
         '''
-        Return number of distinct permulations of rule.
+        Return number of distinct permutations of rule.
 
         Parameters
         ----------
@@ -571,7 +611,7 @@ class ReducedBispectrum:
     that consists of a sum of terms that are each separable in
     the l1, l2, l3 multipoles:
 
-    b_l1_l2_l3 = (1/6) sum_i^nfact X(i)_l1 Y(i)_l1 Z(i)_l1 + 5 perm.
+    b_l1_l2_l3 = (1/6) sum_i^nfact X(i)_l1 Y(i)_l2 Z(i)_l3 + 5 perm.
 
     Parameters
     ----------
@@ -588,7 +628,7 @@ class ReducedBispectrum:
         multipoles.
     name : str
         A name to identify the reduced bispectrum.
-
+    
     Attributes
     ----------
     factors : (n, npol, nell)

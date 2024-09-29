@@ -6,7 +6,7 @@ void test_compute_associated_legendre_sp(void){
 
     int ntheta = 2;
     int lmax = 2;
-    int nell = lmax + 1;    
+    int nell = lmax + 1;
     float delta = 1e-6;
 
     double *thetas = malloc(sizeof *thetas * ntheta);
@@ -23,7 +23,7 @@ void test_compute_associated_legendre_sp(void){
     assert_float_equal(1., p_theta_ell[3], delta);
     assert_float_equal(cos(thetas[1]), p_theta_ell[4], delta);
     assert_float_equal(0.5 * (3 * cos(thetas[1]) * cos(thetas[1]) - 1), p_theta_ell[5], delta);
-    
+
     free(thetas);
     free(p_theta_ell);
 }
@@ -41,7 +41,7 @@ void test_unique_nxn_on_ring_sp(void){
     float *prefactor = calloc(nell, sizeof *prefactor);
     float *work_i = malloc(sizeof *work_i * npol * nufact);
     float *unique_nxn = calloc(nufact * nufact, sizeof *unique_nxn);
-    
+
     p_ell[0] = 1.0;
     p_ell[1] = -0.5;
 
@@ -72,9 +72,9 @@ void test_unique_nxn_on_ring_sp(void){
     f_ell_i[10] = -1.;
     f_ell_i[11] = 8.;
 
-    unique_nxn_on_ring_sp(sqrt_icov_ell, f_ell_i, p_ell, prefactor, work_i, 
+    unique_nxn_on_ring_sp(sqrt_icov_ell, f_ell_i, p_ell, prefactor, work_i,
 			  unique_nxn, nufact, nell, npol);
-        
+
     assert_float_equal(-87227., unique_nxn[0], delta);
     assert_float_equal(-3902.5, unique_nxn[1], delta);
     assert_float_equal(-76328., unique_nxn[2], delta);
@@ -90,15 +90,15 @@ void test_unique_nxn_on_ring_sp(void){
     free(p_ell);
     free(prefactor);
     free(work_i);
-    free(unique_nxn);    
+    free(unique_nxn);
 }
 
 void test_min(void){
 
-    int a, b, c; 
+    int a, b, c;
     long long al, bl, cl;
     ptrdiff_t ap, bp, cp;
-    
+
     a = 4;
     b = -5;
     c = _min(a, b);
@@ -147,10 +147,10 @@ void test_min(void){
 
 void test_max(void){
 
-    int a, b, c; 
+    int a, b, c;
     long long al, bl, cl;
     ptrdiff_t ap, bp, cp;
-    
+
     a = 4;
     b = -5;
     c = _max(a, b);
@@ -201,7 +201,6 @@ void test_fisher_nxn_on_ring_sp(void){
 
     int nufact = 3;
     int nrule = 4;
-    int npol = 2;
     float delta = 1e-6;
 
     float prefac = 2 * PI * PI / 9;
@@ -251,25 +250,25 @@ void test_fisher_nxn_on_ring_sp(void){
     weights[4] = 0.6;
     weights[5] = 0.7;
 
-    fisher_nxn_on_ring_sp(unique_nxn, rule, weights, fisher_nxn, ct_weight, 
+    fisher_nxn_on_ring_sp(unique_nxn, rule, weights, fisher_nxn, ct_weight,
 			  nufact, nrule);
 
     assert_float_equal(1.0, fisher_nxn[0] / (prefac * 96 * 0.000036), delta);
     assert_float_equal(1.0, fisher_nxn[1] / (prefac * 128 * 0.00126), delta);
     assert_float_equal(1.0, fisher_nxn[2] / (prefac * 0.288), delta);
-    assert_float_equal(1.0, fisher_nxn[3] / (prefac * 0.144), delta);    
+    assert_float_equal(1.0, fisher_nxn[3] / (prefac * 0.144), delta);
     assert_float_equal(0, fisher_nxn[4], delta);
-    assert_float_equal(1.0, fisher_nxn[5] / (prefac * 7.452901), delta);    
-    assert_float_equal(1.0, fisher_nxn[6] / (prefac * 14.28), delta);    
-    assert_float_equal(1.0, fisher_nxn[7] / (prefac * 7.56), delta);    
+    assert_float_equal(1.0, fisher_nxn[5] / (prefac * 7.452901), delta);
+    assert_float_equal(1.0, fisher_nxn[6] / (prefac * 14.28), delta);
+    assert_float_equal(1.0, fisher_nxn[7] / (prefac * 7.56), delta);
     assert_float_equal(0, fisher_nxn[8], delta);
     assert_float_equal(0, fisher_nxn[9], delta);
-    assert_float_equal(1.0, fisher_nxn[10] / (prefac * 24), delta);    
-    assert_float_equal(1.0, fisher_nxn[11] / (prefac * 12), delta);    
+    assert_float_equal(1.0, fisher_nxn[10] / (prefac * 24), delta);
+    assert_float_equal(1.0, fisher_nxn[11] / (prefac * 12), delta);
     assert_float_equal(0, fisher_nxn[12], delta);
     assert_float_equal(0, fisher_nxn[13], delta);
     assert_float_equal(0, fisher_nxn[14], delta);
-    assert_float_equal(1.0, fisher_nxn[15] / (prefac * 6), delta);    
+    assert_float_equal(1.0, fisher_nxn[15] / (prefac * 6), delta);
 
     free(unique_nxn);
     free(rule);
@@ -294,15 +293,18 @@ void test_fisher_nxn_sp(void){
     long long *rule = calloc(nrule * 3, sizeof *rule);
     float *weights = calloc(nrule * 3, sizeof *weights);
     float *fisher_nxn = calloc(nrule * nrule, sizeof *fisher_nxn);
-    
+
     thetas[0] = 0.1;
     thetas[1] = 0.5;
+
+    ct_weights[0] = 1.;
+    ct_weights[1] = 1.;
 
     fisher_nxn_sp(sqrt_icov_ell, f_ell_i, thetas, ct_weights, rule, weights,
 		  fisher_nxn, nufact, nrule, ntheta, lmax, npol);
 
     // No actual test here... I'll use the python wrapper for testing.
-    
+
     assert_float_equal(0, fisher_nxn[0], delta);
     assert_float_equal(0, fisher_nxn[1], delta);
     assert_float_equal(0, fisher_nxn[2], delta);
@@ -319,7 +321,7 @@ void test_fisher_nxn_sp(void){
     assert_float_equal(0, fisher_nxn[13], delta);
     assert_float_equal(0, fisher_nxn[14], delta);
     assert_float_equal(0, fisher_nxn[15], delta);
-    
+
     free(sqrt_icov_ell);
     free(f_ell_i);
     free(thetas);
@@ -335,7 +337,7 @@ void test_compute_associated_legendre_dp(void){
 
     int ntheta = 2;
     int lmax = 2;
-    int nell = lmax + 1;    
+    int nell = lmax + 1;
     double delta = 1e-6;
 
     double *thetas = malloc(sizeof *thetas * ntheta);
@@ -352,7 +354,7 @@ void test_compute_associated_legendre_dp(void){
     assert_double_equal(1., p_theta_ell[3], delta);
     assert_double_equal(cos(thetas[1]), p_theta_ell[4], delta);
     assert_double_equal(0.5 * (3 * cos(thetas[1]) * cos(thetas[1]) - 1), p_theta_ell[5], delta);
-    
+
     free(thetas);
     free(p_theta_ell);
 }
@@ -370,7 +372,7 @@ void test_unique_nxn_on_ring_dp(void){
     double *prefactor = calloc(nell, sizeof *prefactor);
     double *work_i = malloc(sizeof *work_i * npol * nufact);
     double *unique_nxn = calloc(nufact * nufact, sizeof *unique_nxn);
-    
+
     p_ell[0] = 1.0;
     p_ell[1] = -0.5;
 
@@ -401,9 +403,9 @@ void test_unique_nxn_on_ring_dp(void){
     f_ell_i[10] = -1.;
     f_ell_i[11] = 8.;
 
-    unique_nxn_on_ring_dp(sqrt_icov_ell, f_ell_i, p_ell, prefactor, work_i, 
+    unique_nxn_on_ring_dp(sqrt_icov_ell, f_ell_i, p_ell, prefactor, work_i,
 			  unique_nxn, nufact, nell, npol);
-        
+
     assert_double_equal(-87227., unique_nxn[0], delta);
     assert_double_equal(-3902.5, unique_nxn[1], delta);
     assert_double_equal(-76328., unique_nxn[2], delta);
@@ -419,14 +421,13 @@ void test_unique_nxn_on_ring_dp(void){
     free(p_ell);
     free(prefactor);
     free(work_i);
-    free(unique_nxn);    
+    free(unique_nxn);
 }
 
 void test_fisher_nxn_on_ring_dp(void){
 
     int nufact = 3;
     int nrule = 4;
-    int nell = 2;
     double delta = 1e-6;
 
     double prefac = 2 * PI * PI / 9;
@@ -476,25 +477,25 @@ void test_fisher_nxn_on_ring_dp(void){
     weights[4] = 0.6;
     weights[5] = 0.7;
 
-    fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn, ct_weight, 
+    fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn, ct_weight,
 			  nufact, nrule);
 
     assert_double_equal(1.0, fisher_nxn[0] / (prefac * 96 * 0.000036), delta);
     assert_double_equal(1.0, fisher_nxn[1] / (prefac * 128 * 0.00126), delta);
     assert_double_equal(1.0, fisher_nxn[2] / (prefac * 0.288), delta);
-    assert_double_equal(1.0, fisher_nxn[3] / (prefac * 0.144), delta);    
+    assert_double_equal(1.0, fisher_nxn[3] / (prefac * 0.144), delta);
     assert_double_equal(0, fisher_nxn[4], delta);
-    assert_double_equal(1.0, fisher_nxn[5] / (prefac * 7.452901), delta);    
-    assert_double_equal(1.0, fisher_nxn[6] / (prefac * 14.28), delta);    
-    assert_double_equal(1.0, fisher_nxn[7] / (prefac * 7.56), delta);    
+    assert_double_equal(1.0, fisher_nxn[5] / (prefac * 7.452901), delta);
+    assert_double_equal(1.0, fisher_nxn[6] / (prefac * 14.28), delta);
+    assert_double_equal(1.0, fisher_nxn[7] / (prefac * 7.56), delta);
     assert_double_equal(0, fisher_nxn[8], delta);
     assert_double_equal(0, fisher_nxn[9], delta);
-    assert_double_equal(1.0, fisher_nxn[10] / (prefac * 24), delta);    
-    assert_double_equal(1.0, fisher_nxn[11] / (prefac * 12), delta);    
+    assert_double_equal(1.0, fisher_nxn[10] / (prefac * 24), delta);
+    assert_double_equal(1.0, fisher_nxn[11] / (prefac * 12), delta);
     assert_double_equal(0, fisher_nxn[12], delta);
     assert_double_equal(0, fisher_nxn[13], delta);
     assert_double_equal(0, fisher_nxn[14], delta);
-    assert_double_equal(1.0, fisher_nxn[15] / (prefac * 6), delta);    
+    assert_double_equal(1.0, fisher_nxn[15] / (prefac * 6), delta);
 
     free(unique_nxn);
     free(rule);
@@ -519,15 +520,18 @@ void test_fisher_nxn_dp(void){
     long long *rule = calloc(nrule * 3, sizeof *rule);
     double *weights = calloc(nrule * 3, sizeof *weights);
     double *fisher_nxn = calloc(nrule * nrule, sizeof *fisher_nxn);
-    
+
     thetas[0] = 0.1;
     thetas[1] = 0.5;
+
+    ct_weights[0] = 1.;
+    ct_weights[1] = 1.;
 
     fisher_nxn_dp(sqrt_icov_ell, f_ell_i, thetas, ct_weights, rule, weights,
 		  fisher_nxn, nufact, nrule, ntheta, lmax, npol);
 
     // No actual test here... I'll use the python wrapper for testing.
-    
+
     assert_double_equal(0, fisher_nxn[0], delta);
     assert_double_equal(0, fisher_nxn[1], delta);
     assert_double_equal(0, fisher_nxn[2], delta);
@@ -544,7 +548,7 @@ void test_fisher_nxn_dp(void){
     assert_double_equal(0, fisher_nxn[13], delta);
     assert_double_equal(0, fisher_nxn[14], delta);
     assert_double_equal(0, fisher_nxn[15], delta);
-    
+
     free(sqrt_icov_ell);
     free(f_ell_i);
     free(thetas);
