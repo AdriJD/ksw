@@ -399,18 +399,19 @@ class Cosmology:
         factors = np.zeros((6, 2, ells.size))
         # We include the E part of the factors, but it is always zero.
         factors[0,0,:] = np.ones(ells.size)
-        factors[1,0,:] = c_ell_tphi * ells * (ells + 1)# * 1e12
-        factors[2,0,:] = c_ell_tt# * 1e3
-        factors[3,0,:] = c_ell_tt * ells * (ells + 1)# * 1e3
+        factors[1,0,:] = c_ell_tphi * ells * (ells + 1)
+        factors[2,0,:] = c_ell_tt
+        factors[3,0,:] = c_ell_tt * ells * (ells + 1)
         factors[4,0,:] = ells * (ells + 1)
-        factors[5,0,:] = c_ell_tphi# * 1e12
+        factors[5,0,:] = c_ell_tphi
 
         # Set all monopoles and dipoles to zero.
         factors[:,:,:2] = 0
         
         rule = np.asarray([[0, 1, 2], [0, 5, 3], [4, 5, 2]])        
         weights = np.asarray([[1., 1., 1.], [1., 1., 1.], [-1., -1., -1.]])
-        weights *= 3 ** (1 / 3)# * 1e-5 # 5 = 18/3.
+        # This is due to the 1/6 in the def of b_l1l2l3 and the factor 1/2 in f_l1l2l3        
+        weights *= 3 ** (1 / 3) 
         name = 'ttt_lensing'
 
         self.red_bispectra.append(

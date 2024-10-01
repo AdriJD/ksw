@@ -412,6 +412,35 @@ class TestCosmo(unittest.TestCase):
             print(r, np.prod(red_bisp.factors[r,0], axis=0)[::10])
 
         assert False
+
+    def test_wigner_ratio(self):
+
+        # Not really a unittest, but just testing the relation from
+        # https://mathoverflow.net/questions/158535/closed-form-for-3j-symbol-ratios
+
+        def c_tilde_2(l2, l3):
+            return np.sqrt((l2 - 1) * (l2 + 2) * (l3 - 1) * (l3 + 2))
+        def d_0(l1, l2, l3):
+            return l2 * (l2 + 1) + l3 * (l3 + 1) - l1 * (l1 + 1)
+        def c_0(l2, l3):
+            return np.sqrt(l2 * l3 * (l2 + 1) * (l3 + 1))
+
+        def get_ratio(l1, l2, l3):
+            out = d_0(l1, l2, l3) * (d_0(l1, l2, l3) - 2) / 2 / c_0(l2, l3) - c_0(l2, l3)
+            out /= c_tilde_2(l2, l3)
+            return out
+
+        # 4 6 2   4 6 2
+        # 0 2 -2  0 0 0 
+        ratio_exp = 0.557773351
+        ratio = get_ratio(4, 6, 2)
+        np.testing.assert_allclose(ratio, ratio_exp)
+
+        # 20 18 6   20 18 6
+        # 0 2 -2    0 0 0 
+        ratio_exp = -0.9787661586
+        ratio = get_ratio(20, 18, 6)
+        np.testing.assert_allclose(ratio, ratio_exp)
         
     def test_cosmology_num_permutations(self):
 
