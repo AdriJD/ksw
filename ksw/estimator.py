@@ -782,7 +782,7 @@ class KSW():
 
             assert mc_idx_read.size == 1, (f'mc_idx has to be single int, got '
                                       f'{mc_idx.size}-sized array')
-            mc_idx_read = int(mc_idx_read)
+            mc_idx_read = int(mc_idx_read[0])
                         
         else:
             mc_idx_read = None
@@ -796,7 +796,7 @@ class KSW():
         if mc_gt_sq_read.size == 1 and np.isnan(mc_gt_sq_read)[0]:
             mc_gt_sq_read = None
         else:
-            mc_gt_sq_read = float(mc_gt_sq_read)
+            mc_gt_sq_read = float(mc_gt_sq_read[0])
 
         if mc_gt_read.size == 1 and np.isnan(mc_gt_read)[0]:
             mc_gt_read = None

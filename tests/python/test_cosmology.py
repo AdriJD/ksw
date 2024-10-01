@@ -408,11 +408,6 @@ class TestCosmo(unittest.TestCase):
         np.testing.assert_array_equal(red_bisp.rule, rule_exp)
         np.testing.assert_array_equal(red_bisp.weights, weights_exp)
 
-        for r in red_bisp.rule:
-            print(r, np.prod(red_bisp.factors[r,0], axis=0)[::10])
-
-        assert False
-
     def test_wigner_ratio(self):
 
         # Not really a unittest, but just testing the relation from
