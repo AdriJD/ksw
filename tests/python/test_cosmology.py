@@ -408,6 +408,22 @@ class TestCosmo(unittest.TestCase):
         np.testing.assert_array_equal(red_bisp.rule, rule_exp)
         np.testing.assert_array_equal(red_bisp.weights, weights_exp)
 
+    def test_cosmology_add_lensing_bispectrum(self):
+
+        lmax = 300
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**self.cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo.compute_transfer(lmax)
+        cosmo.compute_c_ell(lmax=100) # Note, lower than lmax.
+
+        self.assertTrue(len(cosmo.red_bispectra) == 0)
+        cosmo.add_lensing_bispectrum()
+        self.assertTrue(len(cosmo.red_bispectra) == 1)
+
+        red_bisp = cosmo.red_bispectra[0]
+        
     def test_wigner_ratio(self):
 
         # Not really a unittest, but just testing the relation from

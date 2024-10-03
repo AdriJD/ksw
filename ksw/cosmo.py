@@ -417,6 +417,172 @@ class Cosmology:
         self.red_bispectra.append(
             ReducedBispectrum(factors, rule, weights, ells, name))
 
+    def add_lensing_bispectrum(self):
+        '''
+        Compute the factors of the reduced bispectrum due to the correlation
+        between the lensing potential phi and the late-time ISW effect and
+        reionization and add to internal list of reduced bispectra.
+
+        Notes
+        -----
+        This implements the full lensing-ISW/reion bispectrum, i.e. both lines
+        from Eq. 38 in Planck NG 2018.        
+        '''
+
+        ells = self.c_ell['lensed_scalar']['ells']
+        assert np.allclose(ells, self.c_ell['lenspotential']['ells'])
+
+        # Common terms that will appear in many of the factors.
+        denom_fact = np.zeros(ells.size)
+        denom_fact[2:] = 1 / np.sqrt((ells[2:] - 1) * (ells[2:] + 2) * ells[2:] * (ells[2:] + 1))
+        num_fact = np.zeros_like(denom_fact)
+        num_fact[2:] = np.sqrt(ells[2:] * (ells[2:] + 1) / ((ells[2:] - 1) * (ells[2:] + 1)))
+        
+        c_ell_tt = self.c_ell['lensed_scalar']['c_ell'][:,0]
+        c_ell_ee = self.c_ell['lensed_scalar']['c_ell'][:,1]
+        c_ell_te = self.c_ell['lensed_scalar']['c_ell'][:,3]
+        
+        c_ell_tphi = self.c_ell['lenspotential']['c_ell'][:,1]
+        c_ell_ephi = self.c_ell['lenspotential']['c_ell'][:,2]        
+
+        factors = np.zeros((20, 2, ells.size))
+        # Start with the X1 = T case.
+        # For the factors that do not contain C_ells the E index is always zero.
+        factors[0,0,:] = np.ones(ells.size)
+        
+        factors[1,0,:] = c_ell_tphi * ells * (ells + 1)
+        factors[1,1,:] = c_ell_ephi * ells * (ells + 1)        
+        
+        factors[2,0,:] = c_ell_tt
+        factors[2,1,:] = c_ell_te
+        
+        factors[3,0,:] = c_ell_tt * ells * (ells + 1)
+        factors[3,1,:] = c_ell_te * ells * (ells + 1)
+        
+        factors[4,0,:] = ells * (ells + 1)
+        
+        factors[5,0,:] = c_ell_tphi
+        factors[5,1,:] = c_ell_ephi
+
+        # Now the additional factors needed for the X1 = E case.
+        # Here, factors without C_ells have zero for the T index.
+        factors[6,1,:] = ells ** 2 * (ells + 1) ** 2 * denom_fact
+
+        factors[7,0,:] = c_ell_te * denom_fact
+        factors[7,1,:] = c_ell_ee * denom_fact
+        
+        factors[8,0,:] = ells * (ells + 1) * c_ell_te * denom_fact
+        factors[8,1,:] = ells * (ells + 1) * c_ell_ee * denom_fact
+
+        factors[9,1,:] = ells ** 3 * (ells + 1) ** 3 * denom_fact
+
+        factors[10,1,:] = 1 * denom_fact
+        
+        factors[11,0,:] = ells ** 2 * (ells + 1) ** 2 * c_ell_te * denom_fact
+        factors[11,1,:] = ells ** 2 * (ells + 1) ** 2 * c_ell_ee * denom_fact
+
+        factors[12,0,:] = ells ** 3 * (ells + 1) ** 3 * c_ell_te * denom_fact
+        factors[12,1,:] = ells ** 3 * (ells + 1) ** 3 * c_ell_ee * denom_fact
+
+        factors[13,1,:] = ells * (ells + 1) * denom_fact
+
+        factors[14,0,:] = ells ** 3 * (ells + 1) ** 3 * c_ell_tphi
+        factors[14,1,:] = ells ** 3 * (ells + 1) ** 3 * c_ell_ephi
+
+        factors[15,0,:] = ells ** 2 * (ells + 1) ** 2 * c_ell_tphi
+        factors[15,1,:] = ells ** 2 * (ells + 1) ** 2 * c_ell_ephi
+
+        factors[16,1,:] = num_fact
+        
+        factors[17,0,:] = num_fact * c_ell_te
+        factors[17,1,:] = num_fact * c_ell_ee
+
+        factors[18,0,:] = ells * (ells + 1) * num_fact * c_ell_te
+        factors[18,1,:] = ells * (ells + 1) * num_fact * c_ell_ee
+
+        factors[19,1,:] = ells * (ells + 1) * num_fact
+        
+        # Set all monopoles and dipoles to zero.
+        factors[:,:,:2] = 0
+
+        # Note, the fact that we have the same number of unique factors
+        # and bispectrum termsn (nrule) is a concidence I think.
+        rule = np.zeros((20, 3), dtype=np.int64)
+        weights = np.ones((20, 3))
+
+        rule[0] =  [0,  1,  2]
+        rule[1] =  [0,  5,  3]
+        rule[2] =  [4,  5,  2]
+        rule[3] =  [6,  1,  7] #  1D.
+        rule[4] =  [6,  5,  8] #  1E.
+        rule[5] =  [9,  5,  7] #  1F.
+        rule[6] =  [10, 1,  11] # 2D.
+        rule[7] =  [10, 5,  12] # 2E.
+        rule[8] =  [13, 5,  11] # 2F.
+        rule[9] =  [10, 14, 7] #  3D.
+        rule[10] = [10, 15, 8] #  3E.
+        rule[11] = [13, 15, 7] #  3F.
+        rule[12] = [13, 1,  8] #  4D.
+        #rule[13] = [13, 5,  11] # 4E.
+        #rule[14] = [6,  5,  8] #  4F.
+        #rule[15] = [13, 15, 7] #  5D.
+        #rule[16] = [13, 1,  8] #  5E.
+        #rule[17] = [6,  1,  7] #  5F.
+        #rule[18] = [10, 15, 8] #  6D.
+        #rule[19] = [10, 1,  11] # 6E.
+        #rule[20] = [13, 1,  8] #  6F.
+        rule[13] = [13, 1,  7] #  7D.
+        #rule[22] = [13, 5,  8] #  7E.
+        rule[14] = [6,  5,  7] #  7F.
+        #rule[24] = [10, 1,  8] #  8D.
+        rule[15] = [10, 5,  11] # 8E
+        #rule[26] = [13, 5,  8] #  8F.
+        rule[16] = [10, 15, 7] #  9D.
+        #rule[28] = [10, 1,  8] #  9E.
+        #rule[29] = [13, 1,  7] #  9F.
+        rule[17] = [16, 1,  17] # 10D.
+        rule[18] = [16, 5,  18] # 10E.
+        rule[19] = [19, 5,  17] # 10F.
+
+        weights[0]  *= 3    ** (1 / 3)
+        weights[1]  *= 3    ** (1 / 3)
+        weights[2]  *= -3   ** (1 / 3)
+        weights[3]  *= 4.5  ** (1 / 3) # 1D.
+        weights[4]  *= -1.5 ** (1 / 3) # 1E.
+        weights[5]  *= -1.5 ** (1 / 3) # 1F.
+        weights[6]  *= -1.5 ** (1 / 3) # 2D.
+        weights[7]  *= 1.5  ** (1 / 3) # 2E.
+        weights[8]  *= 1.5  ** (1 / 3) # 2F.
+        weights[9]  *= 1.5  ** (1 / 3) # 3D.
+        weights[10] *= -1.5 ** (1 / 3) # 3E.
+        weights[11] *= -4.5 ** (1 / 3) # 3F.
+        weights[12] *= 3    ** (1 / 3) # 4D.
+        #weights[13] *= 3    ** (1 / 3) # 4E.
+        #weights[14] *= -3   ** (1 / 3) # 4F.
+        #weights[15] *= -3   ** (1 / 3) # 5D.
+        #weights[16] *= -3   ** (1 / 3) # 5E.
+        #weights[17] *= 3    ** (1 / 3) # 5F.
+        #weights[18] *= -3   ** (1 / 3) # 6D.
+        #weights[19] *= -3   ** (1 / 3) # 6E.
+        #weights[20] *= 3    ** (1 / 3) # 6F.
+        weights[13] *= -6  ** (1 / 3) # 7D.
+        #weights[22] *= -3   ** (1 / 3) # 7E.
+        weights[14] *= 3   ** (1 / 3) # 7F.
+        #weights[24] *= -3   ** (1 / 3) # 8D.
+        weights[15] *= -3  ** (1 / 3) # 8E.
+        #weights[26] *= 3    ** (1 / 3) # 8F.
+        weights[16] *= 3   ** (1 / 3) # 9D.
+        #weights[28] *= 3    ** (1 / 3) # 9E.
+        #weights[29] *= -3   ** (1 / 3) # 9F.
+        weights[17] *= -3  ** (1 / 3) # 10D.
+        weights[18] *= -3  ** (1 / 3) # 10E.
+        weights[19] *= 3   ** (1 / 3) # 10F.
+                
+        name = 'lensing'
+
+        self.red_bispectra.append(
+            ReducedBispectrum(factors, rule, weights, ells, name))
+        
     @staticmethod
     def num_permutations(rule):
         '''
