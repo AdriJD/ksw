@@ -423,7 +423,7 @@ class TestCosmo(unittest.TestCase):
         self.assertTrue(len(cosmo.red_bispectra) == 1)
 
         red_bisp = cosmo.red_bispectra[0]
-        
+                
     def test_wigner_ratio(self):
 
         # Not really a unittest, but just testing the relation from
@@ -452,6 +452,12 @@ class TestCosmo(unittest.TestCase):
         ratio_exp = -0.9787661586
         ratio = get_ratio(20, 18, 6)
         np.testing.assert_allclose(ratio, ratio_exp)
+
+        # 3500 3498 2   3500 3498 2
+        # 0 2 -2        0 0 0 
+        ratio_exp = 0.408014972390538127235384342856000
+        ratio = get_ratio(3500, 3498, 2)
+        np.testing.assert_allclose(ratio, ratio_exp, rtol=1e-14)
         
     def test_cosmology_num_permutations(self):
 

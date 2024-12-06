@@ -609,8 +609,8 @@ class KSW():
         fisher_nxn = np.triu(fisher_nxn, 1).T + np.triu(fisher_nxn)
 
         fisher = np.sum(fisher_nxn)
-        with np.printoptions(threshold=np.inf):
-            print(f'{fisher_nxn=}')
+        #with np.printoptions(threshold=np.inf):
+        #    print(fisher_nxn)
         print(f'{fisher=}')
         
         if return_matrix:

@@ -21,7 +21,7 @@ $(info $(shell mkdir -p -v $(NEWDIRS)))
 
 CFLAGS = -g -Wall -fpic -std=c99
 OMPFLAG = -fopenmp
-OPTFLAG = -march=native -O3 -ffast-math
+OPTFLAG = -march=native -O3 #-ffast-math
 
 RF_OBJECTS = $(ODIR)/radial_functional.o \
              $(ODIR)/common.o \
