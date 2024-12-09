@@ -50,97 +50,19 @@ void unique_nxn_on_ring_sp(const float *sqrt_icov_ell, const float *f_ell_i, con
 	unique_nxn[i] = 0.0;
     }
 
-    //NOTE
-    float *tmp = calloc(nufact * nufact, sizeof *unique_nxn);    
-
-    float *c = calloc(nufact * nufact, sizeof *unique_nxn);
-    float *t = calloc(nufact * nufact, sizeof *unique_nxn);        
-        
+    // More accurate to loop through ell backwards for ISW-phi-like templates.
     for (ptrdiff_t lidx=0; lidx<nell; lidx++){
-	//for (ptrdiff_t lidx=nell-1; lidx>=0; lidx--){	
+	//for (ptrdiff_t lidx=nell-1; lidx>=0; lidx--){		
 
-	// NOTE
-	/* for (ptrdiff_t idx=0; idx<nufact; idx++){ */
-	/*     for (ptrdiff_t jdx=0; jdx<nufact; jdx++){ */
-	/* 	tmp[idx*nufact+jdx] = unique_nxn[idx*nufact+jdx]; */
-	/*     } */
-	/* } */
-	
 	// sqrt_icov @ f_i -> work_i.
-	cblas_ssymm(CblasRowMajor, CblasLeft, CblasUpper, npol, nufact,
+       cblas_ssymm(CblasRowMajor, CblasLeft, CblasUpper, npol, nufact,
 		    1.0, sqrt_icov_ell + lidx * npol * npol, npol,
 		    f_ell_i + lidx * npol * nufact, nufact, 0.0, work_i, nufact);
-
+       
 	// P * work^T x work -> unique_nxn.
-	//cblas_ssyrk(CblasRowMajor, CblasUpper, CblasTrans, nufact, npol,
-	//    p_ell[lidx] * prefactor[lidx], work_i, nufact, 1.0, unique_nxn, nufact);
-
-	// Now, tmp is filled with the answer.
-	cblas_ssyrk(CblasRowMajor, CblasUpper, CblasTrans, nufact, npol,
-	    p_ell[lidx] * prefactor[lidx], work_i, nufact, 0.0, tmp, nufact);
-	
-	for (ptrdiff_t idx=0; idx<nufact; idx++){
-	     for (ptrdiff_t jdx=0; jdx<nufact; jdx++){
-		 t[idx*nufact+jdx] = unique_nxn[idx*nufact+jdx] + tmp[idx*nufact+jdx];
-		 if (abs(unique_nxn[idx*nufact+jdx]) >= abs(tmp[idx*nufact+jdx])){
-		     c[idx*nufact+jdx] += (unique_nxn[idx*nufact+jdx] - t[idx*nufact+jdx]) + tmp[idx*nufact+jdx];
-		 }
-		 else {
-		     c[idx*nufact+jdx] += (tmp[idx*nufact+jdx] - t[idx*nufact+jdx]) + unique_nxn[idx*nufact+jdx];
-		 }
-		 unique_nxn[idx*nufact+jdx] = t[idx*nufact+jdx];
-	     }
-	}
-	
-	// NOTE
-	/* printf("%ld \n ", lidx);	 */
-	/* for (ptrdiff_t idx=0; idx<nufact; idx++){ */
-	/*     for (ptrdiff_t jdx=0; jdx<nufact; jdx++){ */
-	/* 	printf("%f ", unique_nxn[idx*nufact+jdx] - tmp[idx*nufact+jdx]); */
-	/*     } */
-	/* } */
-	/* printf("\n "); */
-	
+       cblas_ssyrk(CblasRowMajor, CblasUpper, CblasTrans, nufact, npol,
+	    p_ell[lidx] * prefactor[lidx], work_i, nufact, 1.0, unique_nxn, nufact);
     }
-
-    // NOTE
-    for (ptrdiff_t idx=0; idx<nufact; idx++){
-	for (ptrdiff_t jdx=0; jdx<nufact; jdx++){
-	    unique_nxn[idx*nufact+jdx] += c[idx*nufact+jdx];	    
-	}
-    }
-    //NOTE
-    /* for (ptrdiff_t idx=0; idx<nufact; idx++){ */
-    /* 	for (ptrdiff_t jdx=0; jdx<nufact; jdx++){ */
-    /* 	    printf("%f ", unique_nxn[idx*nufact+jdx]); */
-    /* 	} */
-    /* } */
-    
-}
-
-
-void unique_nxn_on_ring_sp2(const float *sqrt_icov_ell, const float *f_ell_i, const float *p_ell, 
-			   const float *prefactor, float *work_i, float *unique_nxn, int nufact,
-			   int nell, int npol){
-    
-    // Set output to zero.
-    for (ptrdiff_t i=0; i<nufact*nufact; i++){
-	unique_nxn[i] = 0.0;
-    }
-        
-    //for (ptrdiff_t lidx=0; lidx<nell; lidx++){
-    for (ptrdiff_t lidx=nell-1; lidx>=0; lidx--){	
-	
-	// sqrt_icov @ f_i -> work_i.
-	cblas_ssymm(CblasRowMajor, CblasLeft, CblasUpper, npol, nufact,
-		    1.0, sqrt_icov_ell + lidx * npol * npol, npol,
-		    f_ell_i + lidx * npol * nufact, nufact, 0.0, work_i, nufact);
-
-	// P * work^T x work -> unique_nxn.
-	cblas_ssyrk(CblasRowMajor, CblasUpper, CblasTrans, nufact, npol,
-	   p_ell[lidx] * prefactor[lidx], work_i, nufact, 1.0, unique_nxn, nufact);
-
-    }    
 }
 
 void fisher_nxn_on_ring_sp(const float *unique_nxn, const long long *rule, 
@@ -172,36 +94,11 @@ void fisher_nxn_on_ring_sp(const float *unique_nxn, const long long *rule,
 	    float tmp_arr[6];
 	    float tmp = 0.0;
 	    
-	    //float tmp = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
-	    //* unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
-	    //	      * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)];
 	    tmp_arr[0] = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
 		* unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		* unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)];
 	    
 	    // + 5 permutations.
-	    /* tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] */
-	    /* 	 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] */
-	    /* 	 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] */
-	    /* 	 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] */
-	    /* 	 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)] */
-	    /* 	 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] */
-	    /* 	 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] */
-	    /* 	 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] */
-	    /* 	 * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] */
-	    /* 	 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)] */
-	    /* 	 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)]; */
-
-
-
 	    tmp_arr[1] = unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
 		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
 		 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)];
@@ -222,14 +119,8 @@ void fisher_nxn_on_ring_sp(const float *unique_nxn, const long long *rule,
 		 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)];
 
-	    /* float comp = 0.0; */
-	    /* for (ptrdiff_t idx=0; idx<6; idx++){ */
-	    /* 	float y = tmp_arr[idx] - comp; */
-	    /* 	float t = tmp + y; */
-	    /* 	comp = (t - tmp) - y; */
-	    /* 	tmp = t; */
-	    /* } */
-
+	    // Use compensated summation to increase accuracy. Doesn't seem
+	    // very important here, but can't hurt I guess.
 	    float comp = 0.0;
 	    for (ptrdiff_t idx=0; idx<6; idx++){
 		
@@ -243,32 +134,6 @@ void fisher_nxn_on_ring_sp(const float *unique_nxn, const long long *rule,
 		tmp = t;
 	    }
 	    tmp += comp;
-	    
-/*
-	    printf("1, %f \n", unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
-		   * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
-		   * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)]);
-	    
-	    printf("2, %f \n", unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
-		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
-		   * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)]);
-
-	    printf("3, %f \n", tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)]
-		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)]
-		   * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)]);
-
-	    printf("4, %f \n", tmp += unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
-		 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)]
-		   * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)]);
-
-	    printf("5, %f \n", tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)]
-		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
-		   * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)]);
-
-	    printf("6, %f \n", tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
-		 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
-		   * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)]);
-		   */
 	    
 	    fisher_nxn[ridx*nrule+rjdx] += tmp * wx * wy * wz
 		* wpx * wpy * wpz * (float) (ct_weight * 2 * PI * PI / 9);
@@ -304,71 +169,56 @@ void fisher_nxn_sp(const float *sqrt_icov_ell, const float *f_ell_i, const doubl
     float *work_i = malloc(sizeof *work_i * npol * nufact);
     float *unique_nxn = malloc(sizeof *unique_nxn * nufact * nufact);
     float *fisher_nxn_priv = calloc(nrule * nrule, sizeof *fisher_nxn_priv);
-    // NOTE
-    float *fisher_nxn_priv_tmp = calloc(nrule * nrule, sizeof *fisher_nxn_priv);    
-
-    if (work_i == NULL || unique_nxn == NULL || fisher_nxn_priv == NULL){
+    float *fisher_nxn_priv_tmp = calloc(nrule * nrule, sizeof *fisher_nxn_priv);  
+    float *comp = calloc(nrule * nrule, sizeof *fisher_nxn_priv);
+    
+    if (work_i == NULL || unique_nxn == NULL || fisher_nxn_priv == NULL || fisher_nxn_priv_tmp == NULL || comp == NULL){
 	free(work_i);
 	free(unique_nxn);
 	free(fisher_nxn_priv);
+	free(fisher_nxn_priv_tmp);
+	free(comp);
 	exit(1);
     }
-
-
-    float *comp = calloc(nrule * nrule, sizeof *fisher_nxn_priv);
+    
     #pragma omp for schedule(dynamic)
-    //for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){;    
-    for (ptrdiff_t tidx=ntheta-1; tidx>=0; tidx--){	
+    for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
 
 	unique_nxn_on_ring_sp(sqrt_icov_ell, f_ell_i, p_theta_ell + tidx * nell, 
 	    prefactor, work_i, unique_nxn, nufact, nell, npol);
 
-	//fisher_nxn_on_ring_sp(unique_nxn, rule, weights, fisher_nxn_priv,
-	//		      ct_weights[tidx], nufact, nrule);
-	
-	// NOTE set fisher_nxn_priv_tmp to zero.
+	// Set fisher_nxn_priv_tmp to zero. Needed for compensated summation later on.
 	for (ptrdiff_t idx=0; idx<nrule; idx++){
-	    for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){
-		fisher_nxn_priv_tmp[idx*nrule+jdx] = 0.0;
-	    }
-	}
-	
+           for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){
+               fisher_nxn_priv_tmp[idx*nrule+jdx] = 0.0;
+           }
+       }
+       
 	fisher_nxn_on_ring_sp(unique_nxn, rule, weights, fisher_nxn_priv_tmp,
 			      ct_weights[tidx], nufact, nrule);
-	// Now fisher_nxn_priv_tmp contains only the contribution from this ring.
-	// Add this to fisher_nxn_priv using Kahan summation.
-	/* for (ptrdiff_t idx=0; idx<nrule; idx++){ */
-	/*     for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){ */
-	
-	/* 	float y = fisher_nxn_priv_tmp[idx*nrule+jdx]; */
-	/* 	float t = fisher_nxn_priv[idx*nrule+jdx] + y; */
-	/* 	comp[idx*nrule+jdx] = (t - fisher_nxn_priv[idx*nrule+jdx]) - y; */
-	/* 	fisher_nxn_priv[idx*nrule+jdx] = t; */
-	/*     } */
-	/* } */
 
+       // Now fisher_nxn_priv_tmp contains only the contribution from this ring.
+       // Add this to fisher_nxn_priv using compensated summation for extra accuracy.
 	for (ptrdiff_t idx=0; idx<nrule; idx++){
 	    for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){
-	
-		//float y = fisher_nxn_priv_tmp[idx*nrule+jdx] - comp[idx*nrule+jdx];
-		//float y = fisher_nxn_priv_tmp[idx*nrule+jdx];
-		float t = fisher_nxn_priv[idx*nrule+jdx] + fisher_nxn_priv_tmp[idx*nrule+jdx];
-		if (abs(fisher_nxn_priv[idx*nrule+jdx]) >= abs(fisher_nxn_priv_tmp[idx*nrule+jdx])){
-		    comp[idx*nrule+jdx] += (fisher_nxn_priv[idx*nrule+jdx] - t) + fisher_nxn_priv_tmp[idx*nrule+jdx];
-		}
-		else {
-		    comp[idx*nrule+jdx]	+= (fisher_nxn_priv_tmp[idx*nrule+jdx] - t) + fisher_nxn_priv[idx*nrule+jdx];
-		}
-		fisher_nxn_priv[idx*nrule+jdx] = t;
-	    }
-	}
+               float t = fisher_nxn_priv[idx*nrule+jdx] + fisher_nxn_priv_tmp[idx*nrule+jdx];
+               if (abs(fisher_nxn_priv[idx*nrule+jdx]) >= abs(fisher_nxn_priv_tmp[idx*nrule+jdx])){
+                   comp[idx*nrule+jdx] += (fisher_nxn_priv[idx*nrule+jdx] - t) + fisher_nxn_priv_tmp[idx*nrule+jdx];
+               }
+               else {
+                   comp[idx*nrule+jdx] += (fisher_nxn_priv_tmp[idx*nrule+jdx] - t) + fisher_nxn_priv[idx*nrule+jdx];
+               }
+               fisher_nxn_priv[idx*nrule+jdx] = t;
+           }
+       }
     }
-    //NOTE
+    
     for (ptrdiff_t idx=0; idx<nrule; idx++){
 	for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){
 	    fisher_nxn_priv[idx*nrule+jdx] += comp[idx*nrule+jdx];
 	}
     }
+
     #pragma omp critical
     {
     for (ptrdiff_t idx=0; idx<nrule; idx++){
@@ -381,7 +231,9 @@ void fisher_nxn_sp(const float *sqrt_icov_ell, const float *f_ell_i, const doubl
     free(work_i);
     free(unique_nxn);
     free(fisher_nxn_priv);
-
+    free(fisher_nxn_priv_tmp);
+    free(comp);
+    
     mkl_set_num_threads_local(0);
     } // End of parallel region
 
@@ -433,9 +285,8 @@ void unique_nxn_on_ring_dp(const double *sqrt_icov_ell, const double *f_ell_i, c
 	unique_nxn[i] = 0.0;
     }
 
-    for (ptrdiff_t lidx=0; lidx<nell; lidx++){
+    for (ptrdiff_t lidx=0; lidx<nell; lidx++){    
 	//for (ptrdiff_t lidx=nell-1; lidx>=0; lidx--){	
-
 	
 	// sqrt_icov @ f_i -> work_i.
 	cblas_dsymm(CblasRowMajor, CblasLeft, CblasUpper, npol, nufact,
@@ -474,40 +325,14 @@ void fisher_nxn_on_ring_dp(const double *unique_nxn, const long long *rule,
 	    double wpz = weights[rjdx*3+2];
 	    
 	    // r and rp are indices into unique_nxn. Min/max to only acces uppper tri part.
-
-	    // NOTE
 	    double tmp_arr[6];
 	    double tmp = 0.0;
 	    
 	    tmp_arr[0] = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)]
 		* unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		* unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)];
-	    
-	    /* double tmp = unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)] */
-	    /* 	      * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)] */
-	    /* 	      * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)]; */
-	    
-	    // + 5 permutations.
-	    /* tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] */
-	    /* 	 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] */
-	    /* 	 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] */
-	    /* 	 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] */
-	    /* 	 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpx)*nufact+_max(rx, rpx)] */
-	    /* 	 * unique_nxn[_min(ry, rpz)*nufact+_max(ry, rpz)] */
-	    /* 	 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpy)*nufact+_max(rx, rpy)] */
-	    /* 	 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)] */
-	    /* 	 * unique_nxn[_min(rz, rpz)*nufact+_max(rz, rpz)]; */
-
-	    /* tmp += unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)] */
-	    /* 	 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)] */
-	    /* 	 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)]; */
-	    
+	    	    
+	    //+ 5 permutations.
 	    tmp_arr[1] = unique_nxn[_min(rx, rpz)*nufact+_max(rx, rpz)]
 		 * unique_nxn[_min(ry, rpx)*nufact+_max(ry, rpx)]
 		 * unique_nxn[_min(rz, rpy)*nufact+_max(rz, rpy)];
@@ -528,34 +353,24 @@ void fisher_nxn_on_ring_dp(const double *unique_nxn, const long long *rule,
 		 * unique_nxn[_min(ry, rpy)*nufact+_max(ry, rpy)]
 		 * unique_nxn[_min(rz, rpx)*nufact+_max(rz, rpx)];
 
-
+	    // Use compensated summation to increase accuracy. Doesn't seem
+	    // very important here, but can't hurt I guess.	    
 	    double comp = 0.0;
 	    for (ptrdiff_t idx=0; idx<6; idx++){
-		double y = tmp_arr[idx] - comp;
-		double t = tmp + y;
-		comp = (t - tmp) - y;
+		
+		double t = tmp + tmp_arr[idx];
+		if (abs(tmp) >= abs(tmp_arr[idx])) {
+		    comp += (tmp - t) + tmp_arr[idx];
+		}
+		else {
+		    comp += (tmp_arr[idx] - t) + tmp;
+		}
 		tmp = t;
 	    }
-
-	    
-	    /* double comp = 0.0; */
-	    /* for (ptrdiff_t idx=0; idx<6; idx++){ */
-		
-	    /* 	double t = tmp + tmp_arr[idx]; */
-	    /* 	if (abs(tmp) >= abs(tmp_arr[idx])) { */
-	    /* 	    comp += (tmp - t) + tmp_arr[idx]; */
-	    /* 	} */
-	    /* 	else { */
-	    /* 	    comp += (tmp_arr[idx] - t) + tmp; */
-	    /* 	} */
-	    /* 	tmp = t; */
-	    /* } */
-	    /* tmp += comp; */
+	    tmp += comp;
 	    
 	    fisher_nxn[ridx*nrule+rjdx] += tmp * wx * wy * wz
-		* wpx * wpy * wpz * (ct_weight * 2 * PI * PI / 9);
-	    
-	    
+		* wpx * wpy * wpz * (ct_weight * 2 * PI * PI / 9);	    	    
 	}
     }
 }
@@ -589,10 +404,6 @@ void fisher_nxn_dp(const double *sqrt_icov_ell, const double *f_ell_i, const dou
     double *unique_nxn = malloc(sizeof *unique_nxn * nufact * nufact);
     double *fisher_nxn_priv = calloc(nrule * nrule, sizeof *fisher_nxn_priv);
 
-    // NOTE
-    double *fisher_nxn_priv_tmp = calloc(nrule * nrule, sizeof *fisher_nxn_priv);    
-
-    
     if (work_i == NULL || unique_nxn == NULL || fisher_nxn_priv == NULL){
 	free(work_i);
 	free(unique_nxn);
@@ -600,65 +411,16 @@ void fisher_nxn_dp(const double *sqrt_icov_ell, const double *f_ell_i, const dou
 	exit(1);
     }
 
-    double *comp = calloc(nrule * nrule, sizeof *fisher_nxn_priv);    
     #pragma omp for schedule(dynamic)
-    //for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
     for (ptrdiff_t tidx=ntheta-1; tidx>=0; tidx--){	
 
 	unique_nxn_on_ring_dp(sqrt_icov_ell, f_ell_i, p_theta_ell + tidx * nell, 
 	   prefactor, work_i, unique_nxn, nufact, nell, npol);
 
-	//fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn_priv,
-	//ct_weights[tidx], nufact, nrule);
-	
-	// NOTE set fisher_nxn_priv_tmp to zero.
-	for (ptrdiff_t idx=0; idx<nrule; idx++){
-	    for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){
-		fisher_nxn_priv_tmp[idx*nrule+jdx] = 0.0;
-	    }
-	}
-	
-	fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn_priv_tmp,
-			      ct_weights[tidx], nufact, nrule);
-
-	// Now fisher_nxn_priv_tmp contains only the contribution from this ring.
-	// Add this to fisher_nxn_priv using Kahan summation.
-	for (ptrdiff_t idx=0; idx<nrule; idx++){
-	    for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){
-	
-		double y = fisher_nxn_priv_tmp[idx*nrule+jdx];
-		double t = fisher_nxn_priv[idx*nrule+jdx] + y;
-		comp[idx*nrule+jdx] = (t - fisher_nxn_priv[idx*nrule+jdx]) - y;
-		fisher_nxn_priv[idx*nrule+jdx] = t;
-	    }
-	}
-
-	
-	/* for (ptrdiff_t idx=0; idx<nrule; idx++){ */
-	/*     for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){ */
-	
-	/* 	//float y = fisher_nxn_priv_tmp[idx*nrule+jdx] - comp[idx*nrule+jdx]; */
-	/* 	//float y = fisher_nxn_priv_tmp[idx*nrule+jdx]; */
-	/* 	double t = fisher_nxn_priv[idx*nrule+jdx] + fisher_nxn_priv_tmp[idx*nrule+jdx]; */
-	/* 	if (abs(fisher_nxn_priv[idx*nrule+jdx]) >= abs(fisher_nxn_priv_tmp[idx*nrule+jdx])){ */
-	/* 	    comp[idx*nrule+jdx] += (fisher_nxn_priv[idx*nrule+jdx] - t) + fisher_nxn_priv_tmp[idx*nrule+jdx]; */
-	/* 	} */
-	/* 	else { */
-	/* 	    comp[idx*nrule+jdx]	+= (fisher_nxn_priv_tmp[idx*nrule+jdx] - t) + fisher_nxn_priv[idx*nrule+jdx]; */
-	/* 	} */
-	/* 	fisher_nxn_priv[idx*nrule+jdx] = t; */
-	/*     } */
-	/* } */
-	
+	fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn_priv,
+	ct_weights[tidx], nufact, nrule);
     }
     
-    //NOTE
-    /* for (ptrdiff_t idx=0; idx<nrule; idx++){ */
-    /* 	for (ptrdiff_t jdx=idx; jdx<nrule; jdx++){ */
-    /* 	    fisher_nxn_priv[idx*nrule+jdx] += comp[idx*nrule+jdx]; */
-    /* 	} */
-    /* } */
-
     #pragma omp critical
     {
     for (ptrdiff_t idx=0; idx<nrule; idx++){
