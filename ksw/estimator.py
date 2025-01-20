@@ -78,6 +78,8 @@ class KSW():
         self.mc_gt = None
         self.mc_gt_sq = None
 
+        self.gt_local = []
+        
         self.lmax = lmax
         self.pol = pol
 
@@ -374,6 +376,104 @@ class KSW():
                 
         self.mc_idx += mc_idx
 
+    def step_batch_2pass(self, alm_loader, alm_files, comm=None, verbose=False, **kwargs):
+        '''
+        Compute grad T its mean for a set of simulations, by loading and processing
+        several alms in parallel using MPI.
+
+        Parameters
+        ----------
+        alm_loader : callable
+            Function that returns alms on rank given filename as first argument.
+        alm_files : array_like
+            List of alm files to load.
+        comm : MPI communicator, optional
+        verbose : bool, optional
+            Print process.
+        kwargs : dict, optional
+            Optional keyword arguments passed to "_step".        
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        # Monte Carlo quantities local to rank.
+        mc_idx_loc = 0
+        mc_gt_loc = None
+
+        # Split alm_file loop over ranks.
+        for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
+
+            if verbose:
+                print(f'rank {comm.rank:3}: loading {alm_file}')
+            alm = alm_loader(alm_file)
+            if verbose:
+                print(f'rank {comm.rank:3}: done loading')
+            grad_t = self._step(alm, **kwargs)
+
+            if mc_gt_loc is None:
+               mc_gt_loc = grad_t
+            else:
+               mc_gt_loc += grad_t
+
+            # # NOTE
+            # if mc_gt_loc is None:
+            #    mc_gt_loc = grad_t.copy()
+            # else:
+            #    mc_gt_loc += grad_t.copy()
+
+            # The copy here is important, otherwise each iteration of the
+            # loop adds grad to the first element of the list.
+            self.gt_local.append(grad_t.copy())
+            
+            mc_idx_loc += 1
+
+        print(f'rank : {comm.rank:3} waiting in step_batch')
+        # To allow allreduce when number of ranks > alm files.
+        shape, dtype = utils.bcast_array_meta(mc_gt_loc, comm, root=0)
+        if mc_gt_loc is None: mc_gt_loc = np.zeros(shape, dtype=dtype)
+        if mc_idx_loc is None: mc_idx_loc = 0
+
+        mc_gt = utils.allreduce_array(mc_gt_loc, comm)
+        mc_idx = utils.allreduce(mc_idx_loc, comm)
+        print(f'rank : {comm.rank:3} after reduce in step_batch')
+
+        # All ranks get to update the internal mc variable themselves.
+        if self.mc_gt is None:
+            self.mc_gt = mc_gt
+        else:
+            self.__mc_gt += mc_gt
+
+        self.mc_idx += mc_idx
+
+    def compute_fisher_2pass(self, comm):
+        '''
+        Compute the Fisher information from the grad T maps computed
+        on all ranks.
+
+        Returns
+        -------
+        fisher : float, None
+            Fisher information.
+        '''
+
+        if self.mc_gt is None:
+            return None
+
+        fisher_local = 0.
+        for gidx, gt in enumerate(self.gt_local):
+
+            diff = gt - self.mc_gt
+            diff_icov = self.icov(diff)
+            dot = utils.contract_almxblm(diff, np.conj(diff_icov))
+            print(f'{comm.rank=}, {gidx=}, fisher estimate={dot / 3}')
+            fisher_local += dot
+
+        fisher = utils.allreduce(fisher_local, comm)
+        fisher /= (3 * self.mc_idx)
+
+        return fisher
+        
     def compute_estimate_batch(self, alm_loader, alm_files, comm=None, 
                                verbose=False, **kwargs):
         '''
@@ -411,8 +511,6 @@ class KSW():
         lin_terms = np.zeros(len(alm_files))
         fishers = np.zeros(len(alm_files))        
 
-        # NOTE, silly to recompute fisher for each aidx.
-        
         # Split alm_file loop over ranks.
         for aidx in range(comm.Get_rank(), len(alm_files), comm.Get_size()):
         
@@ -709,7 +807,127 @@ class KSW():
 
             if verbose:
                 print(f'rank {comm.rank:3}: done writing {oalm_file}')
-            
+
+    def write_state_2pass(self, filename, fisher, comm=None):
+        '''
+        Write internal state, i.e. mc_gt, fisher and mc_idx, for the 2pass-mode
+        of the code.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to output file.
+        fisher : float
+            Output from compute_fisher_2pass.
+        comm : MPI communicator, optional
+            If provided, rank 0 is assumed to do the writing, so must be present.
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        if comm.Get_rank() == 0:
+            # Remove file extension to be consistent.
+            filename, _ = os.path.splitext(filename)
+
+            mc_idx_to_save = np.asarray([self.mc_idx], dtype=np.int64)
+
+            fisher_to_save = np.asarray([fisher], dtype=np.float64)            
+
+            if self.__mc_gt is None:
+                mc_gt_to_save = np.asarray([np.nan], dtype=self.cdtype)
+            else:
+                mc_gt_to_save = self.__mc_gt
+
+            with h5py.File(filename + '.hdf5', 'w') as f:
+                f.create_dataset('mc_idx', data=mc_idx_to_save)
+                f.create_dataset('fisher', data=fisher_to_save)
+                f.create_dataset('mc_gt', data=mc_gt_to_save)
+
+    def _read_state_2pass(self, filename, comm=None):
+        '''
+        Read internal state, i.e. mc_gt, fisher and mc_idx, from hdf5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to output file.
+        comm : MPI communicator, optional
+            If provided, rank 0 is assumed to do the reading, result will be 
+            broadcasted to all ranks.
+
+        Returns
+        -------
+        mc_idx : int
+            Counter for Monte Carlo estimates.
+        fisher : float, None
+            Fisher information.
+        mc_gt : (npol, nelem) complex array, None
+            <grad T (C^-1 a)> Monte Carlo estimate.
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        if comm.Get_rank() == 0:
+            # Remove file extension to be consistent.
+            filename, _ = os.path.splitext(filename)
+
+            with h5py.File(filename + '.hdf5', 'r') as f:
+                mc_idx_read = f['mc_idx'][()]
+                fisher_read = f['fisher'][()]
+                mc_gt_read = f['mc_gt'][()]
+
+            assert mc_idx_read.size == 1, (f'mc_idx has to be single int, got '
+                                      f'{mc_idx.size}-sized array')
+            mc_idx_read = int(mc_idx_read[0])
+                        
+        else:
+            mc_idx_read = None
+            fisher_read = None
+            mc_gt_read = None
+
+        mc_idx_read = utils.bcast(mc_idx_read, comm, root=0)
+        fisher_read = utils.bcast_array(fisher_read, comm, root=0)
+        mc_gt_read = utils.bcast_array(mc_gt_read, comm, root=0)
+
+        if fisher_read.size == 1 and np.isnan(fisher_read)[0]:
+            fisher_read = None
+        else:
+            fisher_read = float(fisher_read[0])
+
+        if mc_gt_read.size == 1 and np.isnan(mc_gt_read)[0]:
+            mc_gt_read = None
+        
+        return mc_idx_read, fisher_read, mc_gt_read
+    
+    def start_from_read_state_2pass(self, filename, comm=None):
+        '''
+        Return Fisher information and update estimator state with
+        mc_gt and mc_idx read from .hdf5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Absolute path to output file.
+        comm : MPI communicator, optional
+            If provided, rank 0 is assumed to do the reading, result will be 
+            broadcasted to all ranks.
+
+        Returns
+        -------
+        fisher : float
+            Fisher information.
+        '''
+        
+        mc_idx_read, fisher_read, mc_gt_read = self._read_state_2pass(
+            filename, comm=comm)
+        
+        self.mc_idx = mc_idx_read
+        self.__mc_gt = mc_gt_read
+
+        return fisher_read
+                
     def write_state(self, filename, comm=None):
         '''
         Write internal state, i.e. mc_gt, mc_gt_sq and mc_idx, to hdf5 file.
