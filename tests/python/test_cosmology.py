@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from scipy.special import spherical_jn
+from scipy.integrate import trapezoid
 import os
 import tempfile
 import pathlib
@@ -227,13 +228,13 @@ class TestCosmo(unittest.TestCase):
         for lidx in range(ells.size):
             
             # TT.
-            c_ell[lidx,0] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
+            c_ell[lidx,0] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
 
             # EE.
-            c_ell[lidx,1]  = np.trapz(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
+            c_ell[lidx,1]  = trapezoid(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
 
             # TE.
-            c_ell[lidx,3] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
+            c_ell[lidx,3] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
 
         c_ell *= (2 / np.pi)
 
@@ -275,13 +276,13 @@ class TestCosmo(unittest.TestCase):
         for lidx in range(ells.size):
             
             # TT.
-            c_ell[lidx,0] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
+            c_ell[lidx,0] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
 
             # EE.
-            c_ell[lidx,1]  = np.trapz(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
+            c_ell[lidx,1]  = trapezoid(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
 
             # TE.
-            c_ell[lidx,3] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
+            c_ell[lidx,3] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
 
         c_ell *= (2 / np.pi)
 
@@ -375,7 +376,7 @@ class TestCosmo(unittest.TestCase):
 
         integrand = k ** 2 * spherical_jn(ell, radius * k)
         integrand *= tr_ell_k[lidx,:,pidx] * func
-        ans_expec = (2 / np.pi) * np.trapz(integrand, k)
+        ans_expec = (2 / np.pi) * trapezoid(integrand, k)
 
         lidx_full = ell - 2
         ans = red_bisp.factors[cidx*nr+ridx,pidx,lidx_full]

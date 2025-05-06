@@ -1149,7 +1149,7 @@ class ReducedBispectrum:
             f.create_dataset('rule', data=self.rule)
             f.create_dataset('weights', data=self.weights)
             f.create_dataset('ells_full', data=self.ells_full)
-            f.create_dataset('name', data=np.string_(self.name))
+            f.create_dataset('name', data=np.bytes_(self.name))
 
     @classmethod
     def init_from_file(cls, filename):
