@@ -6,7 +6,8 @@ import json
 import camb
 import h5py
 
-from ksw import utils, radial_functional as rf
+from ksw import utils
+from ksw import radial_functional as rf
 
 class Cosmology:
     '''
@@ -210,6 +211,80 @@ class Cosmology:
         self.transfer['tr_ell_k'] = tr_ell_k
         self.transfer['k'] = tr.q
         self.transfer['ells'] = ells # Probably sparse.
+
+    def compute_transfer_tensor(self, lmax, verbose=True):
+        """
+        Call CAMB to calculate tensor transfer functions.
+
+        Parameters
+        ----------
+        lmax : int
+            Maximum multipole.
+        Verbose : bool, optional
+            Print if CAMB parameter values change.
+
+        Raises
+        ------
+        AttributeError
+            If CAMB parameters have not been initialized.
+        ValueError
+            If lmax is too low (lmax < 300).
+        """
+
+        if lmax < 300:
+            raise ValueError("Pick lmax >= 300.")
+        
+        self._setattr_camb('WantTensors', True, verbose=verbose)
+        lmax = max(lmax, 300)
+        k_eta_fac = 2.5
+        max_eta_k = k_eta_fac * lmax
+        max_eta_k = max(max_eta_k, 1000)
+
+        self.camb_params.max_l = lmax
+        self.camb_params.max_l_tensor = lmax
+        self.camb_params.max_eta_k = max_eta_k
+        self.camb_params.max_eta_k_tensor = max_eta_k
+
+        if not self.camb_params.validate():
+            raise ValueError(f"Value {lmax} for lmax makes params invalid")
+
+        # Actually run CAMB
+        data = camb.get_transfer_functions(self.camb_params)
+        self._camb_data = data
+
+        # tensor instead of scalar
+        tr = data.get_cmb_transfer_data('tensor')
+        try:
+            ells = tr.L
+        except AttributeError:
+            ells = tr.l
+        ells = ells.astype(int)
+
+        prefactor = np.sqrt((ells + 2) * (ells + 1) * ells * (ells - 1))
+        tr.delta_p_l_k[0,...] *= prefactor[:,np.newaxis]
+
+        tr.delta_p_l_k *= (self.camb_params.TCMB * 1e6)
+
+        # Scale tensor transfer by 1/4 to correct for CAMB output.
+        tr.delta_p_l_k /= 4.
+
+        nk = tr.q.size
+        nell = ells.size
+        # For tensor we have (T, E, B)
+        npol = tr.delta_p_l_k.shape[0]
+        tr_ell_k = np.empty((nell, nk, npol), dtype=float)
+
+        tr_view = np.swapaxes(tr.delta_p_l_k, 0, 2) # (nk, nell, npol)
+        tr_view = np.swapaxes(tr_view, 0, 1)        # (nell, nk, npol)
+        tr_ell_k[:] = np.ascontiguousarray(tr_view)
+
+        self.transfer['tr_ell_k_tensor'] = tr_ell_k
+        self.transfer['k_tensor'] = tr.q
+        self.transfer['ells_tensor'] = ells
+    
+        self._setattr_camb('WantTensors', False, verbose=verbose)
+
+
 
     def compute_c_ell(self, lmax=None):
         '''
