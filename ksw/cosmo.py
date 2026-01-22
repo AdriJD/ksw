@@ -75,7 +75,7 @@ class Cosmology:
                           verbose=verbose)
         self._setattr_camb('IntkAccuracyBoost', 5, subclass='Accuracy',
                           verbose=verbose)
-        self._setattr_camb('lSampleBoost', 2, subclass='Accuracy',
+        self._setattr_camb('lSampleBoost', 2, subclass='Accuracy', 
                           verbose=verbose)
         self._setattr_camb('lAccuracyBoost', 2, subclass='Accuracy',
                           verbose=verbose)
@@ -143,7 +143,7 @@ class Cosmology:
                 'New value {} for param {} makes params invalid.'.format(
                     value, name))
 
-    def compute_transfer(self, lmax, verbose=True):
+    def compute_transfer(self, lmax, k_eta_fac=2.5, verbose=True):
         '''
         Call CAMB to calculate radiation transfer functions.
 
@@ -166,7 +166,7 @@ class Cosmology:
             # CAMB crashes for too low lmax.
             raise ValueError('Pick lmax >= 300.')
 
-        k_eta_fac = 2.5 # Default used by CAMB.
+        #k_eta_fac = 2.5 # Default used by CAMB.
         self.camb_params.set_for_lmax(lmax, lens_margin=0,
                                       k_eta_fac=k_eta_fac)
 
@@ -212,7 +212,7 @@ class Cosmology:
         self.transfer['k'] = tr.q
         self.transfer['ells'] = ells # Probably sparse.
 
-    def compute_transfer_tensor(self, lmax, verbose=True):
+    def compute_transfer_tensor(self, lmax, k_eta_fac=2.5, verbose=True):
         """
         Call CAMB to calculate tensor transfer functions.
 
@@ -236,7 +236,7 @@ class Cosmology:
         
         self._setattr_camb('WantTensors', True, verbose=verbose)
         lmax = max(lmax, 300)
-        k_eta_fac = 2.5
+        #k_eta_fac = 2.5
         max_eta_k = k_eta_fac * lmax
         max_eta_k = max(max_eta_k, 1000)
 
@@ -285,7 +285,6 @@ class Cosmology:
         self._setattr_camb('WantTensors', False, verbose=verbose)
 
 
-
     def compute_c_ell(self, lmax=None):
         '''
         Calculate angular power spectra (Cls) using precomputed
@@ -326,6 +325,7 @@ class Cosmology:
         self.c_ell['lenspotential'] = {}
         self.c_ell['lenspotential']['ells'] = ells_lenspotential
         self.c_ell['lenspotential']['c_ell'] = c_ell_lenspotential
+        
         
     def add_prim_reduced_bispectrum(self, prim_shape, radii, name=None):
         '''
@@ -375,7 +375,7 @@ class Cosmology:
         amps = np.asarray(prim_shape.amps)
         amps *= 2 * (2 * np.pi ** 2 * self.camb_params.InitPower.As) ** 2 * (3 / 5)
 
-        # Call C code.
+        # Call C code
         red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
 
         factors, rule, weights = self._parse_prim_reduced_bispec(

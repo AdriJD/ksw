@@ -81,3 +81,37 @@ void _trapezoidal_weights(double const *k,
  */
 
 void * _malloc_checked(size_t size);
+
+
+/* 
+* Compute f_ell^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_ell(k r)
+* where f(k) is an arbitrary function of wavenumber k.
+* 
+* Arguments
+* ---------
+* f_k      : (nk * ncomp) input functions.
+* tr_ell_k : (nell * nk * npol) transfer function.
+* k        : (nk) array of monotonically increasing wavenumbers.
+* radii    : (nr) array of radii
+* f_r_ell  : (nr * nell * npol * ncomp) output array.
+* ells     : (nell) multipoles.
+* nk       : Number of wavenumbers.
+* nell     : Number of multipoles.
+* nr       : Number of radii.
+* npol     : Number of polarization components (1=T, 2= E, 3=B).
+* ncomp    : Number of input functions.
+* delta_l  : shift in ell for transfer functions
+*/
+
+void compute_radial_func_dL2(double const *f_k,
+                            double const *tr_ell_k,
+                            double *k,
+                            double const *radii,
+                            double *f_r_ell,
+                            int *ells,
+                            int nk,
+                            int nell,
+                            int nr,
+                            int npol,
+                            int ncomp,
+                            int delta_l);      // New: delta ell
