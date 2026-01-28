@@ -1,9 +1,19 @@
 import numpy as np
 from ducc0.misc import wigner3j_int
+from ksw import utils, estimator_core
+from estimator import KSW
+
+ksw = KSW.__new__(KSW)
+ksw.lmax = 100
+ksw.dtype = np.float32
+ksw.cdtype = np.complex64
+ksw.pol = ["T", "E"]
 
 
 #deltaL_list = {-1, +1} for scalar
-#deltaL_list = {-2, -1, 0, +1, +2} for tensor    
+#deltaL_list = {-2, -1, 0, +1, +2} for tensor 
+ 
+   
 def wigner_J(S, L_list, deltaL_list, Jindex):
     L_list = np.asarray(L_list, dtype=int)
     deltaL_list = np.asarray(deltaL_list, dtype=int)
@@ -20,8 +30,8 @@ def wigner_J(S, L_list, deltaL_list, Jindex):
             # --- selection rules ---
             if abs(Jindex[1]) > L:
                 continue
-            if abs(Jindex[2]) > ell:
-                continue
+                if abs(Jindex[2]) > ell:
+                    continue
 
             l1_min_J, vals_J = wigner3j_int(L, ell, Jindex[1], Jindex[2])
             iS = S - l1_min_J
@@ -108,7 +118,7 @@ def parity_x(x):
     if x == "B":
         return 1
     
-def gamma_Z(x, Z, L ,ell):
+def gamma_Z(x, Z, L, deltaL):
     """
     gamma^{(Z)}_{x, L, ell}:
       = 1,                        if Z = zeta
@@ -121,42 +131,66 @@ def gamma_Z(x, Z, L ,ell):
         return 1
     if Zlow == "h":
         px = parity_x(x)
-        sgn = 1 + (-1) ** (px + L + ell)
+        sgn = 1 + (-1) ** (px + 2 * L + deltaL)
         return sgn
 
-def get_a_lm(a_ell_m, ell, m):
+def get_a_lm(alm, ell, m):
     """
-    access a_{ell m} assuming a_ell_m stors m>=0 in the last axis.
+    access a_{lm} assuming a_ell_m stores m>=0 in the last axis.
 
     If m < 0, use reality condition:
     a_{ell, -m} = (-1)^m * conj(a_{ell, m})
     """
-    alm = utils.alm_return_2d(a_ell_m)
+    alm = utils.alm_return_2d(alm, ksw.npol, ksw.lmax)
     a_ell_m = utils.alm2a_ell_m(alm)
-    a_ell_m = a_ell_m.astype(self.cdtype)
+    a_ell_m = a_ell_m.astype(ksw.cdtype)
 
     if m >= 0:
         return a_ell_m[ell, m]
-    mp = -m
     else:
+        mp = -m
         return ((-1)**mp) * np.conjugate(a_ell_m[ell, mp])
 
-# thetas.max() = np.pi, not sure about len(self.thetas)
+# thetas.max() = np.pi
 
-def A_LM(deltaL, n, x, Z, L, S, M, Jindex, a_ell_m_x, theta):
-    ell = L + deltaL
-    if ell < 0:
-        continue
+def A_LM(deltaL_list, L_list, n, x, Z, S, Jindex, alm, theta_batch=1):
 
-    # prefactors independent of M
-    phase = (1j) ** deltaL
-    gamma = gamma_Z(x, Z, L , ell)
-    w3j_product = products_3j_array(S, n, deltaL, L, Jindex)
-    prefactor = phase * w3j_product * gamma 
+    Lmax = np.max(L_list)
+    alm_list = np.zeros((len(L_list), 2*Lmax+1, len(deltaL_list)), dtype=np.complex128)
+    out = np.zeros((len(L_list), 2*Lmax+1, len(deltaL_list)), dtype=np.complex128)
 
-    alm = get_a_lm(a_ell_m_x, ell=L+deltaL, m=-M-n)
-    for tidx_start in range(0, len(thetas), theta_batch):
-        theta_batch = thetas[tidx_start:tidx_start+theta_batch]
-        ct_weights_batch = theta_weights[tidx_start:tidx_start+theta_batch]
-        y_m_ell = estimator_core.compute_ylm(thetas_batch, lmax)
-        A_LM = prefactor * alm * 
+    w3j_product = products_3j_array(S, n, L_list, deltaL_list, Jindex)
+
+    thetas, theta_weights, nphi = KSW.get_coords(ksw)
+    tidx_start = 20
+    thetas_batch = thetas[tidx_start:tidx_start+theta_batch]
+    y_m_ell = estimator_core.compute_ylm(thetas_batch, ksw.lmax, dtype=ksw.dtype)
+
+    for iL, L in enumerate(L_list):
+        for idL, dL in enumerate(deltaL_list):
+            ell = L + dL
+            gamma = gamma_Z(x, Z, L, dL)
+            phase = (1j) ** dL
+            if ell < 0:
+                continue
+            for M in range(-L, L+1):
+                m = - M - n
+                if abs(m) > ell:
+                    continue
+                if abs(M) > L:
+                    continue
+                alm = get_a_lm(alm, ell=L+dL, m=-M-n) 
+                alm_list[iL, M+Lmax, idL] = alm
+                # prefactors independent of M
+                prefactor = phase * w3j_product[iL, Lmax+M, idL] * gamma
+                out[iL, M+Lmax, idL] = prefactor * alm * y_m_ell[:, M+Lmax, iL]
+    return out
+
+
+
+
+
+
+    
+    
+    
