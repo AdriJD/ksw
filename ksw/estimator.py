@@ -416,12 +416,6 @@ class KSW():
             else:
                mc_gt_loc += grad_t
 
-            # # NOTE
-            # if mc_gt_loc is None:
-            #    mc_gt_loc = grad_t.copy()
-            # else:
-            #    mc_gt_loc += grad_t.copy()
-
             # The copy here is important, otherwise each iteration of the
             # loop adds grad to the first element of the list.
             self.gt_local.append(grad_t.copy())
