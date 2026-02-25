@@ -72,3 +72,39 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
 void compute_ylm_sp(const double *thetas, float *y_m_ell, int ntheta, int lmax);
 
 void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax);
+
+/*
+ * Build reduced A_{LM} tensors for one or more polarization channels.
+ *
+ * Arguments
+ * ---------
+ * L_list      : (nL) array with base multipoles L.
+ * deltaL_list : (ndeltaL) array with offsets such that ell = L + deltaL.
+ * n           : Magnetic quantum number that couples to M.
+ * a_ell_m     : (npol * nell * nell) complex array storing alm with m>=0.
+ * y_m_ell     : (ntheta * nell * nell) real array with Y_{M,ell} samples for one ring.
+ * w3j_product : (npol * ndeltaL * nL * m_dim) array with precomputed Wigner
+ *                products, stored with ``npol`` leading and ``m`` last.
+ * prefactors  : (npol * ndeltaL * nL) complex array containing gamma * phase
+ *                factors for each polarization.
+ * out         : (npol * ndeltaL * nL * m_dim) complex output array for A_{LM}
+ *                using the same axis ordering as ``w3j_product``.
+ * Lmax        : Maximum L considered (sets m_dim >= 2*Lmax+1).
+ * nell        : Number of multipoles (size of ell dimension).
+ * m_dim       : Number of available M samples (>= 2*Lmax+1).
+ */
+
+void compute_A_LM_sp(const long long *L_list, const long long *deltaL_list,
+	           int nL, int ndeltaL, int npol, int n,
+		       const float complex *a_ell_m,
+		       const float *y_m_ell, const float *w3j_product,
+		       const float complex *prefactors, float complex *out,
+		       int Lmax, int nell, int m_dim);
+
+void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
+	           int nL, int ndeltaL, int npol, int n,
+		       const double complex *a_ell_m,
+		       const double *y_m_ell, const double *w3j_product,
+		       const double complex *prefactors, double complex *out,
+		       int Lmax, int nell, int m_dim);
+

@@ -1,5 +1,6 @@
 #include "ksw_estimator_internal.h"
 #include <ksw_estimator.h>
+#include <stdlib.h>
 
 int get_forward_array_size(const long long *rule, int nrule){
 
@@ -819,5 +820,164 @@ void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax)
 
     Ylmgen_destroy(&ygen);
     } // End of parallel region.
+}
+
+/* 
+*  Reduced A_{LM} construction                                           
+*/
+
+float complex get_alm_entry_sp(const float complex *a_ell_m,
+		    int nell, int ell, int m){
+
+    if (m >= 0){
+	return a_ell_m[ell * nell + m];
+    }
+
+    int mp = -m;
+    if (mp >= nell){
+	return 0.f + 0.f * I;
+    }
+
+    float complex base = a_ell_m[ell * nell + mp];
+    return (mp % 2) ? -conjf(base) : conjf(base);
+}
+
+double complex get_alm_entry_dp(const double complex *a_ell_m,
+		  int nell, int ell, int m){
+
+    if (m >= 0){
+	return a_ell_m[ell * nell + m];
+    }
+
+    int mp = -m;
+    if (mp >= nell){
+	return 0. + 0. * I;
+    }
+
+    double complex base = a_ell_m[ell * nell + mp];
+    return (mp % 2) ? -conj(base) : conj(base);
+}
+
+void compute_A_LM_sp(const long long *L_list, const long long *deltaL_list,
+		     int nL, int ndeltaL, int npol, int n,
+			 const float complex *a_ell_m,
+			 const float *y_m_ell, const float *w3j_product,
+			 const float complex *prefactors, float complex *out,
+			 int Lmax, int nell, int m_dim){
+
+    int mdim_expected = 2 * Lmax + 1;
+    if (m_dim < mdim_expected){
+	fprintf(stderr, "compute_A_LM_sp: m_dim (%d) < 2*Lmax+1 (%d)\n",
+		m_dim, mdim_expected);
+	return;
+    }
+
+	ptrdiff_t total = (ptrdiff_t) npol * ndeltaL * nL * m_dim;
+    for (ptrdiff_t idx=0; idx<total; idx++){
+	out[idx] = 0.f + 0.f * I;
+    }
+
+    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+	const float complex *alm_pol = a_ell_m + pidx * nell * nell;
+
+	for (ptrdiff_t idL=0; idL<ndeltaL; idL++){
+	    long long deltaL = deltaL_list[idL];
+	    for (ptrdiff_t iL=0; iL<nL; iL++){
+		long long L = L_list[iL];
+		if (L < 0 || L >= nell){
+		    continue;
+		}
+
+		long long ell = L + deltaL;
+		if (ell < 0 || ell >= nell){
+		    continue;
+		}
+
+		ptrdiff_t base = ((pidx * ndeltaL + idL) * nL + iL) * m_dim;
+		float complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
+
+		for (long long M=-L; M<=L; M++){
+		    int Moff = (int)(M + Lmax);
+		    if (Moff < 0 || Moff >= m_dim){
+			continue;
+		    }
+
+		    long long m = - M - n;
+		    if (llabs(m) > ell || llabs(m) >= nell){
+			continue;
+		    }
+
+		    float y_val = y_m_ell[Moff * nell + ell];
+		    float w3j = w3j_product[base + Moff];
+		    float complex alm_val = get_alm_entry_sp(alm_pol, nell, ell, m);
+
+		    float complex contrib = pref * w3j * alm_val * (y_val);
+		    out[base + Moff] += contrib;
+		}
+	    }
+	}
+    }
+}
+
+void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
+		     int nL, int ndeltaL, int npol, int n,
+			 const double complex *a_ell_m,
+			 const double *y_m_ell, const double *w3j_product,
+			 const double complex *prefactors, double complex *out,
+			 int Lmax, int nell, int m_dim){
+
+    int mdim_expected = 2 * Lmax + 1;
+    if (m_dim < mdim_expected){
+	fprintf(stderr, "compute_A_LM_dp: m_dim (%d) < 2*Lmax+1 (%d)\n",
+		m_dim, mdim_expected);
+	return;
+    }
+
+	ptrdiff_t total = (ptrdiff_t) npol * ndeltaL * nL * m_dim;
+    for (ptrdiff_t idx=0; idx<total; idx++){
+	out[idx] = 0. + 0. * I;
+    }
+
+
+    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+	const double complex *alm_pol = a_ell_m + pidx * nell * nell;
+
+	for (ptrdiff_t idL=0; idL<ndeltaL; idL++){
+	    long long deltaL = deltaL_list[idL];
+	    for (ptrdiff_t iL=0; iL<nL; iL++){
+		long long L = L_list[iL];
+		if (L < 0 || L >= nell){
+		    continue;
+		}
+
+		long long ell = L + deltaL;
+		if (ell < 0 || ell >= nell){
+		    continue;
+		}
+
+		ptrdiff_t base = ((pidx * ndeltaL + idL) * nL + iL) * m_dim;
+		double complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
+
+		for (long long M=-L; M<=L; M++){
+		    int Moff = (int)(M + Lmax);
+		    if (Moff < 0 || Moff >= m_dim){
+			continue;
+		    }
+
+		    long long m = -M - n;
+		    if (llabs(m) > ell || llabs(m) >= nell){
+			continue;
+		    }
+
+		    double y_val = y_m_ell[Moff * nell + ell];
+		    double w3j = w3j_product[base + Moff];
+		    double complex alm_val = get_alm_entry_dp(alm_pol, nell, ell, m);
+
+		    double complex contrib = pref * w3j * alm_val * (y_val);
+		    out[base + Moff] += contrib;
+		}
+	    }
+	}
+    }
 }
 

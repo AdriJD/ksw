@@ -1,0 +1,52 @@
+Updated CAMB param: lSampleBoost from 2.0 to 3.
+Updated CAMB param: AccuracyBoost from 2.0 to 4.
+Updated CAMB param: WantTensors from False to True.
+Updated CAMB param: WantTensors from True to False.
+Updated CAMB param: WantTensors from False to True.
+Updated CAMB param: WantTensors from True to False.
+cp: './slurm-25740039.out' and '/home1/p319540/ksw/tests/python/slurm-25740039.out' are the same file
+
+###############################################################################
+Hábrók Cluster
+Job 25740039 for user p319540
+Finished at: Wed Dec  3 10:58:23 CET 2025
+
+Job details:
+============
+
+Job ID                         : 25740039
+Name                           : fisher
+User                           : p319540
+Partition                      : himemshort
+Nodes                          : memory4
+Number of Nodes                : 1
+Cores                          : 16
+Number of Tasks                : 1
+State                          : FAILED  
+Submit                         : 2025-12-03T10:50:21
+Start                          : 2025-12-03T10:50:22
+End                            : 2025-12-03T10:58:19
+Reserved walltime              : 02:00:00
+Used walltime                  : 00:07:57
+Used CPU time                  : 01:24:30 (Efficiency: 66.43%)
+% User (Computation)           : 99.94%
+% System (I/O)                 :  0.07%
+Total memory reserved          : 512G
+Maximum memory used            : 5.18G
+Hints and tips      :
+ 1) The program efficiency is low. Your program is not using the assigned cores
+    effectively. Please check if you are using all the cores you requested.
+    You may also need to check the file in- and output pattern of your program.
+ 2) You requested much more CPU memory than your program used.
+    Please reduce the requested amount of memory.
+ *) For more information on these issues see:
+    https://wiki.hpc.rug.nl/habrok/additional_information/job_hints
+
+Acknowledgements:
+=================
+
+Please see this page for information about acknowledging Hábrók in your publications:
+
+https://wiki.hpc.rug.nl/habrok/introduction/scientific_output
+
+################################################################################

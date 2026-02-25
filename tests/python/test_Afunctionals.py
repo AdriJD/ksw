@@ -38,7 +38,7 @@ class TestAfunctionals(unittest.TestCase):
                 l1_min, vals = wigner3j_int(L, ell, Jindex[1], Jindex[2])
                 idx = S - l1_min
                 if 0 <= idx < len(vals):
-                    expected[iL, idL] = vals[idx]
+                    expected[idL, iL] = vals[idx]
 
         np.testing.assert_almost_equal(result, expected)
 
@@ -64,7 +64,7 @@ class TestAfunctionals(unittest.TestCase):
                     l1_min, vals = wigner3j_int(L, ell, M, m)
                     idx = S - l1_min
                     if 0 <= idx < len(vals):
-                        expected[iL, M + Lmax, idL] = vals[idx]
+                        expected[idL, iL, M + Lmax] = vals[idx]
 
         np.testing.assert_almost_equal(result, expected)
 
@@ -80,9 +80,9 @@ class TestAfunctionals(unittest.TestCase):
         w_vals = Afunctionals.w3j(S, n_val, L_list, deltaL_list)
 
         expected = np.zeros_like(result)
-        for iL in range(len(L_list)):
-            for idL in range(len(deltaL_list)):
-                expected[iL, :, idL] = wJ[iL, idL] * w_vals[iL, :, idL]
+        for idL in range(len(deltaL_list)):
+            for iL in range(len(L_list)):
+                expected[idL, iL, :] = wJ[idL, iL] * w_vals[idL, iL, :]
 
         np.testing.assert_almost_equal(result, expected)
 
@@ -98,12 +98,15 @@ class TestAfunctionals(unittest.TestCase):
         self.assertEqual(Afunctionals.gamma_Z("B", "h", 3, 1), expected)
 
     def test_get_a_lm(self):
-        alm = np.zeros((Afunctionals.npol, hp.Alm.getsize(Afunctionals.lmax)), dtype=Afunctionals.cdtype)
-        idx = hp.Alm.getidx(Afunctionals.lmax, 2, 1)
+        lmax = 8
+        npol = 3
+        cdtype = np.complex64
+        alm = np.zeros((npol, hp.Alm.getsize(lmax)), dtype=cdtype)
+        idx = hp.Alm.getidx(lmax, 2, 1)
         alm[0, idx] = 3 + 4j
 
-        positive = Afunctionals.get_a_lm(alm, ell=2, m=1, pol="T")
-        negative = Afunctionals.get_a_lm(alm, ell=2, m=-1, pol="T")
+        positive = Afunctionals.get_a_lm(alm, ell=2, m=1, pol="T", lmax=lmax, npol=npol, cdtype=cdtype)
+        negative = Afunctionals.get_a_lm(alm, ell=2, m=-1, pol="T", lmax=lmax, npol=npol, cdtype=cdtype)
 
         np.testing.assert_almost_equal(positive, 3 + 4j)
         np.testing.assert_almost_equal(negative, -np.conjugate(3 + 4j))
@@ -128,41 +131,32 @@ class TestAfunctionals(unittest.TestCase):
 
         def fake_products(S, n_val, L_vals, delta_vals, Jidx):
             Lmax = int(np.max(L_vals))
-            return np.full((len(L_vals), 2 * Lmax + 1, len(delta_vals)), 0.5, dtype=dtype)
+            return np.full((len(delta_vals), len(L_vals), 2 * Lmax + 1), 0.5, dtype=dtype)
 
         def fake_get_a_lm(_alm, ell, m, pol=None):
             return (ell + 0.1 * m) + 1j * (ell - m)
 
         alm_input = np.zeros(1, dtype=cdtype)
 
-        patch_kwargs = {
-            "pol": pol,
-            "npol": len(pol),
-            "lmax": lmax,
-            "dtype": dtype,
-            "cdtype": cdtype,
-            "thetas": thetas,
-            "theta_weights": theta_weights,
-            "nphi": nphi,
-        }
-
-        # mock.patch is used to replace the actual implementations and global settings
-        # so that we can test the function in an isolated way
-        with mock.patch.multiple(Afunctionals, **patch_kwargs):
-            with mock.patch.object(Afunctionals.estimator_core, "compute_ylm", side_effect=fake_compute_ylm):
-                with mock.patch.object(Afunctionals, "products_3j_array", side_effect=fake_products):
-                    with mock.patch.object(Afunctionals, "get_a_lm", side_effect=fake_get_a_lm):
-                        result = Afunctionals.A_LM(
-                            deltaL_list,
-                            L_list,
-                            n=0,
-                            x="T",
-                            Z="h",
-                            S=2,
-                            Jindex=Jindex,
-                            alm=alm_input,
-                            theta_batch=1,
-                        )
+        # mock.patch is used to replace the actual implementations so that we
+        # can test the function in an isolated way
+        with mock.patch.object(Afunctionals.estimator_core, "compute_ylm", side_effect=fake_compute_ylm):
+            with mock.patch.object(Afunctionals, "products_3j_array", side_effect=fake_products):
+                with mock.patch.object(Afunctionals, "get_a_lm", side_effect=fake_get_a_lm):
+                    result = Afunctionals.A_LM(
+                        deltaL_list,
+                        L_list,
+                        n=0,
+                        x="T",
+                        Z="h",
+                        S=2,
+                        Jindex=Jindex,
+                        alm=alm_input,
+                        lmax=lmax,
+                        theta_batch=1,
+                        dtype=dtype,
+                        cdtype=cdtype,
+                    )
 
         expected_values = {
             -1: 2 * (1 + 0.1 * 1 + 1j * (1 - 1)),
@@ -171,7 +165,7 @@ class TestAfunctionals(unittest.TestCase):
         }
 
         for M, value in expected_values.items():
-            np.testing.assert_almost_equal(result[0, M + lmax, 0], value)
+            np.testing.assert_almost_equal(result[0, 0, M + lmax], value)
 
 
 if __name__ == "__main__":

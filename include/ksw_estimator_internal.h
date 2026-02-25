@@ -20,6 +20,13 @@ float t_cubic_on_ring_sp(const long long *rule, const float *weights, const floa
 double t_cubic_on_ring_dp(const long long *rule, const double *weights, const double *f_i_phi,
 			  int nrule, int nphi);
 
+/* Access alm entries*/
+float complex get_alm_entry_sp(const float complex *a_ell_m,
+			      int nell, int ell, int m);
+
+double complex get_alm_entry_dp(const double complex *a_ell_m,
+			        int nell, int ell, int m);
+
 
 /*
  * Convolve a single ring of the map with all unique bispectrum factors.
