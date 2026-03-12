@@ -489,6 +489,8 @@ void backward_dp(const double *f_i_ell, const double complex *a_ell_m,
 		0.0, f_i_phi, nphi);    
 }
 
+
+
 void forward_dp(const double *f_i_ell, double complex *a_ell_m, const double *y_m_ell,
 		double complex *m_ell_m, double *n_ell_phi, fftw_plan plan_r2c,
 		const double *f_i_phi, double *work_i_ell, double *work_i_phi,
@@ -979,5 +981,120 @@ void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
 	    }
 	}
     }
+}
+
+float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, const float *f_i_phi,
+			  int nrule, int nphi, int ndeltaL){// add loop over ndeltaL later on
+
+	float t_cubic = 0.f;
+
+	for (ptrdiff_t ridx=0; ridx<nrule; ridx++){
+
+	long long rx = rule[ridx*3];
+	long long ry = rule[ridx*3+1];
+	long long rz = rule[ridx*3+2];
+
+	float wx = weights[ridx*3];
+	float wy = weights[ridx*3+1];
+	float wz = weights[ridx*3+2];
+
+	for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
+	    t_cubic += wx * wy * wz * f_i_phi[rx*nphi+phidx] * f_i_phi[ry*nphi+phidx]
+		       * f_i_phi[rz*nphi+phidx];
+	}
+	}
+	return t_cubic;
+}
+
+void backward_sp_mixed(const float *f_i_ell, const float complex *a_ell_m, 
+		 const float *y_m_ell, const long long *L_list,
+		 const long long *deltaL_list, int n,
+		 const float *w3j_product, const float complex *prefactors,
+		 float complex *A_ell_m, float *n_ell_phi,
+		 fftwf_plan plan_c2c, float *f_i_phi, int ndeltaL, int nL,
+		 int npol, int nufact, int nphi, int Lmax, int nell){
+
+	int nm = nphi / 2 + 1;
+	compute_A_LM_sp(L_list, deltaL_list,
+		      nL, ndeltaL, npol, n,
+		      a_ell_m, y_m_ell, w3j_product,
+		      prefactors, A_ell_m,
+		      Lmax, nell, nm);
+
+	fftwf_execute_dft(plan_c2c, A_ell_m, n_ell_phi);
+
+	// f_i_ell @ n_ell_phi -> f_i_phi.
+	int inner = npol * ndeltaL * nL;
+	cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+		nufact, nphi, inner,
+		1.f, f_i_ell, inner,
+		n_ell_phi, nphi,
+		0.f, f_i_phi, nphi);    
+}
+
+
+float t_cubic_sp_sst(const double *ct_weights, const long long *rule, const float *weights,
+		  const float *f_i_ell, const float complex *a_ell_m,
+		  const float *y_m_ell, int ntheta, int nrule,
+		  int ndeltaL, int nL, int npol, int m_dim, 
+		  int nufact, int nphi){
+
+	int nm = nphi / 2 + 1; // ?
+	float t_cubic = 0.f;
+	int nffts[1] = {nphi};
+	fftwf_plan plan_c2c;
+
+	// Plan fft on temporary arrays now in order to avoid having to run the planner
+	// in a omp critial region later.
+	float complex *A_ell_m = fftwf_malloc(sizeof *A_ell_m * npol * ndeltaL * nL * nm);
+	float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
+
+	plan_c2c = fftwf_plan_many_dft_c2c(1, nffts, npol * ndeltaL * nL,
+				       A_ell_m, NULL,
+				       1, nm,
+				       n_ell_phi, NULL,
+				       1, nphi,
+				       FFTW_MEASURE);
+	fftwf_free(A_ell_m);
+	fftwf_free(n_ell_phi);
+
+	#pragma omp parallel 
+	{
+	mkl_set_num_threads_local(1);
+
+	float complex *A_ell_m = fftwf_malloc(sizeof *A_ell_m * npol * ndeltaL * nL * nm);
+	float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * ndeltaL * nL * nphi);
+	float *f_i_phi = fftwf_malloc(sizeof *f_i_phi * nufact * nphi);
+
+
+	if (A_ell_m == NULL || n_ell_phi == NULL || f_i_phi == NULL){
+	    fftwf_free(A_ell_m);
+	    fftwf_free(n_ell_phi);
+	    fftwf_free(f_i_phi);
+	    exit(1);
+		}
+
+	#pragma omp for reduction (+:t_cubic)
+	for (ptrdiff_t tidx=0; tidx<ndelta; tidx++){
+
+		backward_sp_mixed(f_i_ell, a_ell_m, y_m_ell + tidx * nell * nell,
+				A_ell_m, n_ell_phi, plan_c2c,
+				f_i_phi, ndeltaL, nL, npol, nufact, nphi);
+				
+		t_cubic += t_cubic_on_ring_sp_sst(rule, weights, f_i_phi, nrule, nphi)
+			*ct_weights[tidx];  // also need to add cr_weights and other coefficients here. need to make it clear.
+
+	}
+
+	fftwf_free(A_ell_m);
+	fftwf_free(n_ell_phi);
+	fftwf_free(f_i_phi);
+
+	mkl_set_num_threads_local(0);
+	} // End of parallel region
+
+	fftwf_destroy_plan(plan_c2c);
+	return t_cubic;
+
 }
 

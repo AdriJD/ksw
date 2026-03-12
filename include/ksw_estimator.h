@@ -108,3 +108,18 @@ void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
 		       const double complex *prefactors, double complex *out,
 		       int Lmax, int nell, int m_dim);
 
+/*
+ * Mixed backward pass that first builds reduced A_{LM} tensors via
+ * compute_A_LM_sp using the provided L/deltaL geometry, then performs the
+ * usual FFT/GEMM chain to project onto phi.
+ */
+void backward_sp_mixed(const float *f_i_ell, const float complex *a_ell_m,
+			  const float *y_m_ell, const long long *L_list,
+			  const long long *deltaL_list, int n,
+			  const float *w3j_product,
+			  const float complex *prefactors,
+			  float complex *A_ell_m, float *n_ell_phi,
+			  fftwf_plan plan_c2c, float *f_i_phi,
+			  int ndeltaL, int nL, int npol, int nufact,
+			  int nphi, int Lmax, int nell);
+

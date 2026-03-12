@@ -56,6 +56,16 @@ void backward_dp(const double *f_i_ell, const double complex *a_ell_m,
 		 fftw_plan plan_c2r, double *f_i_phi, int nell, int npol, int nufact,
 		 int nphi);
 
+/* Same as backward_dp but operates on precomputed A_{LM} arrays with an extra ndeltaL dimension.
+ * A_ell_m    : (npol * ndeltaL * nL * nphi) complex array (already filled with A_{LM}).
+ * n_ell_phi  : (npol * ndeltaL * nL * nphi) complex array, overwritten by the c2c fft.
+ * f_i_ell    : (nufact * npol * ndeltaL * nL) real array of unique factors.
+ * f_i_phi    : (nufact * nphi) complex workspace that receives the phi-domain factors.
+ */
+void backward_A_dp(const double *f_i_ell, double complex *A_ell_m,
+		 double complex *n_ell_phi, fftw_plan plan_c2c, double complex *f_i_phi,
+		 int nL, int ndeltaL, int npol, int nufact, int nphi);
+
 /*
  * Calculate the contribution of single ring to dT/dalm.
  *
