@@ -966,7 +966,7 @@ void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
 			continue;
 		    }
 
-		    long long m = -M - n;
+		    long long m = - M - n;
 		    if (llabs(m) > ell || llabs(m) >= nell){
 			continue;
 		    }
@@ -983,8 +983,8 @@ void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
     }
 }
 
-float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, const float *f_i_phi,
-			  int nrule, int nphi, int ndeltaL){// add loop over ndeltaL later on
+float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, const float *f_i_phi_scalar, 
+			const float *f_i_phi_tensor, int nrule, int nphi){
 
 	float t_cubic = 0.f;
 
@@ -999,101 +999,317 @@ float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, const 
 	float wz = weights[ridx*3+2];
 
 	for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-	    t_cubic += wx * wy * wz * f_i_phi[rx*nphi+phidx] * f_i_phi[ry*nphi+phidx]
-		       * f_i_phi[rz*nphi+phidx];
+	    t_cubic += 3 * wx * wy * wz * f_i_phi_scalar[rx*nphi+phidx] * f_i_phi_scalar[ry*nphi+phidx]
+		       * f_i_phi_tensor[rz*nphi+phidx];
 	}
 	}
 	return t_cubic;
 }
 
-void backward_sp_mixed(const float *f_i_ell, const float complex *a_ell_m, 
-		 const float *y_m_ell, const long long *L_list,
-		 const long long *deltaL_list, int n,
-		 const float *w3j_product, const float complex *prefactors,
-		 float complex *A_ell_m, float *n_ell_phi,
-		 fftwf_plan plan_c2c, float *f_i_phi, int ndeltaL, int nL,
-		 int npol, int nufact, int nphi, int Lmax, int nell){
+double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights, const double *f_i_phi_scalar, 
+			const double *f_i_phi_tensor, int nrule, int nphi){
 
-	int nm = nphi / 2 + 1;
-	compute_A_LM_sp(L_list, deltaL_list,
-		      nL, ndeltaL, npol, n,
-		      a_ell_m, y_m_ell, w3j_product,
-		      prefactors, A_ell_m,
-		      Lmax, nell, nm);
+	double t_cubic = 0.f;
 
-	fftwf_execute_dft(plan_c2c, A_ell_m, n_ell_phi);
+	for (ptrdiff_t ridx=0; ridx<nrule; ridx++){
 
-	// f_i_ell @ n_ell_phi -> f_i_phi.
-	int inner = npol * ndeltaL * nL;
-	cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-		nufact, nphi, inner,
-		1.f, f_i_ell, inner,
-		n_ell_phi, nphi,
-		0.f, f_i_phi, nphi);    
+	long long rx = rule[ridx*3];
+	long long ry = rule[ridx*3+1];
+	long long rz = rule[ridx*3+2];
+
+	double wx = weights[ridx*3];
+	double wy = weights[ridx*3+1];
+	double wz = weights[ridx*3+2];
+
+	for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
+	    t_cubic += 3 * wx * wy * wz * f_i_phi_scalar[rx*nphi+phidx] * f_i_phi_scalar[ry*nphi+phidx]
+		       * f_i_phi_tensor[rz*nphi+phidx];
+	}
+	}
+	return t_cubic;
 }
 
 
-float t_cubic_sp_sst(const double *ct_weights, const long long *rule, const float *weights,
-		  const float *f_i_ell, const float complex *a_ell_m,
-		  const float *y_m_ell, int ntheta, int nrule,
-		  int ndeltaL, int nL, int npol, int m_dim, 
-		  int nufact, int nphi){
+void backward_sp_mixed_sst(const long long *L_list, const long long *deltaL_list,
+			  int nL, int ndeltaL, int npol, int n,
+			  const float complex *a_ell_m,
+			  const float *y_M_L, const float *w3j_product_scalar, const float *w3j_product_tensor,
+			  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
+			  float complex *A_L_M_scalar, float complex *A_L_M_tensor,
+			  int Lmax, int nell, int m_dim,
+			  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
+			  fftwf_plan plan_c2c, float *f_i_phi_scalar, float *f_i_phi_tensor, 
+			  int nufact, int nphi,
+			  const float *kappa_i_L_scalar, const float *kappa_i_L_tensor){
 
-	int nm = nphi / 2 + 1; // ?
+	int nm = nphi;
+
+	compute_A_LM_sp(L_list, deltaL_list,
+		      nL, ndeltaL, npol, n,
+		      a_ell_m, y_M_L, w3j_product_scalar,
+		      prefactors_scalar, A_L_M_scalar,
+		      Lmax, nell, nm);
+
+	compute_A_LM_sp(L_list, deltaL_list,
+		      nL, ndeltaL, npol, n,
+		      a_ell_m, y_M_L, w3j_product_tensor,
+		      prefactors_tensor, A_L_M_tensor,
+		      Lmax, nell, nm);
+
+	fftwf_execute_dft(plan_c2c, A_L_M_scalar, n_L_phi_scalar);
+	fftwf_execute_dft(plan_c2c, A_L_M_tensor, n_L_phi_tensor);
+
+	const float complex alpha_sp = 1.0f + 0.0f * I;
+	const float complex beta_sp = 0.0f + 0.0f * I;
+
+	// f_i_L @ n_L_phi -> f_i_phi.
+	cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+		nufact, nphi, npol * ndeltaL * nL,
+		&alpha_sp, kappa_i_L_scalar, npol * ndeltaL * nL,
+		n_L_phi_scalar, nphi,
+		&beta_sp, f_i_phi_scalar, nphi);    
+
+	cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+		nufact, nphi, npol * ndeltaL * nL,
+		&alpha_sp, kappa_i_L_tensor, npol * ndeltaL * nL,
+		n_L_phi_tensor, nphi,
+		&beta_sp, f_i_phi_tensor, nphi);  
+
+}
+
+void backward_dp_mixed_sst(const long long *L_list, const long long *deltaL_list,
+			  int nL, int ndeltaL, int npol, int n,
+			  const double complex *a_ell_m,
+			  const double *y_M_L, const double *w3j_product_scalar, const double *w3j_product_tensor,
+			  const double complex *prefactors_scalar, const double complex *prefactors_tensor, 
+			  double complex *A_L_M_scalar, double complex *A_L_M_tensor,
+			  int Lmax, int nell, int m_dim,
+			  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
+			  fftw_plan plan_c2c, double *f_i_phi_scalar, double *f_i_phi_tensor, 
+			  int nufact, int nphi,
+			  const double *kappa_i_L_scalar, const double *kappa_i_L_tensor){
+
+	int nm = nphi;
+
+	compute_A_LM_dp(L_list, deltaL_list,
+		      nL, ndeltaL, npol, n,
+		      a_ell_m, y_M_L, w3j_product_scalar,
+		      prefactors_scalar, A_L_M_scalar,
+		      Lmax, nell, nm);
+
+	compute_A_LM_dp(L_list, deltaL_list,
+		      nL, ndeltaL, npol, n,
+		      a_ell_m, y_M_L, w3j_product_tensor,
+		      prefactors_tensor, A_L_M_tensor,
+		      Lmax, nell, nm);
+
+	fftw_execute_dft(plan_c2c, A_L_M_scalar, n_L_phi_scalar);
+	fftw_execute_dft(plan_c2c, A_L_M_tensor, n_L_phi_tensor);
+
+	const double complex alpha_dp = 1.0 + 0.0 * I;
+	const double complex beta_dp = 0.0 + 0.0 * I;
+
+	// f_i_L @ n_L_phi -> f_i_phi.
+	cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+		nufact, nphi, npol * ndeltaL * nL,
+		&alpha_dp, kappa_i_L_scalar, npol * ndeltaL * nL,
+		n_L_phi_scalar, nphi,
+		&beta_dp, f_i_phi_scalar, nphi);    
+
+	cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+		nufact, nphi, npol * ndeltaL * nL,
+		&alpha_dp, kappa_i_L_tensor, npol * ndeltaL * nL,
+		n_L_phi_tensor, nphi,
+		&beta_dp, f_i_phi_tensor, nphi);  
+
+}
+
+
+float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float *weights,
+		  const float *f_i_L, const float complex *a_ell_m,
+		  const float *y_M_L, int ntheta, int nrule,
+		  int ndeltaL, int nL, int npol, int m_dim, 
+		  int nufact, int nphi,
+		  const long long *L_list, const long long *deltaL_list, int n,
+		  const float *w3j_product_scalar, const float *w3j_product_tensor,
+		  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
+		  float complex *A_L_M_scalar, float complex *A_L_M_tensor,
+		  int Lmax, int nell,
+		  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
+		  float *f_i_phi_scalar, float *f_i_phi_tensor, 
+		  const float *kappa_i_L_scalar, const float *kappa_i_L_tensor){
+
+	int nm = nphi; 
 	float t_cubic = 0.f;
 	int nffts[1] = {nphi};
 	fftwf_plan plan_c2c;
 
 	// Plan fft on temporary arrays now in order to avoid having to run the planner
-	// in a omp critial region later.
-	float complex *A_ell_m = fftwf_malloc(sizeof *A_ell_m * npol * ndeltaL * nL * nm);
-	float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * nell * nphi);
+	// in a omp critical region later.
+	float complex *A_L_M = fftwf_malloc(sizeof *A_L_M * npol * ndeltaL * nL * nm);
+	float complex *n_L_phi = fftwf_malloc(sizeof *n_L_phi * npol * nL * nphi);
 
-	plan_c2c = fftwf_plan_many_dft_c2c(1, nffts, npol * ndeltaL * nL,
-				       A_ell_m, NULL,
+	plan_c2c = fftwf_plan_many_dft(1, nffts, npol * ndeltaL * nL,
+				       A_L_M, NULL,
 				       1, nm,
-				       n_ell_phi, NULL,
+				       n_L_phi, NULL,
 				       1, nphi,
+					   FFTW_BACKWARD,
 				       FFTW_MEASURE);
-	fftwf_free(A_ell_m);
-	fftwf_free(n_ell_phi);
+	fftwf_free(A_L_M);
+	fftwf_free(n_L_phi);
 
 	#pragma omp parallel 
 	{
 	mkl_set_num_threads_local(1);
 
-	float complex *A_ell_m = fftwf_malloc(sizeof *A_ell_m * npol * ndeltaL * nL * nm);
-	float *n_ell_phi = fftwf_malloc(sizeof *n_ell_phi * npol * ndeltaL * nL * nphi);
-	float *f_i_phi = fftwf_malloc(sizeof *f_i_phi * nufact * nphi);
+	float complex *A_L_M_scalar = fftwf_malloc(sizeof *A_L_M_scalar * npol * ndeltaL * nL * nm);
+	float complex *n_L_phi_scalar = fftwf_malloc(sizeof *n_L_phi_scalar * npol * ndeltaL * nL * nphi);
+	float *f_i_phi_scalar = fftwf_malloc(sizeof *f_i_phi_scalar * nufact * nphi);
+
+	float complex *A_L_M_tensor = fftwf_malloc(sizeof *A_L_M_tensor * npol * ndeltaL * nL * nm);
+	float complex *n_L_phi_tensor = fftwf_malloc(sizeof *n_L_phi_tensor * npol * ndeltaL * nL * nphi);
+	float *f_i_phi_tensor = fftwf_malloc(sizeof *f_i_phi_tensor * nufact * nphi);
 
 
-	if (A_ell_m == NULL || n_ell_phi == NULL || f_i_phi == NULL){
-	    fftwf_free(A_ell_m);
-	    fftwf_free(n_ell_phi);
-	    fftwf_free(f_i_phi);
+	if (A_L_M_scalar == NULL || n_L_phi_scalar == NULL || f_i_phi_scalar == NULL ||
+	    A_L_M_tensor == NULL || n_L_phi_tensor == NULL || f_i_phi_tensor == NULL){
+
+	    fftwf_free(A_L_M_scalar);
+	    fftwf_free(n_L_phi_scalar);
+	    fftwf_free(f_i_phi_scalar);
+
+	    fftwf_free(A_L_M_tensor);
+	    fftwf_free(n_L_phi_tensor);
+	    fftwf_free(f_i_phi_tensor);
 	    exit(1);
 		}
 
 	#pragma omp for reduction (+:t_cubic)
-	for (ptrdiff_t tidx=0; tidx<ndelta; tidx++){
+	for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
 
-		backward_sp_mixed(f_i_ell, a_ell_m, y_m_ell + tidx * nell * nell,
-				A_ell_m, n_ell_phi, plan_c2c,
-				f_i_phi, ndeltaL, nL, npol, nufact, nphi);
-				
-		t_cubic += t_cubic_on_ring_sp_sst(rule, weights, f_i_phi, nrule, nphi)
-			*ct_weights[tidx];  // also need to add cr_weights and other coefficients here. need to make it clear.
+		backward_sp_mixed_sst(L_list, deltaL_list,
+			  nL, ndeltaL, npol, n,
+			  a_ell_m, y_M_L + tidx * nL * nL, w3j_product_scalar, w3j_product_tensor,
+			  prefactors_scalar, prefactors_tensor, A_L_M_scalar, A_L_M_tensor,
+			  Lmax, nell, m_dim,
+			  n_L_phi_scalar, n_L_phi_tensor,
+			  plan_c2c, f_i_phi_scalar, f_i_phi_tensor,
+			  nufact, nphi,
+			  kappa_i_L_scalar, kappa_i_L_tensor);
+
+		t_cubic += t_cubic_on_ring_sp_sst(rule, weights, f_i_phi_scalar, f_i_phi_tensor, nrule, nphi)
+			*ct_weights[tidx];  
 
 	}
 
-	fftwf_free(A_ell_m);
-	fftwf_free(n_ell_phi);
-	fftwf_free(f_i_phi);
+	fftwf_free(A_L_M_scalar);
+	fftwf_free(n_L_phi_scalar);
+	fftwf_free(f_i_phi_scalar);
+
+	fftwf_free(A_L_M_tensor);
+	fftwf_free(n_L_phi_tensor);
+	fftwf_free(f_i_phi_tensor);
 
 	mkl_set_num_threads_local(0);
 	} // End of parallel region
 
 	fftwf_destroy_plan(plan_c2c);
+	return t_cubic;
+
+}
+
+
+double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const double *weights,
+		  const double *f_i_L, const double complex *a_ell_m,
+		  const double *y_M_L, int ntheta, int nrule,
+		  int ndeltaL, int nL, int npol, int m_dim, 
+		  int nufact, int nphi,
+		  const long long *L_list, const long long *deltaL_list, int n,
+		  const double *w3j_product_scalar, const double *w3j_product_tensor,
+		  const double complex *prefactors_scalar, const double complex *prefactors_tensor, 
+		  double complex *A_L_M_scalar, double complex *A_L_M_tensor,
+		  int Lmax, int nell,
+		  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
+		  double *f_i_phi_scalar, double *f_i_phi_tensor, 
+		  const double *kappa_i_L_scalar, const double *kappa_i_L_tensor){
+
+	int nm = nphi; 
+	double t_cubic = 0.;
+	int nffts[1] = {nphi};
+	fftw_plan plan_c2c;
+
+	// Plan fft on temporary arrays now in order to avoid having to run the planner
+	// in a omp critical region later.
+	double complex *A_L_M = fftw_malloc(sizeof *A_L_M * npol * ndeltaL * nL * nm);
+	double complex *n_L_phi = fftw_malloc(sizeof *n_L_phi * npol * nL * nphi);
+
+	plan_c2c = fftw_plan_many_dft(1, nffts, npol * ndeltaL * nL,
+				       A_L_M, NULL,
+				       1, nm,
+				       n_L_phi, NULL,
+				       1, nphi,
+					   FFTW_BACKWARD,
+				       FFTW_MEASURE);
+	fftw_free(A_L_M);
+	fftw_free(n_L_phi);
+
+	#pragma omp parallel 
+	{
+	mkl_set_num_threads_local(1);
+
+	double complex *A_L_M_scalar = fftw_malloc(sizeof *A_L_M_scalar * npol * ndeltaL * nL * nm);
+	double complex *n_L_phi_scalar = fftw_malloc(sizeof *n_L_phi_scalar * npol * ndeltaL * nL * nphi);
+	double *f_i_phi_scalar = fftw_malloc(sizeof *f_i_phi_scalar * nufact * nphi);
+
+	double complex *A_L_M_tensor = fftw_malloc(sizeof *A_L_M_tensor * npol * ndeltaL * nL * nm);
+	double complex *n_L_phi_tensor = fftw_malloc(sizeof *n_L_phi_tensor * npol * ndeltaL * nL * nphi);
+	double *f_i_phi_tensor = fftw_malloc(sizeof *f_i_phi_tensor * nufact * nphi);
+
+
+	if (A_L_M_scalar == NULL || n_L_phi_scalar == NULL || f_i_phi_scalar == NULL ||
+	    A_L_M_tensor == NULL || n_L_phi_tensor == NULL || f_i_phi_tensor == NULL){
+
+	    fftw_free(A_L_M_scalar);
+	    fftw_free(n_L_phi_scalar);
+	    fftw_free(f_i_phi_scalar);
+
+	    fftw_free(A_L_M_tensor);
+	    fftw_free(n_L_phi_tensor);
+	    fftw_free(f_i_phi_tensor);
+	    exit(1);
+		}
+
+	#pragma omp for reduction (+:t_cubic)
+	for (ptrdiff_t tidx=0; tidx<ntheta; tidx++){
+
+		backward_dp_mixed_sst(L_list, deltaL_list,
+			  nL, ndeltaL, npol, n,
+			  a_ell_m, y_M_L + tidx * nL * nL, w3j_product_scalar, w3j_product_tensor,
+			  prefactors_scalar, prefactors_tensor, A_L_M_scalar, A_L_M_tensor,
+			  Lmax, nell, m_dim,
+			  n_L_phi_scalar, n_L_phi_tensor,
+			  plan_c2c, f_i_phi_scalar, f_i_phi_tensor,
+			  nufact, nphi,
+			  kappa_i_L_scalar, kappa_i_L_tensor);
+
+		t_cubic += t_cubic_on_ring_dp_sst(rule, weights, f_i_phi_scalar, f_i_phi_tensor, nrule, nphi)
+			*ct_weights[tidx];  
+
+	}
+
+	fftw_free(A_L_M_scalar);
+	fftw_free(n_L_phi_scalar);
+	fftw_free(f_i_phi_scalar);
+
+	fftw_free(A_L_M_tensor);
+	fftw_free(n_L_phi_tensor);
+	fftw_free(f_i_phi_tensor);
+
+	mkl_set_num_threads_local(0);
+	} // End of parallel region
+
+	fftw_destroy_plan(plan_c2c);
 	return t_cubic;
 
 }

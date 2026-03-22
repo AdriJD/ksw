@@ -20,6 +20,26 @@ float t_cubic_on_ring_sp(const long long *rule, const float *weights, const floa
 double t_cubic_on_ring_dp(const long long *rule, const double *weights, const double *f_i_phi,
 			  int nrule, int nphi);
 
+/*
+* Compute 3 * sum_{i, phi} A_i_phi(scalar) A_i_phi(scalar) A_i_phi(tensor) on single ring.
+* 
+* Arguments
+* ---------
+* rule    : (nrule, 3) array of indices into f_i_phi that give X_i Y_i Z_i.
+* weights : (nrule, 3) array of weights for X_i Y_i Z_i.
+* f_i_phi : (nufact, nphi) array of unique factors on ring.
+* nrule   : Number of rules. 
+* nphi    : Number phi elements on ring.
+*
+*/
+
+float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, const float *f_i_phi_scalar, 
+			const float *f_i_phi_tensor, int nrule, int nphi);
+
+double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights, const double *f_i_phi_scalar, 
+			const double *f_i_phi_tensor, int nrule, int nphi);
+
+
 /* Access alm entries*/
 float complex get_alm_entry_sp(const float complex *a_ell_m,
 			      int nell, int ell, int m);
@@ -56,15 +76,46 @@ void backward_dp(const double *f_i_ell, const double complex *a_ell_m,
 		 fftw_plan plan_c2r, double *f_i_phi, int nell, int npol, int nufact,
 		 int nphi);
 
-/* Same as backward_dp but operates on precomputed A_{LM} arrays with an extra ndeltaL dimension.
- * A_ell_m    : (npol * ndeltaL * nL * nphi) complex array (already filled with A_{LM}).
- * n_ell_phi  : (npol * ndeltaL * nL * nphi) complex array, overwritten by the c2c fft.
- * f_i_ell    : (nufact * npol * ndeltaL * nL) real array of unique factors.
- * f_i_phi    : (nufact * nphi) complex workspace that receives the phi-domain factors.
+/*
+ * backward_sp_mixed_sst: convolve a single ring of the map for sst bispectra.
+ *
+ * Arguments
+ * ---------
+ * from L_list to m_dim: the same as compute_A_LM arguments, see ksw_estimator.h.
+ * A_L_M: (npol, ndeltaL, nL, m_dim) array 
+ * f_i_L : (nufact * npol * ndeltaL * nL) array with unique factors.
+ * n_L_phi: (npol * ndeltaL * nL * nphi) array for output of ring fft.
+ * plan_c2c: fftw plan for ring complex2complex fft.
+ * f_i_phi: (nufact * nphi) array for output unique factors on ring.
+ * nufact: Number of unique factors.
+ * nphi: Number of phi elements on ring.
+ * nell: Number of multipoles.
+ * Kappa_i_L: (npol, ndeltaL, nL) array, kappa functionals
  */
-void backward_A_dp(const double *f_i_ell, double complex *A_ell_m,
-		 double complex *n_ell_phi, fftw_plan plan_c2c, double complex *f_i_phi,
-		 int nL, int ndeltaL, int npol, int nufact, int nphi);
+
+void backward_sp_mixed_sst(const long long *L_list, const long long *deltaL_list,
+			  int nL, int ndeltaL, int npol, int n,
+			  const float complex *a_ell_m,
+			  const float *y_M_L, const float *w3j_product_scalar, const float *w3j_product_tensor,
+			  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
+			  float complex *A_L_M_scalar, float complex *A_L_M_tensor,
+			  int Lmax, int nell, int m_dim,
+			  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
+			  fftwf_plan plan_c2c, float *f_i_phi_scalar, float *f_i_phi_tensor, 
+			  int nufact, int nphi,
+			  const float *kappa_i_L_scalar, const float *kappa_i_L_tensor); 
+
+void backward_dp_mixed_sst(const long long *L_list, const long long *deltaL_list,
+			  int nL, int ndeltaL, int npol, int n,
+			  const double complex *a_ell_m,
+			  const double *y_M_L, const double *w3j_product_scalar, const double *w3j_product_tensor,
+			  const double complex *prefactors_scalar, const double complex *prefactors_tensor, 
+			  double complex *A_L_M_scalar, double complex *A_L_M_tensor,
+			  int Lmax, int nell, int m_dim,
+			  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
+			  fftw_plan plan_c2c, double *f_i_phi_scalar, double *f_i_phi_tensor, 
+			  int nufact, int nphi,
+			  const double *kappa_i_L_scalar, const double *kappa_i_L_tensor); 
 
 /*
  * Calculate the contribution of single ring to dT/dalm.
@@ -115,4 +166,5 @@ void forward_dp(const double *f_i_ell, double complex *a_ell_m, const double *y_
  */
 
 int get_forward_array_size(const long long *rule, int nrule);
+
 
