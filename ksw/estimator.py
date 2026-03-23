@@ -678,6 +678,28 @@ class KSW():
 
         red_bisp = self.red_bispectra[0]
         f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
+
+        # NOTE
+        # print(f'{f_i_ell.shape=}')
+        # print(f'{rule.shape=}')
+        # print(f'{weights.shape=}')
+
+        #f_i_ell[3,:,:] *= 1e-3
+        #weights[1,2] *= 1e3
+        
+        #f_i_ell[4,:,:] *= 1e-5
+        #weights[2,0] *= 1e5
+
+        #f_i_ell[0,:,:] *= 1e-5
+        #weights[0,0] *= 1e5
+        #weights[1,0] *= 1e5        
+
+        # NOTE
+        #weights[2,1:] = 1
+
+        #NOTE        
+        #print(f_i_ell[:,0,:])
+        
         f_ell_i = np.ascontiguousarray(np.transpose(f_i_ell, (2, 1, 0)))
         del f_i_ell
         f_ell_i *= np.atleast_1d(fsky ** (1/6))[np.newaxis,:,np.newaxis]
@@ -701,9 +723,27 @@ class KSW():
         fisher_nxn = np.triu(fisher_nxn, 1).T + np.triu(fisher_nxn)
 
         fisher = np.sum(fisher_nxn)
-        #with np.printoptions(threshold=np.inf):
-        #    print(fisher_nxn)
+        with np.printoptions(threshold=np.inf):
+            print(fisher_nxn)
+
+        print(f'{np.linalg.cond(fisher_nxn)=}')
+            
+        #for i in range(fisher_nxn.shape[0]):
+        #    for j in range(fisher_nxn.shape[1]):
+        #        print(str(fisher_nxn[i,j]))
+        
         print(f'{fisher=}')
+
+        # U, S, Vh = np.linalg.svd(fisher_nxn)
+        # print(U.shape)
+        # print(S.shape)
+        # print(S)
+        # print(Vh.shape)
+
+        # S[2:] = 0
+        # fisher_nxn_trunc = U @ np.diag(S) @ Vh
+        # print(fisher_nxn_trunc)
+        # print(f'{np.sum(fisher_nxn_trunc)=}')
         
         if return_matrix:
             return fisher, fisher_nxn 

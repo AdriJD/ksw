@@ -48,6 +48,10 @@ void unique_nxn_on_ring_dp(const double *sqrt_icov_ell, const double *f_ell_i, c
 			   const double *prefactor, double *work_i, double *unique_nxn, int nufact,
 			   int nell, int npol);
 
+void unique_nxn_on_ring__batched_dp(const double *sqrt_icov_ell, const double *f_ell_i, const double *p_ell, 
+			   const double *prefactor, double *work_i, double *unique_nxn, int nufact,
+			   int nell, int npol);
+
 /*
  * Convert zeta to nrule x rnule fisher matrix (Eq. 29 in Smith & Zaldarriaga) for single theta.
  *
@@ -63,6 +67,10 @@ void fisher_nxn_on_ring_sp(const float *unique_nxn, const long long *rule,
 			   const float *weights, float *fisher_nxn, double ct_weight, 
 			   int nufact, int nrule);
 
+//void fisher_nxn_on_ring_dp(const double *unique_nxn, const long long *rule, 
+//			   const double *weights, long double *fisher_nxn, double ct_weight, 
+//			   int nufact, int nrule);
 void fisher_nxn_on_ring_dp(const double *unique_nxn, const long long *rule, 
-			   const double *weights, double *fisher_nxn, double ct_weight, 
+			   const double *weights, long double *fisher_nxn_pos, long double *fisher_nxn_neg,
+			   double ct_weight, 
 			   int nufact, int nrule);
