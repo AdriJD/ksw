@@ -195,6 +195,195 @@ def _compute_estimate_dp(ct_weights, rule, weights, f_i_ell, a_ell_m, y_m_ell,
 		               nell, npol, nufact, nphi)
     return t_cubic
 
+
+def compute_products_Afunc_sst(ct_weights, rule, weights,
+		  a_ell_m, y_M_L, 
+		  ndeltaL, m_dim, nphi,
+		  L_list, deltaL_list, n,
+		  w3j_product_scalar, w3j_product_tensor,
+		  prefactors_scalar, prefactors_tensor, 
+		  A_L_M_scalar, A_L_M_tensor,
+		  Lmax, nell,
+		  n_L_phi_scalar, n_L_phi_tensor,
+		  f_i_phi_scalar, f_i_phi_tensor, 
+		  kappa_i_L_scalar, kappa_i_L_tensor){
+            
+    ntheta = ct_weights.size
+    nrule = rule.shape[0]
+    nufact, npol, nL = f_i_L.shape
+    
+    if rule.shape != (nrule, 3):
+        raise ValueError(f'rule.shape = {rule.shape}, expected {(nrule, 3)}')    
+
+    if weights.shape != (nrule, 3):
+        raise ValueError(f'weights.shape = {weights.shape}, expected {(nrule, 3)}')
+
+    if kappa_i_L_scalar.shape != (nufact, npol, ndeltaL, nL):
+        raise ValueError(
+	f'kappa_i_L_scalar.shape = {kappa_i_L_scalar.shape}, expected {(nufact, npol, ndeltaL, nL)}')
+
+    if kappa_i_L_tensor.shape != (nufact, npol, ndeltaL, nL):
+        raise ValueError(
+	f'kappa_i_L_tensor.shape = {kappa_i_L_tensor.shape}, expected {(nufact, npol, ndeltaL, nL)}')   
+
+    if w3j_product_scalar.shape != (ndeltaL, nL, m_dim):
+        raise ValueError(
+	f'w3j_product_scalar.shape = {w3j_product_scalar.shape}, expected {(ndeltaL, nL, m_dim)}')
+
+    if w3j_product_tensor.shape != (ndeltaL, nL, m_dim):
+        raise ValueError(
+	f'w3j_product_tensor.shape = {w3j_product_tensor.shape}, expected {(ndeltaL, nL, m_dim)}')
+
+    if prefactors_scalar.shape != (ndeltaL, nL):
+        raise ValueError(
+    f'prefactors_scalar.shape = {prefactors_scalar.shape}, expected {(ndeltaL, nL)}')   
+
+    if prefactors_tensor.shape != (ndeltaL, nL):
+        raise ValueError(
+    f'prefactors_tensor.shape = {prefactors_tensor.shape}, expected {(ndeltaL, nL)}')   
+
+    if a_ell_m.shape != (npol, nell, nell):
+        raise ValueError(
+	f'a_ell_m.shape = {a_ell_m.shape}, expected {(npol, nell, nell)}')
+
+    if y_M_L.shape != (ntheta, nL, nL):
+        raise ValueError(
+	f'y_M_L.shape = {y_M_L.shape}, expected {(ntheta, nL, nL)}')
+
+    if A_L_M_scalar.shape != (npol, ndeltaL, nL, m_dim):
+        raise ValueError(
+    f'A_L_M_scalar.shape = {A_L_M_scalar.shape}, expected {(npol, ndeltaL, nL, m_dim)}')
+
+    if A_L_M_tensor.shape != (npol, ndeltaL, nL, m_dim):
+        raise ValueError(
+    f'A_L_M_tensor.shape = {A_L_M_tensor.shape}, expected {(npol, ndeltaL, nL, m_dim)}')        
+
+    if a_ell_m.dtype == np.complex64:
+        t_cubic = _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
+		  a_ell_m, y_M_L, 
+		  ndeltaL, m_dim, nphi,
+		  L_list, deltaL_list, n,
+		  w3j_product_scalar, w3j_product_tensor,
+		  prefactors_scalar, prefactors_tensor, 
+		  A_L_M_scalar, A_L_M_tensor,
+		  Lmax, nell,
+		  n_L_phi_scalar, n_L_phi_tensor,
+		  f_i_phi_scalar, f_i_phi_tensor, 
+		  kappa_i_L_scalar, kappa_i_L_tensor)
+          
+    elif a_ell_m.dtype == np.complex128:
+        t_cubic = _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
+		  a_ell_m, y_M_L, 
+		  ndeltaL, m_dim, nphi,
+		  L_list, deltaL_list, n,
+		  w3j_product_scalar, w3j_product_tensor,
+		  prefactors_scalar, prefactors_tensor, 
+		  A_L_M_scalar, A_L_M_tensor,
+		  Lmax, nell,
+		  n_L_phi_scalar, n_L_phi_tensor,
+		  f_i_phi_scalar, f_i_phi_tensor, 
+		  kappa_i_L_scalar, kappa_i_L_tensor)
+    else:
+        raise ValueError(f'dtype : {a_ell_m.dtype} not supported')
+
+    return t_cubic 
+
+    
+          }
+          
+    def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
+		  a_ell_m, y_M_L, 
+		  ndeltaL, m_dim, nphi,
+		  L_list, deltaL_list, n,
+		  w3j_product_scalar, w3j_product_tensor,
+		  prefactors_scalar, prefactors_tensor, 
+		  A_L_M_scalar, A_L_M_tensor,
+		  Lmax, nell,
+		  n_L_phi_scalar, n_L_phi_tensor,
+		  f_i_phi_scalar, f_i_phi_tensor, 
+		  kappa_i_L_scalar, kappa_i_L_tensor):
+
+    cdef float [::1] ct_weights_ = ct_weights.reshape(-1)
+    cdef long long [::1] rule_ = rule.reshape(-1)
+    cdef float [::1] weights_ = weights.reshape(-1)
+    cdef float complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
+    cdef float [::1] y_M_L_ = y_M_L.reshape(-1)
+    cdef float [::1] w3j_product_scalar_ = w3j_product_scalar.reshape(-1)
+    cdef float [::1] w3j_product_tensor_ = w3j_product_tensor.reshape(-1)
+    cdef float complex [::1] prefactors_scalar_ = prefactors_scalar.reshape(-1)
+    cdef float complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
+    cdef float complex [::1] A_L_M_scalar_ = A_L_M_scalar.reshape(-1)
+    cdef float complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
+    cdef float complex [::1] n_L_phi_scalar_ = n_L_phi_scalar.reshape(-1)
+    cdef float complex [::1] n_L_phi_tensor_ = n_L_phi_tensor.reshape(-1)
+    cdef float [::1] f_i_phi_scalar_ = f_i_phi_scalar.reshape(-1)
+    cdef float [::1] f_i_phi_tensor_ = f_i_phi_tensor.reshape(-1)
+    cdef float [::1] kappa_i_L_scalar_ = kappa_i_L_scalar.reshape(-1)
+    cdef float [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
+
+    cdef float [::1] L_list_ = L_list.reshape(-1)
+    cdef float [::1] deltaL_list_ = deltaL_list.reshape(-1)
+
+    cdef t_cubic = cestimator_core.t_cubic_sp_sst(&ct_weights_[0], &rule_[0], &weights_[0],
+		  &a_ell_m_[0], &y_M_L_[0],
+		  ndeltaL, m_dim, nphi,
+		  &L_list_[0], &deltaL_list_[0], n,
+		  &w3j_product_scalar_[0], &w3j_product_tensor_[0],
+		  &prefactors_scalar_[0], &prefactors_tensor_[0],
+		  &A_L_M_scalar_[0], &A_L_M_tensor_[0],
+		  Lmax, nell,
+		  &n_L_phi_scalar_[0], &n_L_phi_tensor_[0],
+		  &f_i_phi_scalar_[0], &f_i_phi_tensor_[0], 
+		  &kappa_i_L_scalar_[0], &kappa_i_L_tensor_[0])
+    return t_cubic
+
+def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
+		  a_ell_m, y_M_L, 
+		  ndeltaL, m_dim, nphi,
+		  L_list, deltaL_list, n,
+		  w3j_product_scalar, w3j_product_tensor,
+		  prefactors_scalar, prefactors_tensor, 
+		  A_L_M_scalar, A_L_M_tensor,
+		  Lmax, nell,
+		  n_L_phi_scalar, n_L_phi_tensor,
+		  f_i_phi_scalar, f_i_phi_tensor, 
+		  kappa_i_L_scalar, kappa_i_L_tensor):
+
+    cdef double [::1] ct_weights_ = ct_weights.reshape(-1)
+    cdef long long [::1] rule_ = rule.reshape(-1)
+    cdef double [::1] weights_ = weights.reshape(-1)
+    cdef double complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
+    cdef double [::1] y_M_L_ = y_M_L.reshape(-1)
+    cdef double [::1] w3j_product_scalar_ = w3j_product_scalar.reshape(-1)
+    cdef double [::1] w3j_product_tensor_ = w3j_product_tensor.reshape(-1)
+    cdef double complex [::1] prefactors_scalar_ = prefactors_scalar.reshape(-1)
+    cdef double complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
+    cdef double complex [::1] A_L_M_scalar_ = A_L_M_scalar.reshape(-1)
+    cdef double complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
+    cdef double complex [::1] n_L_phi_scalar_ = n_L_phi_scalar.reshape(-1)
+    cdef double complex [::1] n_L_phi_tensor_ = n_L_phi_tensor.reshape(-1)
+    cdef double [::1] f_i_phi_scalar_ = f_i_phi_scalar.reshape(-1)
+    cdef double [::1] f_i_phi_tensor_ = f_i_phi_tensor.reshape(-1)
+    cdef double [::1] kappa_i_L_scalar_ = kappa_i_L_scalar.reshape(-1)
+    cdef double [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
+
+    cdef double [::1] L_list_ = L_list.reshape(-1)
+    cdef double [::1] deltaL_list_ = deltaL_list.reshape(-1)
+
+    cdef t_cubic = cestimator_core.t_cubic_sp_sst(&ct_weights_[0], &rule_[0], &weights_[0],
+		  &a_ell_m_[0], &y_M_L_[0],
+		  ndeltaL, m_dim, nphi,
+		  &L_list_[0], &deltaL_list_[0], n,
+		  &w3j_product_scalar_[0], &w3j_product_tensor_[0],
+		  &prefactors_scalar_[0], &prefactors_tensor_[0],
+		  &A_L_M_scalar_[0], &A_L_M_tensor_[0],
+		  Lmax, nell,
+		  &n_L_phi_scalar_[0], &n_L_phi_tensor_[0],
+		  &f_i_phi_scalar_[0], &f_i_phi_tensor_[0], 
+		  &kappa_i_L_scalar_[0], &kappa_i_L_tensor_[0])
+    return t_cubic
+    
+
 def compute_ylm(thetas, lmax, dtype=np.float32):
     '''
     Compute Ylm(theta,0) for a range of thetas.

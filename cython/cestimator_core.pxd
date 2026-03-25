@@ -10,8 +10,8 @@ cdef extern from "ksw_estimator.h":
 
     double t_cubic_dp(const double *ct_weights, const long long *rule, const double *weights,
       		      const double *f_i_ell, const double complex *a_ell_m,
-		      const double *y_m_ell, int ntheta, int nrule,
-		      int nell, int npol, int nufact, int nphi);
+		           const double *y_m_ell, int ntheta, int nrule,
+		           int nell, int npol, int nufact, int nphi);
 
 
     void step_sp(const double *ct_weights, const long long *rule, const float *weights,
@@ -20,10 +20,57 @@ cdef extern from "ksw_estimator.h":
                  int nufact, int nphi);
 
     void step_dp(const double *ct_weights, const long long *rule, const double *weights,
- 	         const double *f_i_ell, const double complex *a_ell_m, const double *y_m_ell,
-	         double complex *grad_t, int ntheta, int nrule, int nell, int npol, 
-	         int nufact, int nphi);
+ 	            const double *f_i_ell, const double complex *a_ell_m, const double *y_m_ell,
+	            double complex *grad_t, int ntheta, int nrule, int nell, int npol, 
+	            int nufact, int nphi);
 
     void compute_ylm_sp(const double *thetas, float *y_m_ell, int ntheta, int lmax);
 
-    void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax);
+    void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax);    
+
+    
+    void compute_A_LM_sp(const long long *L_list, const long long *deltaL_list,
+	            int nL, int ndeltaL, int npol, int n,
+		       const float complex *a_ell_m,
+		       const float *y_M_L, const float *w3j_product,
+		       const float complex *prefactors, float complex *out,
+		       int Lmax, int nell, int m_dim);
+                 
+     void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
+	            int nL, int ndeltaL, int npol, int n,
+		       const double complex *a_ell_m,
+		       const double *y_M_L, const double *w3j_product,
+		       const double complex *prefactors, double complex *out,
+		       int Lmax, int nell, int m_dim);
+
+
+    float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float *weights,
+		  const float *f_i_L, const float complex *a_ell_m,
+		  const float *y_M_L, int ntheta, int nrule,
+		  int ndeltaL, int nL, int npol, int m_dim, 
+		  int nufact, int nphi,
+		  const long long *L_list, const long long *deltaL_list, int n,
+		  const float *w3j_product_scalar, const float *w3j_product_tensor,
+		  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
+		  float complex *A_L_M_scalar, float complex *A_L_M_tensor,
+		  int Lmax, int nell,
+		  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
+		  float *f_i_phi_scalar, float *f_i_phi_tensor, 
+		  const float *kappa_i_L_scalar, const float *kappa_i_L_tensor);
+
+     double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const double *weights,
+		  const double *f_i_L, const double complex *a_ell_m,
+		  const double *y_M_L, int ntheta, int nrule,
+		  int ndeltaL, int nL, int npol, int m_dim, 
+		  int nufact, int nphi,
+		  const long long *L_list, const long long *deltaL_list, int n,
+		  const double *w3j_product_scalar, const double *w3j_product_tensor,
+		  const double complex *prefactors_scalar, const double complex *prefactors_tensor, 
+		  double complex *A_L_M_scalar, double complex *A_L_M_tensor,
+		  int Lmax, int nell,
+		  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
+		  double *f_i_phi_scalar, double *f_i_phi_tensor, 
+		  const double *kappa_i_L_scalar, const double *kappa_i_L_tensor);
+
+
+
