@@ -437,6 +437,8 @@ void test_fisher_nxn_on_ring_dp(void){
     long long *rule = calloc(nrule * 3, sizeof *rule);
     double *weights = calloc(nrule * 3, sizeof *weights);
     double *fisher_nxn = calloc(nrule * nrule, sizeof *fisher_nxn);
+    long double *fisher_nxn_pos = calloc(nrule * nrule, sizeof *fisher_nxn_pos);
+    long double *fisher_nxn_neg = calloc(nrule * nrule, sizeof *fisher_nxn_neg);    
 
     unique_nxn[0] = 1.;
     unique_nxn[1] = 2.;
@@ -477,9 +479,13 @@ void test_fisher_nxn_on_ring_dp(void){
     weights[4] = 0.6;
     weights[5] = 0.7;
 
-    fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn, ct_weight,
+    fisher_nxn_on_ring_dp(unique_nxn, rule, weights, fisher_nxn_pos, fisher_nxn_neg, ct_weight,
 			  nufact, nrule);
 
+    for (int i=0; i< nrule * nrule; i++){
+	fisher_nxn[i] = (float) (fisher_nxn_pos[i] + fisher_nxn_neg[i]);
+    }
+    
     assert_double_equal(1.0, fisher_nxn[0] / (prefac * 96 * 0.000036), delta);
     assert_double_equal(1.0, fisher_nxn[1] / (prefac * 128 * 0.00126), delta);
     assert_double_equal(1.0, fisher_nxn[2] / (prefac * 0.288), delta);
@@ -501,6 +507,8 @@ void test_fisher_nxn_on_ring_dp(void){
     free(rule);
     free(weights);
     free(fisher_nxn);
+    free(fisher_nxn_pos);
+    free(fisher_nxn_neg);    
 }
 
 void test_fisher_nxn_dp(void){

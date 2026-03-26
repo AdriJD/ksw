@@ -48,6 +48,22 @@ void unique_nxn_on_ring_dp(const double *sqrt_icov_ell, const double *f_ell_i, c
 			   const double *prefactor, double *work_i, double *unique_nxn, int nufact,
 			   int nell, int npol);
 
+/*
+ * Like unique_nxn_on_ring_dp but with extra safeguards against floating point errors.
+ *
+ * Arguments
+ * ---------
+ * sqrt_icov_ell : (nell * npol * npol) array with sqrt of icov per ell (symmetric in pol).
+ * f_ell_i       : (nell * npol * nufact) array of unique factors.
+ * p_ell         : (nell) array with associated Legendre polynomials.
+ * prefactor     : (nell) array
+ * work_i        : (npol * nufact) array for internal work, will be overwritten!
+ * unique_nxn    : (nufact * nufact) array for output.
+ * nufact        : Number of unique factors.
+ * nell          : Number of multipoles.
+ * npol          : Number of polarizations.
+ */
+
 void unique_nxn_on_ring__batched_dp(const double *sqrt_icov_ell, const double *f_ell_i, const double *p_ell, 
 			   const double *prefactor, double *work_i, double *unique_nxn, int nufact,
 			   int nell, int npol);
@@ -67,10 +83,19 @@ void fisher_nxn_on_ring_sp(const float *unique_nxn, const long long *rule,
 			   const float *weights, float *fisher_nxn, double ct_weight, 
 			   int nufact, int nrule);
 
-//void fisher_nxn_on_ring_dp(const double *unique_nxn, const long long *rule, 
-//			   const double *weights, long double *fisher_nxn, double ct_weight, 
-//			   int nufact, int nrule);
+/*
+ * Same like fisher_nxn_on_ring_sp but double precision and accumalating negative and positive
+ * contributions separately.
+ *
+ * unique_nxn     : (nufact * nufact) array with zeta.
+ * rule           : (nrule * 3) Rule to combine unique factors to reduced bispectrum.
+ * weights        : (nrule * 3) Amplitude for each element in rule.
+ * fisher_nxn_pos : (nrule * nrule) positive contribution to output fisher matrix.
+ * fisher_nxn_neg : (nrule * nrule) negative contribution to output fisher matrix.
+ * nufact         : Number of unique factors.
+ * nrule          : Number of rules.
+ */
+
 void fisher_nxn_on_ring_dp(const double *unique_nxn, const long long *rule, 
 			   const double *weights, long double *fisher_nxn_pos, long double *fisher_nxn_neg,
-			   double ct_weight, 
-			   int nufact, int nrule);
+			   double ct_weight, int nufact, int nrule);
