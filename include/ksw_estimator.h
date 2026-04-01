@@ -54,13 +54,13 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 		  int ndeltaL, int nL, int npol, int m_dim, 
 		  int nufact, int nphi,
 		  const long long *L_list, const long long *deltaL_list, int n,
-		  const float *w3j_product_scalar, const float *w3j_product_tensor,
-		  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
-		  float complex *A_L_M_scalar, float complex *A_L_M_tensor,
+		  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
+		  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
+		  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 		  int Lmax, int nell,
-		  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
-		  float *f_i_phi_scalar, float *f_i_phi_tensor, 
-		  const float *kappa_i_L_scalar, const float *kappa_i_L_tensor);
+		  float complex *n_L_phi_scalar1, float complex *n_L_phi_scalar2, float complex *n_L_phi_tensor,
+		  float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor, 
+		  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2, const float *kappa_i_L_tensor);
 
 double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const double *weights,
 		  const double *f_i_L, const double complex *a_ell_m,
@@ -68,13 +68,13 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 		  int ndeltaL, int nL, int npol, int m_dim, 
 		  int nufact, int nphi,
 		  const long long *L_list, const long long *deltaL_list, int n,
-		  const double *w3j_product_scalar, const double *w3j_product_tensor,
-		  const double complex *prefactors_scalar, const double complex *prefactors_tensor, 
-		  double complex *A_L_M_scalar, double complex *A_L_M_tensor,
+		  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
+		  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
+		  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 		  int Lmax, int nell,
-		  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
-		  double *f_i_phi_scalar, double *f_i_phi_tensor, 
-		  const double *kappa_i_L_scalar, const double *kappa_i_L_tensor);
+		  double complex *n_L_phi_scalar1, double complex *n_L_phi_scalar2, double complex *n_L_phi_tensor,
+		  double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor, 
+		  const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2, const double *kappa_i_L_tensor);
 
 
 /*

@@ -33,10 +33,12 @@ double t_cubic_on_ring_dp(const long long *rule, const double *weights, const do
 *
 */
 
-float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, const float *f_i_phi_scalar, 
+float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, 
+			const float *f_i_phi_scalar1, const float *f_i_phi_scalar2,
 			const float *f_i_phi_tensor, int nrule, int nphi);
 
-double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights, const double *f_i_phi_scalar, 
+double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights,
+			const double *f_i_phi_scalar1, const double *f_i_phi_scalar2,
 			const double *f_i_phi_tensor, int nrule, int nphi);
 
 
@@ -96,26 +98,30 @@ void backward_dp(const double *f_i_ell, const double complex *a_ell_m,
 void backward_sp_mixed_sst(const long long *L_list, const long long *deltaL_list,
 			  int nL, int ndeltaL, int npol, int n,
 			  const float complex *a_ell_m,
-			  const float *y_M_L, const float *w3j_product_scalar, const float *w3j_product_tensor,
-			  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
-			  float complex *A_L_M_scalar, float complex *A_L_M_tensor,
+			  const float *y_M_L,
+			  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
+			  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
+			  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 			  int Lmax, int nell, int m_dim,
-			  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
-			  fftwf_plan plan_c2c, float *f_i_phi_scalar, float *f_i_phi_tensor, 
+			  float complex *n_L_phi_scalar1, float complex *n_L_phi_scalar2, float complex *n_L_phi_tensor,
+			  fftwf_plan plan_c2c,
+			  float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor, 
 			  int nufact, int nphi,
-			  const float *kappa_i_L_scalar, const float *kappa_i_L_tensor); 
+			  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2,const float *kappa_i_L_tensor); 
 
 void backward_dp_mixed_sst(const long long *L_list, const long long *deltaL_list,
 			  int nL, int ndeltaL, int npol, int n,
 			  const double complex *a_ell_m,
-			  const double *y_M_L, const double *w3j_product_scalar, const double *w3j_product_tensor,
-			  const double complex *prefactors_scalar, const double complex *prefactors_tensor, 
-			  double complex *A_L_M_scalar, double complex *A_L_M_tensor,
+			  const double *y_M_L, 
+			  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
+			  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
+			  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 			  int Lmax, int nell, int m_dim,
-			  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
-			  fftw_plan plan_c2c, double *f_i_phi_scalar, double *f_i_phi_tensor, 
+			  double complex *n_L_phi_scalar1, double complex *n_L_phi_scalar2, double complex *n_L_phi_tensor,
+			  fftw_plan plan_c2c,
+			  double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor, 
 			  int nufact, int nphi,
-			  const double *kappa_i_L_scalar, const double *kappa_i_L_tensor); 
+			  const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2,const double *kappa_i_L_tensor); 
 
 /*
  * Calculate the contribution of single ring to dT/dalm.
