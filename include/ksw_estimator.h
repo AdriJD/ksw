@@ -49,11 +49,12 @@ double t_cubic_dp(const double *ct_weights, const long long *rule, const double 
 * nphi       : Number of phi per ring.
 */
 float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float *weights,
-		  const float *f_i_L, const float complex *a_ell_m,
+		  const float complex *a_ell_m,
 		  const float *y_M_L, int ntheta, int nrule,
-		  int ndeltaL, int nL, int npol, int m_dim, 
+		  int nL, int npol, int m_dim, 
 		  int nufact, int nphi,
-		  const long long *L_list, const long long *deltaL_list, int n,
+		  const long long *L_list,
+		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
 		  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
 		  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
@@ -63,11 +64,12 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 		  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2, const float *kappa_i_L_tensor);
 
 double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const double *weights,
-		  const double *f_i_L, const double complex *a_ell_m,
+		  const double complex *a_ell_m,
 		  const double *y_M_L, int ntheta, int nrule,
-		  int ndeltaL, int nL, int npol, int m_dim, 
+		  int nL, int npol, int m_dim, 
 		  int nufact, int nphi,
-		  const long long *L_list, const long long *deltaL_list, int n,
+		  const long long *L_list,
+		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
 		  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
 		  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,

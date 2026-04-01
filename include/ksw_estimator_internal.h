@@ -95,8 +95,9 @@ void backward_dp(const double *f_i_ell, const double complex *a_ell_m,
  * Kappa_i_L: (npol, ndeltaL, nL) array, kappa functionals
  */
 
-void backward_sp_mixed_sst(const long long *L_list, const long long *deltaL_list,
-			  int nL, int ndeltaL, int npol, int n,
+void backward_sp_mixed_sst(const long long *L_list,
+			  int nL, int npol, 
+			  int n_scalar1, int n_scalar2, int n_tensor,
 			  const float complex *a_ell_m,
 			  const float *y_M_L,
 			  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
@@ -104,13 +105,14 @@ void backward_sp_mixed_sst(const long long *L_list, const long long *deltaL_list
 			  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 			  int Lmax, int nell, int m_dim,
 			  float complex *n_L_phi_scalar1, float complex *n_L_phi_scalar2, float complex *n_L_phi_tensor,
-			  fftwf_plan plan_c2c,
+			  fftwf_plan plan_c2c_scalar, fftwf_plan plan_c2c_tensor,
 			  float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor, 
 			  int nufact, int nphi,
 			  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2,const float *kappa_i_L_tensor); 
 
-void backward_dp_mixed_sst(const long long *L_list, const long long *deltaL_list,
-			  int nL, int ndeltaL, int npol, int n,
+void backward_dp_mixed_sst(const long long *L_list,
+			  int nL, int npol,
+			  int n_scalar1, int n_scalar2, int n_tensor,	
 			  const double complex *a_ell_m,
 			  const double *y_M_L, 
 			  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
@@ -118,7 +120,7 @@ void backward_dp_mixed_sst(const long long *L_list, const long long *deltaL_list
 			  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 			  int Lmax, int nell, int m_dim,
 			  double complex *n_L_phi_scalar1, double complex *n_L_phi_scalar2, double complex *n_L_phi_tensor,
-			  fftw_plan plan_c2c,
+			  fftw_plan plan_c2c_scalar, fftw_plan plan_c2c_tensor,
 			  double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor, 
 			  int nufact, int nphi,
 			  const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2,const double *kappa_i_L_tensor); 
