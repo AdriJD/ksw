@@ -132,11 +132,11 @@ void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax)
  * ---------
  * L_list      : (nL) array of L values.
  * deltaL_list : (ndeltaL) array with offsets deltaL such that ell = L + deltaL.
- * n           : Magnetic quantum number that couples to S.
+ * n           :  Magnetic quantum number that couples to S.
  * a_ell_m     : (npol * nell * nell) complex array storing alm with m>=0.
  * y_M_L       : (ntheta * nL * nL) real array with Y_{M, L} samples for one ring.
- * w3j_product : (npol * ndeltaL * nL * m_dim) array with precomputed Wigner
- *                products, stored with ``npol`` leading and ``m`` last.
+ * w3j_product : (ndeltaL * nL * m_dim) array with precomputed Wigner
+ *                products, stored with ``ndeltaL`` leading and ``m`` last.
  * prefactors  : (npol * ndeltaL * nL) complex array containing gamma * phase
  *                factors for each polarization.
  * out         : (npol * ndeltaL * nL * m_dim) complex output array for A_{LM}
@@ -159,4 +159,6 @@ void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
 		       const double *y_M_L, const double *w3j_product,
 		       const double complex *prefactors, double complex *out,
 		       int Lmax, int nell, int m_dim);
+
+
 

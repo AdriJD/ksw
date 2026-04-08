@@ -175,6 +175,49 @@ def gamma_Z(x, Z, L, deltaL):
         sgn = 1 + (-1) ** (px + 2 * L + deltaL)
         return sgn
 
+
+def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
+    """
+    Return the prefactor ``(1j)**deltaL * gamma_Z`` with leading polarization axis.
+
+    Parameters
+    ----------
+    deltaL_list : array_like of int
+    L_list : array_like of int
+    x : str
+        Polarization label, e.g. "T", "E", or "B".
+    Z : {"zeta", "h"}
+    cdtype : np.dtype, optional
+
+    Returns
+    -------
+    np.ndarray
+        Complex array with shape ``(npol, len(deltaL_list), len(L_list), 2*Lmax+1)``.
+
+    """
+
+    L_list = np.asarray(L_list, dtype=int)
+    deltaL_list = np.asarray(deltaL_list, dtype=int)
+
+    Lmax = np.max(L_list)
+    out = np.zeros((len(x_list), len(deltaL_list), len(L_list), 2*Lmax + 1), dtype=cdtype)
+
+    for pidx, x_pol in enumerate(x_list):
+        for idL, dL in enumerate(deltaL_list):
+            phase = (1j) ** dL
+            for iL, L in enumerate(L_list):
+                ell = L + dL
+                if ell < 0:
+                    continue
+
+                gamma = gamma_Z(x_pol, Z, L, dL)
+                pref = phase * gamma
+                for M in range(-L, L+1):
+                    out[pidx, idL, iL, M + Lmax] = pref
+
+    return out
+
+
 def get_a_lm(alm, ell, m, lmax=100, pol=['T', 'E', 'B'], npol=3, cdtype=np.complex64):
     """
     access a_{lm} assuming a_ell_m stores m>=0 in the last axis.

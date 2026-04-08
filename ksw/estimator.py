@@ -4,8 +4,13 @@ from scipy.special import roots_legendre
 
 from optweight import mat_utils
 import h5py
+from ducc0.misc import wigner3j_int
 
 from ksw import utils, legendre, estimator_core, fisher_core
+import ksw.radial_functional as rf
+import Afunctionals as AF
+
+
 
 class KSW():
     '''
@@ -600,6 +605,135 @@ class KSW():
         fnl = (t_cubic - lin_term) / fisher
         print(f'{fnl=}, {t_cubic=}, {lin_term=}, {fisher=}')
         return fnl, t_cubic, lin_term, fisher
+
+    def compute_estimate_sst(self, alm, L_list, Lmax, theta_batch=25, fisher=None, lin_term=None):
+        '''
+        Compute fNL estimate for input alm for sst spectra.
+
+        Parameters
+        ----------
+        alm : (npol, nelem) array
+            HEALPix-ordered inverse-covariance filtered data.
+        L_list : array
+            List of L values.
+        Lmax : int
+            Maximum L value.
+        theta_batch : int, optional
+            Process loop over theta in batches of this size. Higher values 
+            take up more memory.
+        fisher : float, optional
+            If given, do not compute fisher from internal mc variables.
+        lin_term : float, optional
+            If given, do not compute linear term from alm and internal mc 
+            variables.
+
+        Returns
+        -------
+        estimate : float
+            fNL estimate.
+        cubic : float
+            Cubic term.
+        lin_term : float
+            Linear term.
+        fisher : float
+            Fisher information.
+
+        Raises
+        ------
+        ValueError
+            If shape input alm is not understood.
+            If Monte Carlo quantities are not iterated yet.
+        Notes
+        -----
+        Similar to compute_estimate, but for sst spectra and apply the functions written in C for this. 
+        '''
+        alm = utils.alm_return_2d(alm, self.npol, self.lmax)
+
+        t_cubic = 0 # The cubic estimate.
+        Afunc_product = 0 # The product of A functionals that goes into the cubic term.
+
+        if fisher is None:
+            fisher = self.compute_fisher()
+        if lin_term is None:
+            lin_term = self.compute_linear_term(alm)
+
+        a_ell_m = utils.alm2a_ell_m(alm)
+        a_ell_m = a_ell_m.astype(self.cdtype)
+
+        red_bisp = self.red_bispectra[0]
+        f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
+
+        # (nscalar1, nscalar2, ntensor): {(1, 1, -2); (1, 0, -1); (0, 1, -1);
+        #                                 (1, -1, 0); (0, 0, 0)}. The other 4 combinations are not included yet.
+
+        combins = [(1,1,-2), (1,0,-1), (0,1,-1), (1,-1,0), (0,0,0)]
+        L_list = np.asarray(L_list, dtype=np.int64)
+        nL = L_list.size
+        nell = self.lmax + 1
+        m_dim = self.nphi
+        nufact = f_i_ell.shape[0]
+        ndeltaL_scalar = 2
+        ndeltaL_tensor = 5
+
+        deltaL_list_scalar = np.array([-1, 1])
+        deltaL_list_tensor = np.array([-2, -1, 0, 1, 2])
+
+        for com_idx in range(len(combins)):
+            n_scalar1, n_scalar2, n_tensor = combins[com_idx]
+            w3j_product_scalar1 = AF.products_3j_array(S=1, n=n_scalar1, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0))
+            w3j_product_scalar2 = AF.products_3j_array(S=1, n=n_scalar2, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0))
+            w3j_product_tensor = AF.products_3j_array(S=2, n=n_tensor, L_list=L_list, deltaL_list=deltaL_list_tensor, Jindex=(-2, 0, 2))
+
+            prefactors_scalar1 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
+            prefactors_scalar2 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
+            prefactors_tensor = AF.prefactor_product(deltaL_list_tensor, L_list, self.pol, "h", cdtype=self.cdtype)
+
+            n_L_phi_scalar1 = np.zeros((self.npol, ndeltaL_scalar, nL, self.nphi), dtype=self.cdtype)
+            n_L_phi_scalar2 = np.zeros((self.npol, ndeltaL_scalar, nL, self.nphi), dtype=self.cdtype)
+            n_L_phi_tensor = np.zeros((self.npol, ndeltaL_tensor, nL, self.nphi), dtype=self.cdtype)
+
+            f_i_phi_scalar1 = np.zeros((nufact, self.nphi), dtype=self.cdtype)
+            f_i_phi_scalar2 = np.zeros((nufact, self.nphi), dtype=self.cdtype)
+            f_i_phi_tensor = np.zeros((nufact, self.nphi), dtype=self.cdtype)
+            
+            #kappa_i_L_scalar1 = rf.radial_func_dL()
+            #kappa_i_L_scalar2 = np.zeros(())
+            #kappa_i_L_tensor = np.zeros(())
+
+            # create some arrays with the assumed shapes for kappa functional. 
+            # need to pass the exact arrays later.
+            kappa_i_L_scalar1 = np.zeros((nufact, self.npol, ndeltaL_scalar, nL), dtype=self.cdtype)
+            kappa_i_L_scalar2 = np.zeros((nufact, self.npol, ndeltaL_scalar, nL), dtype=self.cdtype)
+            kappa_i_L_tensor = np.zeros((nufact, self.npol, ndeltaL_tensor, nL), dtype=self.cdtype)
+
+            for tidx_start in range(0, len(self.thetas), theta_batch):
+                thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
+                ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
+                y_M_L = estimator_core.compute_ylm(thetas_batch, nL - 1, dtype=self.dtype)
+
+                A_L_M_scalar1 = estimator_core.compute_A_LM(L_list, deltaL_list_scalar, n_scalar1, a_ell_m, y_M_L, w3j_product_scalar1, prefactors_scalar1, Lmax)
+                A_L_M_scalar2 = estimator_core.compute_A_LM(L_list, deltaL_list_scalar, n_scalar2, a_ell_m, y_M_L, w3j_product_scalar2, prefactors_scalar2, Lmax)
+                A_L_M_tensor = estimator_core.compute_A_LM(L_list, deltaL_list_tensor, n_tensor, a_ell_m, y_M_L, w3j_product_tensor, prefactors_tensor, Lmax)
+
+                Afunc_product += estimator_core.compute_products_Afunc_sst(ct_weights_batch, rule, weights,
+                                                                    a_ell_m, y_M_L,
+                                                                    self.nphi,
+                                                                    L_list,
+                                                                    n_scalar1, n_scalar2, n_tensor,
+                                                                    w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+                                                                    prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+                                                                    A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+                                                                    self.lmax, nell,
+                                                                    n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_tensor,
+                                                                    f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
+                                                                    kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
+            l1_min, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)# l1_min=1, vals is all w3j values in the order of increasing l1
+            t_cubic += vals[0] * Afunc_product
+
+        fnl = (t_cubic - lin_term) / fisher
+        print(f'{fnl=}, {t_cubic=}, {lin_term=}, {fisher=}')
+        return fnl, t_cubic, lin_term, fisher
+
 
     def compute_fisher(self, return_icov_mc_gt=False):
         '''

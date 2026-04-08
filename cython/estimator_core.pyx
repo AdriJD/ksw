@@ -197,190 +197,264 @@ def _compute_estimate_dp(ct_weights, rule, weights, f_i_ell, a_ell_m, y_m_ell,
 
 
 def compute_products_Afunc_sst(ct_weights, rule, weights,
-		  a_ell_m, y_M_L, 
-		  ndeltaL, m_dim, nphi,
-		  L_list, deltaL_list, n,
-		  w3j_product_scalar, w3j_product_tensor,
-		  prefactors_scalar, prefactors_tensor, 
-		  A_L_M_scalar, A_L_M_tensor,
-		  Lmax, nell,
-		  n_L_phi_scalar, n_L_phi_tensor,
-		  f_i_phi_scalar, f_i_phi_tensor, 
-		  kappa_i_L_scalar, kappa_i_L_tensor){
-            
+          a_ell_m, y_M_L,
+          nphi,
+          L_list,
+          n_scalar1, n_scalar2, n_tensor,
+          w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+          prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+          A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+          Lmax, nell,
+          n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_tensor,
+          f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
+          kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor):
+
     ntheta = ct_weights.size
     nrule = rule.shape[0]
-    nufact, npol, nL = f_i_L.shape
-    
+    nL = L_list.size
+    npol = a_ell_m.shape[0]
+    ndeltaL_scalar = 2
+    ndeltaL_tensor = 5
+    m_dim = y_M_L.shape[1]
+    nufact = f_i_phi_scalar1.shape[0]
+
     if rule.shape != (nrule, 3):
-        raise ValueError(f'rule.shape = {rule.shape}, expected {(nrule, 3)}')    
+        raise ValueError(f'rule.shape = {rule.shape}, expected {(nrule, 3)}')
 
     if weights.shape != (nrule, 3):
         raise ValueError(f'weights.shape = {weights.shape}, expected {(nrule, 3)}')
 
-    if kappa_i_L_scalar.shape != (nufact, npol, ndeltaL, nL):
-        raise ValueError(
-	f'kappa_i_L_scalar.shape = {kappa_i_L_scalar.shape}, expected {(nufact, npol, ndeltaL, nL)}')
-
-    if kappa_i_L_tensor.shape != (nufact, npol, ndeltaL, nL):
-        raise ValueError(
-	f'kappa_i_L_tensor.shape = {kappa_i_L_tensor.shape}, expected {(nufact, npol, ndeltaL, nL)}')   
-
-    if w3j_product_scalar.shape != (ndeltaL, nL, m_dim):
-        raise ValueError(
-	f'w3j_product_scalar.shape = {w3j_product_scalar.shape}, expected {(ndeltaL, nL, m_dim)}')
-
-    if w3j_product_tensor.shape != (ndeltaL, nL, m_dim):
-        raise ValueError(
-	f'w3j_product_tensor.shape = {w3j_product_tensor.shape}, expected {(ndeltaL, nL, m_dim)}')
-
-    if prefactors_scalar.shape != (ndeltaL, nL):
-        raise ValueError(
-    f'prefactors_scalar.shape = {prefactors_scalar.shape}, expected {(ndeltaL, nL)}')   
-
-    if prefactors_tensor.shape != (ndeltaL, nL):
-        raise ValueError(
-    f'prefactors_tensor.shape = {prefactors_tensor.shape}, expected {(ndeltaL, nL)}')   
-
     if a_ell_m.shape != (npol, nell, nell):
         raise ValueError(
-	f'a_ell_m.shape = {a_ell_m.shape}, expected {(npol, nell, nell)}')
+            f'a_ell_m.shape = {a_ell_m.shape}, expected {(npol, nell, nell)}')
 
     if y_M_L.shape != (ntheta, nL, nL):
         raise ValueError(
-	f'y_M_L.shape = {y_M_L.shape}, expected {(ntheta, nL, nL)}')
+            f'y_M_L.shape = {y_M_L.shape}, expected {(ntheta, nL, nL)}')
 
-    if A_L_M_scalar.shape != (npol, ndeltaL, nL, m_dim):
+    if w3j_product_scalar1.shape != (ndeltaL_scalar, nL, m_dim):
         raise ValueError(
-    f'A_L_M_scalar.shape = {A_L_M_scalar.shape}, expected {(npol, ndeltaL, nL, m_dim)}')
+            f'w3j_product_scalar1.shape = {w3j_product_scalar1.shape}, expected {(ndeltaL_scalar, nL, m_dim)}')
 
-    if A_L_M_tensor.shape != (npol, ndeltaL, nL, m_dim):
+    if w3j_product_scalar2.shape != (ndeltaL_scalar, nL, m_dim):
         raise ValueError(
-    f'A_L_M_tensor.shape = {A_L_M_tensor.shape}, expected {(npol, ndeltaL, nL, m_dim)}')        
+            f'w3j_product_scalar2.shape = {w3j_product_scalar2.shape}, expected {(ndeltaL_scalar, nL, m_dim)}')
+
+    if w3j_product_tensor.shape != (ndeltaL_tensor, nL, m_dim):
+        raise ValueError(
+            f'w3j_product_tensor.shape = {w3j_product_tensor.shape}, expected {(ndeltaL_tensor, nL, m_dim)}')
+
+    if prefactors_scalar1.shape != (npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'prefactors_scalar1.shape = {prefactors_scalar1.shape}, expected {(npol, ndeltaL_scalar, nL)}')
+
+    if prefactors_scalar2.shape != (npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'prefactors_scalar2.shape = {prefactors_scalar2.shape}, expected {(npol, ndeltaL_scalar, nL)}')
+
+    if prefactors_tensor.shape != (npol, ndeltaL_tensor, nL):
+        raise ValueError(
+            f'prefactors_tensor.shape = {prefactors_tensor.shape}, expected {(npol, ndeltaL_tensor, nL)}')
+
+    if A_L_M_scalar1.shape != (npol, ndeltaL_scalar, nL, m_dim):
+        raise ValueError(
+            f'A_L_M_scalar1.shape = {A_L_M_scalar1.shape}, expected {(npol, ndeltaL_scalar, nL, m_dim)}')
+
+    if A_L_M_scalar2.shape != (npol, ndeltaL_scalar, nL, m_dim):
+        raise ValueError(
+            f'A_L_M_scalar2.shape = {A_L_M_scalar2.shape}, expected {(npol, ndeltaL_scalar, nL, m_dim)}')
+
+    if A_L_M_tensor.shape != (npol, ndeltaL_tensor, nL, m_dim):
+        raise ValueError(
+            f'A_L_M_tensor.shape = {A_L_M_tensor.shape}, expected {(npol, ndeltaL_tensor, nL, m_dim)}')
+
+    if n_L_phi_scalar1.shape != (npol, ndeltaL_scalar, nL, nphi):
+        raise ValueError(
+            f'n_L_phi_scalar1.shape = {n_L_phi_scalar1.shape}, expected {(npol, ndeltaL_scalar, nL, nphi)}')
+
+    if n_L_phi_scalar2.shape != (npol, ndeltaL_scalar, nL, nphi):
+        raise ValueError(
+            f'n_L_phi_scalar2.shape = {n_L_phi_scalar2.shape}, expected {(npol, ndeltaL_scalar, nL, nphi)}')
+
+    if n_L_phi_tensor.shape != (npol, ndeltaL_tensor, nL, nphi):
+        raise ValueError(
+            f'n_L_phi_tensor.shape = {n_L_phi_tensor.shape}, expected {(npol, ndeltaL_tensor, nL, nphi)}')
+
+    if f_i_phi_scalar1.shape != (nufact, nphi):
+        raise ValueError(
+            f'f_i_phi_scalar1.shape = {f_i_phi_scalar1.shape}, expected {(nufact, nphi)}')
+
+    if f_i_phi_scalar2.shape != (nufact, nphi):
+        raise ValueError(
+            f'f_i_phi_scalar2.shape = {f_i_phi_scalar2.shape}, expected {(nufact, nphi)}')
+
+    if f_i_phi_tensor.shape != (nufact, nphi):
+        raise ValueError(
+            f'f_i_phi_tensor.shape = {f_i_phi_tensor.shape}, expected {(nufact, nphi)}')
+
+    if kappa_i_L_scalar1.shape != (nufact, npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'kappa_i_L_scalar1.shape = {kappa_i_L_scalar1.shape}, expected {(nufact, npol, ndeltaL_scalar, nL)}')
+
+    if kappa_i_L_scalar2.shape != (nufact, npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'kappa_i_L_scalar2.shape = {kappa_i_L_scalar2.shape}, expected {(nufact, npol, ndeltaL_scalar, nL)}')
+
+    if kappa_i_L_tensor.shape != (nufact, npol, ndeltaL_tensor, nL):
+        raise ValueError(
+            f'kappa_i_L_tensor.shape = {kappa_i_L_tensor.shape}, expected {(nufact, npol, ndeltaL_tensor, nL)}')
+
+    L_list = np.ascontiguousarray(L_list, dtype=np.int64)
 
     if a_ell_m.dtype == np.complex64:
         t_cubic = _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
-		  a_ell_m, y_M_L, 
-		  ndeltaL, m_dim, nphi,
-		  L_list, deltaL_list, n,
-		  w3j_product_scalar, w3j_product_tensor,
-		  prefactors_scalar, prefactors_tensor, 
-		  A_L_M_scalar, A_L_M_tensor,
-		  Lmax, nell,
-		  n_L_phi_scalar, n_L_phi_tensor,
-		  f_i_phi_scalar, f_i_phi_tensor, 
-		  kappa_i_L_scalar, kappa_i_L_tensor)
-          
+              a_ell_m, y_M_L,
+              nphi,
+              L_list,
+              n_scalar1, n_scalar2, n_tensor,
+              w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+              prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+              A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+              Lmax, nell,
+              n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_tensor,
+              f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
+              kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
     elif a_ell_m.dtype == np.complex128:
         t_cubic = _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
-		  a_ell_m, y_M_L, 
-		  ndeltaL, m_dim, nphi,
-		  L_list, deltaL_list, n,
-		  w3j_product_scalar, w3j_product_tensor,
-		  prefactors_scalar, prefactors_tensor, 
-		  A_L_M_scalar, A_L_M_tensor,
-		  Lmax, nell,
-		  n_L_phi_scalar, n_L_phi_tensor,
-		  f_i_phi_scalar, f_i_phi_tensor, 
-		  kappa_i_L_scalar, kappa_i_L_tensor)
+              a_ell_m, y_M_L,
+              nphi,
+              L_list,
+              n_scalar1, n_scalar2, n_tensor,
+              w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+              prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+              A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+              Lmax, nell,
+              n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_tensor,
+              f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
+              kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
     else:
         raise ValueError(f'dtype : {a_ell_m.dtype} not supported')
 
-    return t_cubic 
-
-    
-          }
+    return t_cubic
           
-    def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
-		  a_ell_m, y_M_L, 
-		  ndeltaL, m_dim, nphi,
-		  L_list, deltaL_list, n,
-		  w3j_product_scalar, w3j_product_tensor,
-		  prefactors_scalar, prefactors_tensor, 
-		  A_L_M_scalar, A_L_M_tensor,
-		  Lmax, nell,
-		  n_L_phi_scalar, n_L_phi_tensor,
-		  f_i_phi_scalar, f_i_phi_tensor, 
-		  kappa_i_L_scalar, kappa_i_L_tensor):
+def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
+          a_ell_m, y_M_L,
+          nphi,
+          L_list,
+          n_scalar1, n_scalar2, n_tensor,
+          w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+          prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+          A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+          Lmax, nell,
+          n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_tensor,
+          f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
+          kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor):
+
+    ntheta = ct_weights.size
+    nrule = rule.shape[0]
+    nL = L_list.size
+    npol = a_ell_m.shape[0]
+    m_dim = y_M_L.shape[1]
+    nufact = f_i_phi_scalar1.shape[0]
 
     cdef float [::1] ct_weights_ = ct_weights.reshape(-1)
     cdef long long [::1] rule_ = rule.reshape(-1)
     cdef float [::1] weights_ = weights.reshape(-1)
     cdef float complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
     cdef float [::1] y_M_L_ = y_M_L.reshape(-1)
-    cdef float [::1] w3j_product_scalar_ = w3j_product_scalar.reshape(-1)
+    cdef float [::1] w3j_product_scalar1_ = w3j_product_scalar1.reshape(-1)
+    cdef float [::1] w3j_product_scalar2_ = w3j_product_scalar2.reshape(-1)
     cdef float [::1] w3j_product_tensor_ = w3j_product_tensor.reshape(-1)
-    cdef float complex [::1] prefactors_scalar_ = prefactors_scalar.reshape(-1)
+    cdef float complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
+    cdef float complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef float complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-    cdef float complex [::1] A_L_M_scalar_ = A_L_M_scalar.reshape(-1)
+    cdef float complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
+    cdef float complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
     cdef float complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
-    cdef float complex [::1] n_L_phi_scalar_ = n_L_phi_scalar.reshape(-1)
+    cdef float complex [::1] n_L_phi_scalar1_ = n_L_phi_scalar1.reshape(-1)
+    cdef float complex [::1] n_L_phi_scalar2_ = n_L_phi_scalar2.reshape(-1)
     cdef float complex [::1] n_L_phi_tensor_ = n_L_phi_tensor.reshape(-1)
-    cdef float [::1] f_i_phi_scalar_ = f_i_phi_scalar.reshape(-1)
+    cdef float [::1] f_i_phi_scalar1_ = f_i_phi_scalar1.reshape(-1)
+    cdef float [::1] f_i_phi_scalar2_ = f_i_phi_scalar2.reshape(-1)
     cdef float [::1] f_i_phi_tensor_ = f_i_phi_tensor.reshape(-1)
-    cdef float [::1] kappa_i_L_scalar_ = kappa_i_L_scalar.reshape(-1)
+    cdef float [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef float [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
     cdef float [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
 
-    cdef float [::1] L_list_ = L_list.reshape(-1)
-    cdef float [::1] deltaL_list_ = deltaL_list.reshape(-1)
+    cdef long long [::1] L_list_ = L_list.reshape(-1)
 
     cdef t_cubic = cestimator_core.t_cubic_sp_sst(&ct_weights_[0], &rule_[0], &weights_[0],
-		  &a_ell_m_[0], &y_M_L_[0],
-		  ndeltaL, m_dim, nphi,
-		  &L_list_[0], &deltaL_list_[0], n,
-		  &w3j_product_scalar_[0], &w3j_product_tensor_[0],
-		  &prefactors_scalar_[0], &prefactors_tensor_[0],
-		  &A_L_M_scalar_[0], &A_L_M_tensor_[0],
+          &a_ell_m_[0], &y_M_L_[0], ntheta, nrule,
+          nL, npol, m_dim, nufact, nphi,
+          &L_list_[0],
+          n_scalar1, n_scalar2, n_tensor,
+          &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
+          &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
+          &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
 		  Lmax, nell,
-		  &n_L_phi_scalar_[0], &n_L_phi_tensor_[0],
-		  &f_i_phi_scalar_[0], &f_i_phi_tensor_[0], 
-		  &kappa_i_L_scalar_[0], &kappa_i_L_tensor_[0])
+          &n_L_phi_scalar1_[0], &n_L_phi_scalar2_[0], &n_L_phi_tensor_[0],
+          &f_i_phi_scalar1_[0], &f_i_phi_scalar2_[0], &f_i_phi_tensor_[0], 
+          &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0])
     return t_cubic
 
 def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
-		  a_ell_m, y_M_L, 
-		  ndeltaL, m_dim, nphi,
-		  L_list, deltaL_list, n,
-		  w3j_product_scalar, w3j_product_tensor,
-		  prefactors_scalar, prefactors_tensor, 
-		  A_L_M_scalar, A_L_M_tensor,
-		  Lmax, nell,
-		  n_L_phi_scalar, n_L_phi_tensor,
-		  f_i_phi_scalar, f_i_phi_tensor, 
-		  kappa_i_L_scalar, kappa_i_L_tensor):
+          a_ell_m, y_M_L,
+          nphi,
+          L_list,
+          n_scalar1, n_scalar2, n_tensor,
+          w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+          prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+          A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+          Lmax, nell,
+          n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_tensor,
+          f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
+          kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor):
+
+    ntheta = ct_weights.size
+    nrule = rule.shape[0]
+    nL = L_list.size
+    npol = a_ell_m.shape[0]
+    m_dim = y_M_L.shape[1]
+    nufact = f_i_phi_scalar1.shape[0]
 
     cdef double [::1] ct_weights_ = ct_weights.reshape(-1)
     cdef long long [::1] rule_ = rule.reshape(-1)
     cdef double [::1] weights_ = weights.reshape(-1)
     cdef double complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
     cdef double [::1] y_M_L_ = y_M_L.reshape(-1)
-    cdef double [::1] w3j_product_scalar_ = w3j_product_scalar.reshape(-1)
+    cdef double [::1] w3j_product_scalar1_ = w3j_product_scalar1.reshape(-1)
+    cdef double [::1] w3j_product_scalar2_ = w3j_product_scalar2.reshape(-1)
     cdef double [::1] w3j_product_tensor_ = w3j_product_tensor.reshape(-1)
-    cdef double complex [::1] prefactors_scalar_ = prefactors_scalar.reshape(-1)
+    cdef double complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
+    cdef double complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef double complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-    cdef double complex [::1] A_L_M_scalar_ = A_L_M_scalar.reshape(-1)
+    cdef double complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
+    cdef double complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
     cdef double complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
-    cdef double complex [::1] n_L_phi_scalar_ = n_L_phi_scalar.reshape(-1)
+    cdef double complex [::1] n_L_phi_scalar1_ = n_L_phi_scalar1.reshape(-1)
+    cdef double complex [::1] n_L_phi_scalar2_ = n_L_phi_scalar2.reshape(-1)
     cdef double complex [::1] n_L_phi_tensor_ = n_L_phi_tensor.reshape(-1)
-    cdef double [::1] f_i_phi_scalar_ = f_i_phi_scalar.reshape(-1)
+    cdef double [::1] f_i_phi_scalar1_ = f_i_phi_scalar1.reshape(-1)
+    cdef double [::1] f_i_phi_scalar2_ = f_i_phi_scalar2.reshape(-1)
     cdef double [::1] f_i_phi_tensor_ = f_i_phi_tensor.reshape(-1)
-    cdef double [::1] kappa_i_L_scalar_ = kappa_i_L_scalar.reshape(-1)
+    cdef double [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef double [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
     cdef double [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
 
-    cdef double [::1] L_list_ = L_list.reshape(-1)
-    cdef double [::1] deltaL_list_ = deltaL_list.reshape(-1)
+    cdef long long [::1] L_list_ = L_list.reshape(-1)
 
-    cdef t_cubic = cestimator_core.t_cubic_sp_sst(&ct_weights_[0], &rule_[0], &weights_[0],
-		  &a_ell_m_[0], &y_M_L_[0],
-		  ndeltaL, m_dim, nphi,
-		  &L_list_[0], &deltaL_list_[0], n,
-		  &w3j_product_scalar_[0], &w3j_product_tensor_[0],
-		  &prefactors_scalar_[0], &prefactors_tensor_[0],
-		  &A_L_M_scalar_[0], &A_L_M_tensor_[0],
+    cdef t_cubic = cestimator_core.t_cubic_dp_sst(&ct_weights_[0], &rule_[0], &weights_[0],
+          &a_ell_m_[0], &y_M_L_[0], ntheta, nrule,
+          nL, npol, m_dim, nufact, nphi,
+          &L_list_[0],
+          n_scalar1, n_scalar2, n_tensor,
+          &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
+          &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
+          &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
 		  Lmax, nell,
-		  &n_L_phi_scalar_[0], &n_L_phi_tensor_[0],
-		  &f_i_phi_scalar_[0], &f_i_phi_tensor_[0], 
-		  &kappa_i_L_scalar_[0], &kappa_i_L_tensor_[0])
+          &n_L_phi_scalar1_[0], &n_L_phi_scalar2_[0], &n_L_phi_tensor_[0],
+          &f_i_phi_scalar1_[0], &f_i_phi_scalar2_[0], &f_i_phi_tensor_[0], 
+          &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0])
     return t_cubic
     
 
@@ -431,4 +505,125 @@ def _compute_ylm_dp(thetas, y_m_ell, ntheta, lmax):
     cdef double [::1] y_m_ell_ = y_m_ell.reshape(-1)
 
     cestimator_core.compute_ylm_dp(&thetas_[0], &y_m_ell_[0], ntheta, lmax)
+
+
+def compute_A_LM(L_list, deltaL_list, n, a_ell_m, y_M_L, w3j_product,
+                 prefactors, Lmax, out=None):
+    '''
+    Compute A_{LM} for all polarizations and deltaL values.
+
+    Arguments
+    ---------
+    L_list : (nL) array
+        List of L values.
+    deltaL_list : (ndeltaL) array
+        Offsets such that ell = L + deltaL.
+    n : int
+        Magnetic quantum number coupling to S.
+    a_ell_m : (npol, nell, nell) complex array
+        Input alm values in ell-major order.
+    y_M_L : (m_dim, nell) real array
+        Precomputed Y_{M,L} values stored with M offset by Lmax.
+    w3j_product : (ndeltaL, nL, m_dim) real array
+        Precomputed Wigner product factors.
+    prefactors : (npol, ndeltaL, nL) complex array
+        Prefactors for each (pol, deltaL, L).
+    Lmax : int
+        Maximum L used to map M -> M + Lmax index.
+    out : (npol, ndeltaL, nL, m_dim) complex array, optional
+        Output buffer. If omitted, a new array is allocated.
+
+    Returns
+    -------
+    out : (npol, ndeltaL, nL, m_dim) complex array
+        Computed A_{LM} values.
+    '''
+
+    L_list = np.ascontiguousarray(L_list, dtype=np.int64)
+    deltaL_list = np.ascontiguousarray(deltaL_list, dtype=np.int64)
+    nL = L_list.size
+    ndeltaL = deltaL_list.size
+    m_dim = y_M_L.shape[-1]
+    npol = 3
+    nell = a_ell_m.shape[1]
+
+    if y_M_L.shape != (ntheta, nL, nL):
+        raise ValueError(
+    f'y_M_L.shape = {y_M_L.shape}, expected {(ntheta, nL, nL)}')
+
+    if w3j_product.shape != (ndeltaL, nL, m_dim):
+        raise ValueError(
+            f'w3j_product.shape = {w3j_product.shape}, expected {(ndeltaL, nL, m_dim)}')
+
+    if prefactors.shape != (ndeltaL, nL):
+        raise ValueError(
+            f'prefactors.shape = {prefactors.shape}, expected {(ndeltaL, nL)}')
+
+    if out is None:
+        out = np.zeros((npol, ndeltaL, nL, m_dim), dtype=a_ell_m.dtype)
+    else:
+        if out.shape != (npol, ndeltaL, nL, m_dim):
+            raise ValueError(f'out.shape = {out.shape}, expected {(npol, ndeltaL, nL, m_dim)}')
+
+    if a_ell_m.dtype == np.complex64:
+        y_M_L = np.ascontiguousarray(y_M_L, dtype=np.float32)
+        w3j_product = np.ascontiguousarray(w3j_product, dtype=np.float32)
+        prefactors = np.ascontiguousarray(prefactors, dtype=np.complex64)
+        if out.dtype != np.complex64:
+            raise ValueError(f'out.dtype = {out.dtype}, expected np.complex64')
+        _compute_A_LM_sp(L_list, deltaL_list, n, a_ell_m, y_M_L,
+                         w3j_product, prefactors, out,
+                         nL, ndeltaL, npol, Lmax, nell, m_dim)
+    else:
+        a_ell_m.dtype == np.complex128:
+        y_M_L = np.ascontiguousarray(y_M_L, dtype=np.float64)
+        w3j_product = np.ascontiguousarray(w3j_product, dtype=np.float64)
+        prefactors = np.ascontiguousarray(prefactors, dtype=np.complex128)
+        if out.dtype != np.complex128:
+            raise ValueError(f'out.dtype = {out.dtype}, expected np.complex128')
+        _compute_A_LM_dp(L_list, deltaL_list, n, a_ell_m, y_M_L,
+                         w3j_product, prefactors, out,
+                         nL, ndeltaL, npol, Lmax, nell, m_dim)
+
+    return out
+
+
+def _compute_A_LM_sp(L_list, deltaL_list, n, a_ell_m, y_M_L,
+                     w3j_product, prefactors, out,
+                     nL, ndeltaL, npol, Lmax, nell, m_dim):
+    '''Single precision version.'''
+
+    cdef long long [::1] L_list_ = L_list.reshape(-1)
+    cdef long long [::1] deltaL_list_ = deltaL_list.reshape(-1)
+    cdef float complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
+    cdef float [::1] y_M_L_ = y_M_L.reshape(-1)
+    cdef float [::1] w3j_product_ = w3j_product.reshape(-1)
+    cdef float complex [::1] prefactors_ = prefactors.reshape(-1)
+    cdef float complex [::1] out_ = out.reshape(-1)
+
+    cestimator_core.compute_A_LM_sp(&L_list_[0], &deltaL_list_[0],
+                                    nL, ndeltaL, npol, n,
+                                    &a_ell_m_[0], &y_M_L_[0], &w3j_product_[0],
+                                    &prefactors_[0], &out_[0],
+                                    Lmax, nell, m_dim)
+
+
+def _compute_A_LM_dp(L_list, deltaL_list, n, a_ell_m, y_M_L,
+                     w3j_product, prefactors, out,
+                     nL, ndeltaL, npol, Lmax, nell, m_dim):
+    '''Double precision version.'''
+
+    cdef long long [::1] L_list_ = L_list.reshape(-1)
+    cdef long long [::1] deltaL_list_ = deltaL_list.reshape(-1)
+    cdef double complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
+    cdef double [::1] y_M_L_ = y_M_L.reshape(-1)
+    cdef double [::1] w3j_product_ = w3j_product.reshape(-1)
+    cdef double complex [::1] prefactors_ = prefactors.reshape(-1)
+    cdef double complex [::1] out_ = out.reshape(-1)
+
+    cestimator_core.compute_A_LM_dp(&L_list_[0], &deltaL_list_[0],
+                                    nL, ndeltaL, npol, n,
+                                    &a_ell_m_[0], &y_M_L_[0], &w3j_product_[0],
+                                    &prefactors_[0], &out_[0],
+                                    Lmax, nell, m_dim)
 
