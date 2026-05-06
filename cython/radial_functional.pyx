@@ -113,7 +113,7 @@ def check_and_return_shape(arr, exp_shape):
 
 def radial_func_dL(f_k, tr_ell_k, k, radii, ells):
     '''
-    Compute f_ell^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_ell(k r),
+    Compute f_ell^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_L(k r),
     where f(k) is an arbitrary function of wavenumber k.
 
     Parameters
@@ -129,7 +129,7 @@ def radial_func_dL(f_k, tr_ell_k, k, radii, ells):
     
     Returns
     -------
-    f_ell_r : (nr, nell, npol, ncomp, delta_L_list) array
+     f_ell_r : (nr, nell, npol, ncomp, delta_L_list) array
         Evaluated integral for all radii, multipoles, polarizations 
         and input function components.
 
@@ -145,7 +145,7 @@ def radial_func_dL(f_k, tr_ell_k, k, radii, ells):
     tr_ell_k = np.asarray_chkfinite(tr_ell_k, dtype=float, order='C')
     k = np.asarray_chkfinite(k, dtype=float, order='C')
     radii = np.asarray_chkfinite(radii, dtype=float, order='C')
-    ells = np.asarray_chkfinite(ells, dtype=np.int32, order='C')
+    ells = np.asarray_chkfinite(ells, dtype=np.int32, order='C')   
     delta_L_list = np.asarray_chkfinite([-2, -1, 0, 1, 2], dtype=np.int32, order='C')
 
     # Check for input shapes.
@@ -198,3 +198,182 @@ def radial_func_dL(f_k, tr_ell_k, k, radii, ells):
                                          npol,
                                          ncomp)
     return f_ell_r
+
+
+def radial_func_dL_scalar(f_k, tr_L_k, k, radii, Ls):
+    '''
+    Compute kappa_L_^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_L(k r),
+    where f(k) is an arbitrary function of wavenumber k. For scalar modes.
+
+    Parameters
+    ---------
+    f_k : (nk, ncomp) array
+        Input functions.
+    tr_L_k : (nL, nk, npol) array
+        Transfer functions.
+    k : (nk) array
+        Wavenumbers in 1/Mpc.
+    radii : (nr) array
+        Multipoles
+    
+    Returns
+    -------
+    kappa_L_r : (ndeltaL, nr, nL, npol, ncomp) array
+        Evaluated integral for all radii, multipoles, polarizations
+        and input function components.
+
+    Raises
+    ------
+    ValueError
+        If input array shapes are incorrect.
+        If the input arrays contain nans or infs.
+    '''
+
+    # Check input for nans and infs.
+    f_k = np.asarray_chkfinite(f_k, dtype=float, order='C')
+    tr_L_k = np.asarray_chkfinite(tr_L_k, dtype=float, order='C')
+    k = np.asarray_chkfinite(k, dtype=float, order='C')
+    radii = np.asarray_chkfinite(radii, dtype=float, order='C')
+    Ls = np.asarray_chkfinite(Ls, dtype=np.int32, order='C')   
+    delta_L_list = np.asarray_chkfinite([-1, 1], dtype=np.int32, order='C')
+
+    # Check for input shapes.
+    nk, = check_and_return_shape(k, (None,))
+    nr, = check_and_return_shape(radii, (None,))
+    nL, = check_and_return_shape(Ls, (None,))
+    nk, ncomp = check_and_return_shape(f_k, (nk, None))
+    nL, nk, npol = check_and_return_shape(tr_L_k, (nL, nk, None))
+    ndeltaL, = check_and_return_shape(delta_L_list, (None,))
+
+    # Create output array.
+    f_L_r = np.empty((ndeltaL, nr, nL, npol, ncomp), dtype=float)
+
+    cdef double [::1] f_k_ = f_k.reshape(-1)
+    cdef double [::1] tr_L_k_ = tr_L_k.reshape(-1)
+    cdef double [::1] k_ = k.reshape(-1)
+    cdef double [::1] radii_ = radii.reshape(-1)
+    cdef double [::1] f_L_r_ = f_L_r.reshape(-1)
+    cdef int [::1] Ls_= Ls
+
+    # Define local variables
+    cdef Py_ssize_t i, index        # loop indices (Py_ssize_t = signed size type)
+    cdef int ell, delta_L             # temporary variables for ell and its shifted version
+    
+    # Preallocate a temporary buffer to hold valid shifted ell values   
+    cdef np.ndarray[np.int32_t, ndim=1, mode='c'] ell_arr = np.empty(nL, dtype=np.int32)
+    cdef int[::1] ell_buf = ell_arr    # contiguous int memoryview (to pass to the C function)
+
+    # Loop over each delta_L value
+    for index in range(ndeltaL):
+        delta_L = delta_L_list[index]
+
+        # build ell list (ell = L+delta_L), excluding negative results
+        for i in range(nL):
+            ell = Ls_[i] + delta_L
+            if ell >= 0:
+                ell_buf[i] = ell
+            else:
+                ell_buf[i] = 0      
+                
+        radial_func = compute_radial_func(&f_k_[0],
+                                         &tr_L_k_[0],
+                                         &k_[0],
+                                         &radii_[0],
+                                         &f_L_r_[index * (nr * nL * npol * ncomp)],
+                                         &ell_buf[0],
+                                         nk,
+                                         nL,
+                                         nr,
+                                         npol,
+                                         ncomp)
+    return f_L_r
+
+
+
+def radial_func_dL_tensor(f_k, tr_L_k, k, radii, Ls):
+    '''
+    Compute kappa_L_^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_L(k r),
+    where f(k) is an arbitrary function of wavenumber k. For tensor modes.
+
+    Parameters
+    ---------
+    f_k : (nk, ncomp) array
+        Input functions.
+    tr_L_k : (nL, nk, npol) array
+        Transfer functions.
+    k : (nk) array
+        Wavenumbers in 1/Mpc.
+    radii : (nr) array
+        Multipoles
+    
+    Returns
+    -------
+    kappa_L_r : (ndeltaL, nr, nL, npol, ncomp) array
+        Evaluated integral for all radii, multipoles, polarizations
+        and input function components.
+
+    Raises
+    ------
+    ValueError
+        If input array shapes are incorrect.
+        If the input arrays contain nans or infs.
+    '''
+
+    # Check input for nans and infs.
+    f_k = np.asarray_chkfinite(f_k, dtype=float, order='C')
+    tr_L_k = np.asarray_chkfinite(tr_L_k, dtype=float, order='C')
+    k = np.asarray_chkfinite(k, dtype=float, order='C')
+    radii = np.asarray_chkfinite(radii, dtype=float, order='C')
+    Ls = np.asarray_chkfinite(Ls, dtype=np.int32, order='C')   
+    delta_L_list = np.asarray_chkfinite([-2, -1, 0, 1, 2], dtype=np.int32, order='C')
+
+    # Check for input shapes.
+    nk, = check_and_return_shape(k, (None,))
+    nr, = check_and_return_shape(radii, (None,))
+    nL, = check_and_return_shape(Ls, (None,))
+    nk, ncomp = check_and_return_shape(f_k, (nk, None))
+    nL, nk, npol = check_and_return_shape(tr_L_k, (nL, nk, None))
+    ndeltaL, = check_and_return_shape(delta_L_list, (None,))
+
+    # Create output array.
+    f_L_r = np.empty((ndeltaL, nr, nL, npol, ncomp), dtype=float)
+
+    cdef double [::1] f_k_ = f_k.reshape(-1)
+    cdef double [::1] tr_L_k_ = tr_L_k.reshape(-1)
+    cdef double [::1] k_ = k.reshape(-1)
+    cdef double [::1] radii_ = radii.reshape(-1)
+    cdef double [::1] f_L_r_ = f_L_r.reshape(-1)
+    cdef int [::1] Ls_= Ls
+
+    # Define local variables
+    cdef Py_ssize_t i, index        # loop indices (Py_ssize_t = signed size type)
+    cdef int ell, delta_L             # temporary variables for ell and its shifted version
+    
+    # Preallocate a temporary buffer to hold valid shifted ell values   
+    cdef np.ndarray[np.int32_t, ndim=1, mode='c'] ell_arr = np.empty(nL, dtype=np.int32)
+    cdef int[::1] ell_buf = ell_arr    # contiguous int memoryview (to pass to the C function)
+
+    # Loop over each delta_L value
+    for index in range(ndeltaL):
+        delta_L = delta_L_list[index]
+
+        # build ell list (ell = L+delta_L), excluding negative results
+        for i in range(nL):
+            ell = Ls_[i] + delta_L
+            if ell >= 0:
+                ell_buf[i] = ell
+            else:
+                ell_buf[i] = 0      
+                
+        radial_func = compute_radial_func(&f_k_[0],
+                                         &tr_L_k_[0],
+                                         &k_[0],
+                                         &radii_[0],
+                                         &f_L_r_[index * (nr * nL * npol * ncomp)],
+                                         &ell_buf[0],
+                                         nk,
+                                         nL,
+                                         nr,
+                                         npol,
+                                         ncomp)
+    return f_L_r

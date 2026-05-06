@@ -50,8 +50,8 @@ def wigner_J(S, L_list, deltaL_list, Jindex, dtype=np.float32):
             # --- selection rules ---
             if abs(Jindex[1]) > L:
                 continue
-                if abs(Jindex[2]) > ell:
-                    continue
+            if abs(Jindex[2]) > ell:
+                continue
 
             l1_min_J, vals_J = wigner3j_int(L, ell, Jindex[1], Jindex[2])
             iS = S - l1_min_J
@@ -198,6 +198,9 @@ def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
 
     L_list = np.asarray(L_list, dtype=int)
     deltaL_list = np.asarray(deltaL_list, dtype=int)
+
+    # Normalize polarization input to a list
+    x_list = list(x)
 
     Lmax = np.max(L_list)
     out = np.zeros((len(x_list), len(deltaL_list), len(L_list), 2*Lmax + 1), dtype=cdtype)

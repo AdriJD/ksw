@@ -53,13 +53,13 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 		  const float *y_M_L, int ntheta, int nrule,
 		  int nL, int npol, int m_dim, 
 		  int nufact, int nphi,
-		  const long long *L_list,
+		  const int *L_list,
 		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
 		  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
 		  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 		  int Lmax, int nell,
-		  float complex *n_L_phi_scalar1, float complex *n_L_phi_scalar2, float complex *n_L_phi_tensor,
+		  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
 		  float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor, 
 		  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2, const float *kappa_i_L_tensor);
 
@@ -68,13 +68,13 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 		  const double *y_M_L, int ntheta, int nrule,
 		  int nL, int npol, int m_dim, 
 		  int nufact, int nphi,
-		  const long long *L_list,
+		  const int *L_list,
 		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
 		  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
 		  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 		  int Lmax, int nell,
-		  double complex *n_L_phi_scalar1, double complex *n_L_phi_scalar2, double complex *n_L_phi_tensor,
+		  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
 		  double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor, 
 		  const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2, const double *kappa_i_L_tensor);
 
@@ -146,14 +146,14 @@ void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax)
  * m_dim       : Number of available M samples (>= 2*Lmax+1).
  */
 
-void compute_A_LM_sp(const long long *L_list, const long long *deltaL_list,
+void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 	           int nL, int ndeltaL, int npol, int n,
 		       const float complex *a_ell_m,
 		       const float *y_M_L, const float *w3j_product,
 		       const float complex *prefactors, float complex *out,
 		       int Lmax, int nell, int m_dim);
 
-void compute_A_LM_dp(const long long *L_list, const long long *deltaL_list,
+void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
 	           int nL, int ndeltaL, int npol, int n,
 		       const double complex *a_ell_m,
 		       const double *y_M_L, const double *w3j_product,

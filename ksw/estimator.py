@@ -8,7 +8,7 @@ from ducc0.misc import wigner3j_int
 
 from ksw import utils, legendre, estimator_core, fisher_core
 import ksw.radial_functional as rf
-import Afunctionals as AF
+from ksw import Afunctionals as AF
 
 
 
@@ -27,7 +27,7 @@ class KSW():
     lmax : int
         Max multipole used in estimator. Should match shape of alms.
     pol : str or array-like of strings.
-        Data polarization, e.g. "E", or ["T", "E"]. Should match shape of alms.
+        Data polarization, e.g. "B", or ["T", "E", "B"]. Should match shape of alms.
     precision : str, optional
         Use either "single" precision or "double" precision data types 
         for internal calculations.
@@ -97,8 +97,9 @@ class KSW():
         else:
             raise ValueError(f'{precision=} is not supported')
 
-        if len(red_bispectra) > 1:
-            raise NotImplementedError('no joint estimation for now.')
+
+       # if len(red_bispectra) > 1:
+        #    raise NotImplementedError('no joint estimation for now.')
 
         self.thetas, self.theta_weights, self.nphi = self.get_coords()
 
@@ -110,11 +111,11 @@ class KSW():
     def pol(self, pol):
         '''Check input and make sorted tuple.'''
         pol = list(np.atleast_1d(pol))
-        sort_order = {"T": 0, "E": 1}
+        sort_order = {"T": 0, "E": 1, "B": 2}
 
-        if pol.count('T') + pol.count('E') != len(pol):
-            raise ValueError(f'{pol=}, but may only contain T and/or E.')
-        elif pol.count('T') != 1 and pol.count('E') != 1:
+        if pol.count('T') + pol.count('E') + pol.count('B') != len(pol):
+            raise ValueError(f'{pol=}, but may only contain T, E, and/or B.')
+        elif len(set(pol)) != len(pol):
             raise ValueError(f'{pol=}, cannot contain duplicates.')
 
         pol.sort(key=lambda val: sort_order[val[0]])
@@ -174,19 +175,21 @@ class KSW():
 
         return thetas, ct_weights, nphi
 
-    def _init_reduced_bispectrum(self, red_bisp):
+    def _init_reduced_bispectrum(self, red_bisp, keep_deltaL=False):
         '''
         Prepare reduced bispectrum for estimation.
 
         Parameters
         ----------
         red_bisp : ksw.ReducedBispectrum instance
-            Assumed to have both T and E.
+            Assumed to have T, E, and/or B in that order.
         
         Returns
         -------
-        f_i_ell : (nufact, npol, nell) array
-            Unique factors of bispectrum.
+        f_i_ell : array
+            Unique factors of bispectrum. Shape is (nufact, npol, nell)
+            for standard templates and (nufact, npol, ndeltaL, nell)
+            when keep_deltaL=True and the template stores a deltaL axis.
         rule : (nfact, 3) array
             Rule to map unique factors to bispectrum.
         weights : (nfact, 3) array
@@ -202,9 +205,20 @@ class KSW():
             raise ValueError('lmax bispectrum ({}) < lmax ({})'.format(
                 red_bisp.lmax, self.lmax))
 
-        nufact = red_bisp.factors.shape[0]
-        f_i_ell = np.zeros((nufact, self.npol, self.lmax + 1),
-                           dtype=self.dtype)
+        factors = red_bisp.factors
+        nufact = factors.shape[0]
+        if factors.ndim == 3:
+            f_i_ell = np.zeros((nufact, self.npol, self.lmax + 1),
+                               dtype=self.dtype)
+        elif factors.ndim == 4 and keep_deltaL:
+            ndeltaL = factors.shape[2]
+            f_i_ell = np.zeros((nufact, self.npol, ndeltaL, self.lmax + 1),
+                               dtype=self.dtype)
+        elif factors.ndim == 4:
+            raise ValueError('4D factors require keep_deltaL=True.')
+        else:
+            raise ValueError('Unsupported factors ndim: {}'.format(
+                             factors.ndim))
 
         # Find index of lmax data in ells of red. bisp.
         try:
@@ -212,16 +226,20 @@ class KSW():
         except IndexError:
             end_ells_full = None
 
-        # Slice corresponding to data pol. Assume red. bisp. has T and E.
-        if self.npol == 1 and 'T' in self.pol:
-            pslice = slice(0, 1, None)
-        elif self.npol == 1 and 'E' in self.pol:
-            pslice = slice(1, 2, None)
-        else:
-            pslice = slice(0, 2, None)
+        # Slice corresponding to data pol. Assume red. bisp. channels are T, E, B.
+        pol_to_idx = {'T': 0, 'E': 1, 'B': 2}
+        pslice = [pol_to_idx[p] for p in self.pol]
+        if max(pslice) >= factors.shape[1]:
+            raise ValueError(
+                f'{self.pol=} requires at least {max(pslice) + 1} polarization channels, '
+                f'but reduced bispectrum only has shape {factors.shape[1]} along that axis.')
 
-        f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
-            red_bisp.factors[:,pslice,:end_ells_full]
+        if factors.ndim == 3:
+            f_i_ell[:,:,red_bisp.lmin:red_bisp.lmax+1] = \
+                factors[:,pslice,:end_ells_full]
+        else:
+            f_i_ell[:,:,:,red_bisp.lmin:red_bisp.lmax+1] = \
+                factors[:,pslice,:,:end_ells_full]
         f_i_ell = f_i_ell.astype(self.dtype, copy=False)
         
         rule = red_bisp.rule
@@ -653,15 +671,23 @@ class KSW():
         Afunc_product = 0 # The product of A functionals that goes into the cubic term.
 
         if fisher is None:
-            fisher = self.compute_fisher()
+            fisher = 1
         if lin_term is None:
-            lin_term = self.compute_linear_term(alm)
+            lin_term = 0
 
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
 
-        red_bisp = self.red_bispectra[0]
-        f_i_ell, rule, weights = self._init_reduced_bispectrum(red_bisp)
+        
+        red_bisp_scalar = self.red_bispectra[0]
+        kappa_i_L_scalar1, rule, weights = self._init_reduced_bispectrum(
+            red_bisp_scalar, keep_deltaL=True)
+        kappa_i_L_scalar2 = kappa_i_L_scalar1.copy()
+
+        red_bisp_tensor = self.red_bispectra[-1]
+        kappa_i_L_tensor, _, _ = self._init_reduced_bispectrum(
+            red_bisp_tensor, keep_deltaL=True)
+        
 
         # (nscalar1, nscalar2, ntensor): {(1, 1, -2); (1, 0, -1); (0, 1, -1);
         #                                 (1, -1, 0); (0, 0, 0)}. The other 4 combinations are not included yet.
@@ -671,7 +697,7 @@ class KSW():
         nL = L_list.size
         nell = self.lmax + 1
         m_dim = self.nphi
-        nufact = f_i_ell.shape[0]
+        nufact = kappa_i_L_scalar1.shape[0]
         ndeltaL_scalar = 2
         ndeltaL_tensor = 5
 
@@ -688,8 +714,7 @@ class KSW():
             prefactors_scalar2 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
             prefactors_tensor = AF.prefactor_product(deltaL_list_tensor, L_list, self.pol, "h", cdtype=self.cdtype)
 
-            n_L_phi_scalar1 = np.zeros((self.npol, ndeltaL_scalar, nL, self.nphi), dtype=self.cdtype)
-            n_L_phi_scalar2 = np.zeros((self.npol, ndeltaL_scalar, nL, self.nphi), dtype=self.cdtype)
+            n_L_phi_scalar = np.zeros((self.npol, ndeltaL_scalar, nL, self.nphi), dtype=self.cdtype)
             n_L_phi_tensor = np.zeros((self.npol, ndeltaL_tensor, nL, self.nphi), dtype=self.cdtype)
 
             f_i_phi_scalar1 = np.zeros((nufact, self.nphi), dtype=self.cdtype)
@@ -699,12 +724,6 @@ class KSW():
             #kappa_i_L_scalar1 = rf.radial_func_dL()
             #kappa_i_L_scalar2 = np.zeros(())
             #kappa_i_L_tensor = np.zeros(())
-
-            # create some arrays with the assumed shapes for kappa functional. 
-            # need to pass the exact arrays later.
-            kappa_i_L_scalar1 = np.zeros((nufact, self.npol, ndeltaL_scalar, nL), dtype=self.cdtype)
-            kappa_i_L_scalar2 = np.zeros((nufact, self.npol, ndeltaL_scalar, nL), dtype=self.cdtype)
-            kappa_i_L_tensor = np.zeros((nufact, self.npol, ndeltaL_tensor, nL), dtype=self.cdtype)
 
             for tidx_start in range(0, len(self.thetas), theta_batch):
                 thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
@@ -724,7 +743,7 @@ class KSW():
                                                                     prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
                                                                     A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
                                                                     self.lmax, nell,
-                                                                    n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_tensor,
+                                                                    n_L_phi_scalar, n_L_phi_tensor,
                                                                     f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
                                                                     kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
             l1_min, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)# l1_min=1, vals is all w3j values in the order of increasing l1

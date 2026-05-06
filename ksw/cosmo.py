@@ -92,6 +92,10 @@ class Cosmology:
         self.transfer = {}
         self.c_ell = {}
         self.red_bispectra = []
+        self.prim_bispec_dLs = {
+            'scalar_dL': np.asarray([-1, 1], dtype=int),
+            'tensor_dL': np.asarray([-2, -1, 0, 1, 2], dtype=int),
+        }
 
     def _setattr_camb(self, name, value, subclass=None, verbose=True):
         '''
@@ -197,16 +201,16 @@ class Cosmology:
 
         # Transfer function is now of shape (NumSources, nell, nk),
         # where NumSources = 3 (T, E, lensing potential).
-        # We want the shape to be (nell, nk, npol=2).
+        # We want the shape to be (nell, nk, npol=3) and keep B zero for scalar modes.
         nk = tr.q.size
         nell = ells.size
-        npol = 2
-        tr_ell_k = np.empty((nell, nk, npol), dtype=float)
+        npol = 3
+        tr_ell_k = np.zeros((nell, nk, npol), dtype=float)
 
         tr_view = tr.delta_p_l_k[:2,...]
         tr_view = np.swapaxes(tr_view, 0, 2) # (nk, nell, npol).
         tr_view = np.swapaxes(tr_view, 0, 1) # (nell, nk, npol).
-        tr_ell_k[:] = np.ascontiguousarray(tr_view)
+        tr_ell_k[:,:,:2] = np.ascontiguousarray(tr_view)
 
         self.transfer['tr_ell_k'] = tr_ell_k
         self.transfer['k'] = tr.q
@@ -451,6 +455,120 @@ class Cosmology:
 
         return factors, rule, weights
 
+    def add_prim_reduced_bispectrum_scalar_dL(self, prim_shape, radii,
+                                              name=None):
+        '''
+        Compute reduced bispectrum factors using scalar dL radial kernels.
+
+        Notes
+        -----
+        Uses rf.radial_func_dL_scalar with deltaL = [-1, +1].
+        The flattened factor index is ordered as (component, deltaL, radius).
+        '''
+
+        tr_ell_k = self.transfer['tr_ell_k']
+        k = self.transfer['k']
+        ells_sparse = self.transfer['ells']
+
+        f_k = prim_shape.get_f_k(k)
+        amps = np.asarray(prim_shape.amps)
+        amps *= 2 * (2 * np.pi ** 2 * self.camb_params.InitPower.As) ** 2 * (3 / 5)
+
+        red_bisp = rf.radial_func_dL_scalar(f_k, tr_ell_k, k, radii, ells_sparse)
+        factors, rule, weights = self._parse_prim_reduced_bispec_tensor(
+            red_bisp, radii, prim_shape.rule, amps)
+
+        if name is None:
+            name = prim_shape.name + '_scalar_dL'
+
+        self.red_bispectra.append(
+            ReducedBispectrum(factors, rule, weights, ells_sparse, name))
+
+    def add_prim_reduced_bispectrum_tensor_dL(self, prim_shape, radii,
+                                              name=None):
+        '''
+        Compute reduced bispectrum factors using tensor dL radial kernels.
+
+        Notes
+        -----
+        Uses rf.radial_func_dL_tensor with deltaL = [-2, -1, 0, +1, +2].
+        The flattened factor index is ordered as (component, deltaL, radius).
+        '''
+
+        tr_ell_k = self.transfer['tr_ell_k_tensor']
+        k = self.transfer['k_tensor']
+        ells_sparse = self.transfer['ells_tensor']
+
+        f_k = prim_shape.get_f_k(k)
+        amps = np.asarray(prim_shape.amps)
+        As = self.camb_params.InitPower.As
+        r = self.camb_params.InitPower.r
+        amps *= 2 * (2 * np.pi ** 2 * As) ** 2 * r 
+
+        red_bisp = rf.radial_func_dL_tensor(f_k, tr_ell_k, k, radii, ells_sparse)
+        factors, rule, weights = self._parse_prim_reduced_bispec_tensor(
+            red_bisp, radii, prim_shape.rule, amps)
+
+        if name is None:
+            name = prim_shape.name + '_tensor_dL'
+
+        self.red_bispectra.append(
+            ReducedBispectrum(factors, rule, weights, ells_sparse, name))
+
+    def _parse_prim_reduced_bispec_tensor(self, red_bisp, radii,
+                                          prim_rule, amps):
+        '''
+        Rearrange factors of reduced bispectrum for primordial
+        models (scalar_dL/tensor_dL) into the form required by
+        the ReducedBispectrum class.
+
+        Parameters
+        ----------
+        red_bisp : (ndeltaL, nr, nL, npol, ncomp) array
+            Factors from rf.radial_func_dL_scalar or rf.radial_func_dL_tensor.
+        radii : (nr) array-like
+            Radii in Mpc.
+        prim_rule : (nprim) sequence of array-like
+            Rule to combine factors into primordial shape, see ksw.Shape.
+        amps : (nprim) array-like
+            Amplitude for each element in rule.
+
+        Returns
+        -------
+        factors : (ncomp * nr, npol, ndeltaL, nL) array
+            Rearranged factors of reduced bispectrum.
+        rule : (nfact, 3) int array
+            Rule indices into first axis of factors.
+        weights : (nfact, 3) float array
+            (nprim * nr) weights for each rule row.
+        '''
+
+        ndeltaL, nr, nL, npol, ncomp = red_bisp.shape
+        nfact = nr * len(prim_rule)
+
+        factors = np.ascontiguousarray(np.transpose(red_bisp, (4, 1, 3, 0, 2)))
+        factors = factors.reshape((ncomp * nr, npol, ndeltaL, nL), order='C')
+
+        weights = np.ones((nfact, 3))
+        rule = np.ones((nfact, 3), dtype=int)
+
+        dr = utils.get_trapz_weights(radii) * radii ** 2
+        ridxs = np.arange(nr)
+        start = 0
+        for amp, ru in zip(amps, prim_rule):
+
+            nperm = self.num_permutations(ru)
+            amp_per_r = (amp * dr * nperm)
+
+            signs = np.sign(amp_per_r)
+            amp_per_r = signs * np.abs(amp_per_r) ** (1 / 3)
+
+            weights[start:start+nr] = amp_per_r[:,np.newaxis]
+            rule[start:start+nr, :] = ridxs[:,np.newaxis] + (np.asarray(ru) * nr)
+            start += nr
+
+        return factors, rule, weights
+
     def add_ttt_lensing_bispectrum(self):
         '''
         Compute the factors of the reduced bispectrum due to the correlation
@@ -471,8 +589,8 @@ class Cosmology:
         c_ell_tt = self.c_ell['lensed_scalar']['c_ell'][:,0]
         c_ell_tphi = self.c_ell['lenspotential']['c_ell'][:,1]
 
-        factors = np.zeros((6, 2, ells.size))
-        # We include the E part of the factors, but it is always zero.
+        factors = np.zeros((6, 3, ells.size))
+        # We include the E and B parts of the factors, but B is always zero here.
         factors[0,0,:] = np.ones(ells.size)
         factors[1,0,:] = c_ell_tphi * ells * (ells + 1)
         factors[2,0,:] = c_ell_tt
@@ -688,8 +806,8 @@ class Cosmology:
 
         Returns
         -------
-        factors : (20, 2, nell) array
-            20 unique factors, for T and E.
+        factors : (20, 3, nell) array
+            20 unique factors, for T, E, and B. The B channel is zero-padded.
         rule : (20, 3) int array
             Reduced bispectrum rule.
         weights : (20, 3) array
@@ -709,9 +827,9 @@ class Cosmology:
         c_ell_tphi = c_ell_yphi[0]
         c_ell_ephi = c_ell_yphi[1]        
         
-        factors = np.zeros((20, 2, ells.size))
+        factors = np.zeros((20, 3, ells.size))
         # Start with the X1 = T case.
-        # For the factors that do not contain C_ells the E index is always zero.
+        # For the factors that do not contain C_ells the E and B indices are always zero.
         factors[0,0,:] = np.ones(ells.size)
         
         factors[1,0,:] = c_ell_tphi * ells * (ells + 1)
@@ -729,7 +847,7 @@ class Cosmology:
         factors[5,1,:] = c_ell_ephi
 
         # Now the additional factors needed for the X1 = E case.
-        # Here, factors without C_ells have zero for the T index.
+        # Here, factors without C_ells have zero for the T and B indices.
         factors[6,1,:] = ells ** 2 * (ells + 1) ** 2 * denom_fact
 
         factors[7,0,:] = c_ell_te * denom_fact
@@ -1108,13 +1226,21 @@ class ReducedBispectrum:
     def factors(self, factors):
         '''Check shape. Interpolate if needed.'''
 
-        if self.ells_sparse.size != factors.shape[2]:
+        if factors.ndim == 3:
+            ell_axis = 2
+        elif factors.ndim == 4:
+            ell_axis = 3
+        else:
+            raise ValueError('factors ndim is {}, expected 3 or 4.'.format(
+                             factors.ndim))
+
+        if self.ells_sparse.size != factors.shape[ell_axis]:
             raise ValueError('Shape of factors {}, does not '
             'match with shape ells {}.'.format(factors.shape,
                                         self.ells_sparse.size))
 
         if self.ells_full.size != self.ells_sparse.size:
-            factors = self._interp_factors(factors)
+            factors = self._interp_factors(factors, axis=ell_axis)
         else:
             factors = factors.copy()
 
@@ -1190,23 +1316,23 @@ class ReducedBispectrum:
     def lmin(self):
         return self.ells_full[0]    
         
-    def _interp_factors(self, factors):
+    def _interp_factors(self, factors, axis=2):
         '''
         Return factors of reduced bispectrum interpolated
         over all multipoles.
 
         Parameters
         ----------
-        factors : (n, npol, nell_sparse) array
+        factors : array
             Factors of reduced bispectrum to be interpolated.
 
         Returns
         -------
-        factors_full : (n, npol, nell) array
+        factors_full : array
             Input interpolated over multipole.
         '''
 
-        cs = CubicSpline(self.ells_sparse, factors, axis=2)
+        cs = CubicSpline(self.ells_sparse, factors, axis=axis)
         return cs(self.ells_full)
 
     def write(self, filename):
