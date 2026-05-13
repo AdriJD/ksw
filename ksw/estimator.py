@@ -682,13 +682,15 @@ class KSW():
         red_bisp_scalar = self.red_bispectra[0]
         kappa_i_L_scalar1, rule, weights = self._init_reduced_bispectrum(
             red_bisp_scalar, keep_deltaL=True)
+        print(kappa_i_L_scalar1.shape)
         kappa_i_L_scalar2 = kappa_i_L_scalar1.copy()
+        print(kappa_i_L_scalar1[0, 0, 0, 0])
 
         red_bisp_tensor = self.red_bispectra[-1]
         kappa_i_L_tensor, _, _ = self._init_reduced_bispectrum(
             red_bisp_tensor, keep_deltaL=True)
+        #print(kappa_i_L_tensor.shape)
         
-
         # (nscalar1, nscalar2, ntensor): {(1, 1, -2); (1, 0, -1); (0, 1, -1);
         #                                 (1, -1, 0); (0, 0, 0)}. The other 4 combinations are not included yet.
 
@@ -716,10 +718,6 @@ class KSW():
 
             n_L_phi_scalar = np.zeros((self.npol, ndeltaL_scalar, nL, self.nphi), dtype=self.cdtype)
             n_L_phi_tensor = np.zeros((self.npol, ndeltaL_tensor, nL, self.nphi), dtype=self.cdtype)
-
-            f_i_phi_scalar1 = np.zeros((nufact, self.nphi), dtype=self.cdtype)
-            f_i_phi_scalar2 = np.zeros((nufact, self.nphi), dtype=self.cdtype)
-            f_i_phi_tensor = np.zeros((nufact, self.nphi), dtype=self.cdtype)
             
             #kappa_i_L_scalar1 = rf.radial_func_dL()
             #kappa_i_L_scalar2 = np.zeros(())
@@ -727,7 +725,7 @@ class KSW():
 
             for tidx_start in range(0, len(self.thetas), theta_batch):
                 thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
-                ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch]
+                ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
                 y_M_L = estimator_core.compute_ylm(thetas_batch, nL - 1, dtype=self.dtype)
 
                 A_L_M_scalar1 = estimator_core.compute_A_LM(L_list, deltaL_list_scalar, n_scalar1, a_ell_m, y_M_L, w3j_product_scalar1, prefactors_scalar1, Lmax)
@@ -744,7 +742,6 @@ class KSW():
                                                                     A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
                                                                     self.lmax, nell,
                                                                     n_L_phi_scalar, n_L_phi_tensor,
-                                                                    f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor,
                                                                     kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
             l1_min, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)# l1_min=1, vals is all w3j values in the order of increasing l1
             t_cubic += vals[0] * Afunc_product

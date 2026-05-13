@@ -57,8 +57,7 @@ cdef extern from "ksw_estimator.h":
 		 float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 		 int Lmax, int nell,
 		 float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
-		 float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor,
-		 const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2, const float *kappa_i_L_tensor)
+		 const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor)
 
 	double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const double *weights,
 		 const double complex *a_ell_m,
@@ -72,5 +71,4 @@ cdef extern from "ksw_estimator.h":
 		 double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 		 int Lmax, int nell,
 		 double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
-		 double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor,
-		 const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2, const double *kappa_i_L_tensor)
+		 const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor)

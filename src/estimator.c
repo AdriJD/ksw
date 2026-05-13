@@ -888,37 +888,37 @@ void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 		for (ptrdiff_t idL=0; idL<ndeltaL; idL++){
 			int deltaL = deltaL_list[idL];
 			for (ptrdiff_t iL=0; iL<nL; iL++){
-			int L = L_list[iL];
-			if (L < 0 || L >= nell){
-				continue;
-			}
-
-			int ell = L + deltaL;
-			if (ell < 0 || ell >= nell){
-				continue;
-			}
-
-			ptrdiff_t base = ((pidx * ndeltaL + idL) * nL + iL) * m_dim;
-			float complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
-
-			for (int M=-L; M<=L; M++){
-				int Moff = (int)(M + Lmax);
-				if (Moff < 0 || Moff >= m_dim){
+				int L = L_list[iL];
+				if (L < 0 || L >= nell){
 					continue;
 				}
 
-				int m = - M - n;
-				if (llabs(m) > ell || llabs(m) >= nell){
+				int ell = L + deltaL;
+				if (ell < 0 || ell >= nell){
 					continue;
 				}
 
-				float y_val = y_M_L[Moff * nL + L];
-				float w3j = w3j_product[(idL * nL + iL) * m_dim + Moff];
-				float complex alm_val = get_alm_entry_sp(alm_pol, nell, ell, m);
+				ptrdiff_t base = ((pidx * ndeltaL + idL) * nL + iL) * m_dim;
+				float complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
 
-				float complex contrib = pref * w3j * alm_val * (y_val);
-				out[base + Moff] += contrib;
-			}
+				for (int M=-L; M<=L; M++){
+					int Moff = (int)(M + Lmax);
+					if (Moff < 0 || Moff >= m_dim){
+						continue;
+					}
+
+					int m = - M - n;
+					if (llabs(m) > ell || llabs(m) >= nell){
+						continue;
+					}
+
+					float y_val = y_M_L[Moff * nL + L];
+					float w3j = w3j_product[(idL * nL + iL) * m_dim + Moff];
+					float complex alm_val = get_alm_entry_sp(alm_pol, nell, ell, m);
+
+					float complex contrib = pref * w3j * alm_val * (y_val);
+					out[base + Moff] += contrib;
+				}
 			}
 		}
     }
@@ -988,8 +988,8 @@ void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
 }
 
 float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights,
-			const float *f_i_phi_scalar1, const float *f_i_phi_scalar2,
-			const float *f_i_phi_tensor, int nrule, int nphi){
+			const float complex *f_i_phi_scalar1, const float complex *f_i_phi_scalar2,
+			const float complex *f_i_phi_tensor, int nrule, int nphi){
 
 	float t_cubic = 0.f;
 
@@ -1012,8 +1012,8 @@ float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights,
 }
 
 double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights,
-			const double *f_i_phi_scalar1, const double *f_i_phi_scalar2,
-			const double *f_i_phi_tensor, int nrule, int nphi){
+			const double complex *f_i_phi_scalar1, const double complex *f_i_phi_scalar2,
+			const double complex *f_i_phi_tensor, int nrule, int nphi){
 
 	double t_cubic = 0.f;
 
@@ -1047,9 +1047,9 @@ void backward_sp_mixed_sst(const int *L_list,
 			  int Lmax, int nell, int m_dim,
 			  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
 			  fftwf_plan plan_c2c_scalar, fftwf_plan plan_c2c_tensor,
-			  float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor, 
+			  float complex*f_i_phi_scalar1, float complex *f_i_phi_scalar2, float complex *f_i_phi_tensor, 
 			  int nufact, int nphi,
-			  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2,const float *kappa_i_L_tensor){
+			  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2,const float complex *kappa_i_L_tensor){
 
 	int nm = nphi;
 	int ndeltaL_scalar = 2; // deltaL = -1, 1 for scalar
@@ -1063,11 +1063,12 @@ void backward_sp_mixed_sst(const int *L_list,
 		      a_ell_m, y_M_L, w3j_product_scalar1,
 		      prefactors_scalar1, A_L_M_scalar1,
 		      Lmax, nell, nm);
-
+	
 	fftwf_execute_dft(plan_c2c_scalar, A_L_M_scalar1, n_L_phi_scalar);
 
 	const float complex alpha_sp = 1.0f + 0.0f * I;
 	const float complex beta_sp = 0.0f + 0.0f * I;
+
 
 	// Consume scalar1 immediately so scalar buffers can be safely reused.
 	cblas_cgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
@@ -1118,9 +1119,9 @@ void backward_dp_mixed_sst(const int *L_list,
 			  int Lmax, int nell, int m_dim,
 			  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
 			  fftw_plan plan_c2c_scalar, fftw_plan plan_c2c_tensor,
-			  double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor, 
+			  double complex *f_i_phi_scalar1, double complex *f_i_phi_scalar2, double complex *f_i_phi_tensor, 
 			  int nufact, int nphi,
-			  const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2,const double *kappa_i_L_tensor){
+			  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2,const double complex *kappa_i_L_tensor){
 
 	int nm = nphi;
 	int ndeltaL_scalar = 2; // deltaL = -1, 1 for scalar
@@ -1140,12 +1141,14 @@ void backward_dp_mixed_sst(const int *L_list,
 	const double complex alpha_dp = 1.0 + 0.0 * I;
 	const double complex beta_dp = 0.0 + 0.0 * I;
 
+
 	// Consume scalar1 immediately so scalar buffers can be safely reused.
 	cblas_zgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
 		nufact, nphi, npol * ndeltaL_scalar * nL,
 		&alpha_dp, kappa_i_L_scalar1, npol * ndeltaL_scalar * nL,
 		n_L_phi_scalar, nphi,
 		&beta_dp, f_i_phi_scalar1, nphi);
+		
 
 	compute_A_LM_dp(L_list, deltaL_list_scalar,
 		      nL, ndeltaL_scalar, npol, n_scalar2,
@@ -1191,8 +1194,7 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 		  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 		  int Lmax, int nell,
 		  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
-		  float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor, 
-		  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2, const float *kappa_i_L_tensor){
+		  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor){
 
 	int nm = nphi; 
 	float t_cubic = 0.f;
@@ -1239,14 +1241,14 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 
 	float complex *A_L_M_scalar1 = fftwf_malloc(sizeof *A_L_M_scalar1 * npol * ndeltaL_scalar * nL * nm);
 	float complex *n_L_phi_scalar = fftwf_malloc(sizeof *n_L_phi_scalar * npol * ndeltaL_scalar * nL * nphi);
-	float *f_i_phi_scalar1 = fftwf_malloc(sizeof *f_i_phi_scalar1 * nufact * nphi);
+	float complex *f_i_phi_scalar1 = fftwf_malloc(sizeof *f_i_phi_scalar1 * nufact * nphi);
 
 	float complex *A_L_M_scalar2 = fftwf_malloc(sizeof *A_L_M_scalar2 * npol * ndeltaL_scalar * nL * nm);
-	float *f_i_phi_scalar2 = fftwf_malloc(sizeof *f_i_phi_scalar2 * nufact * nphi);
+	float complex *f_i_phi_scalar2 = fftwf_malloc(sizeof *f_i_phi_scalar2 * nufact * nphi);
 
 	float complex *A_L_M_tensor = fftwf_malloc(sizeof *A_L_M_tensor * npol * ndeltaL_tensor * nL * nm);
 	float complex *n_L_phi_tensor = fftwf_malloc(sizeof *n_L_phi_tensor * npol * ndeltaL_tensor * nL * nphi);
-	float *f_i_phi_tensor = fftwf_malloc(sizeof *f_i_phi_tensor * nufact * nphi);
+	float complex *f_i_phi_tensor = fftwf_malloc(sizeof *f_i_phi_tensor * nufact * nphi);
 
 
 	if (A_L_M_scalar1 == NULL || n_L_phi_scalar == NULL || f_i_phi_scalar1 == NULL ||
@@ -1321,8 +1323,7 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 		  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 		  int Lmax, int nell,
 		  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
-		  double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor, 
-		  const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2, const double *kappa_i_L_tensor){
+		  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor){
 
 	int nm = nphi; 
 	double t_cubic = 0.;
@@ -1370,14 +1371,14 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 
 	double complex *A_L_M_scalar1 = fftw_malloc(sizeof *A_L_M_scalar1 * npol * ndeltaL_scalar * nL * nm);
 	double complex *n_L_phi_scalar = fftw_malloc(sizeof *n_L_phi_scalar * npol * ndeltaL_scalar * nL * nphi);
-	double *f_i_phi_scalar1 = fftw_malloc(sizeof *f_i_phi_scalar1 * nufact * nphi);
+	double complex *f_i_phi_scalar1 = fftw_malloc(sizeof *f_i_phi_scalar1 * nufact * nphi);
 
 	double complex *A_L_M_scalar2 = fftw_malloc(sizeof *A_L_M_scalar2 * npol * ndeltaL_scalar * nL * nm);
-	double *f_i_phi_scalar2 = fftw_malloc(sizeof *f_i_phi_scalar2 * nufact * nphi);
+	double complex*f_i_phi_scalar2 = fftw_malloc(sizeof *f_i_phi_scalar2 * nufact * nphi);
 
 	double complex *A_L_M_tensor = fftw_malloc(sizeof *A_L_M_tensor * npol * ndeltaL_tensor * nL * nm);
 	double complex *n_L_phi_tensor = fftw_malloc(sizeof *n_L_phi_tensor * npol * ndeltaL_tensor * nL * nphi);
-	double *f_i_phi_tensor = fftw_malloc(sizeof *f_i_phi_tensor * nufact * nphi);
+	double complex *f_i_phi_tensor = fftw_malloc(sizeof *f_i_phi_tensor * nufact * nphi);
 
 
 	if (A_L_M_scalar1 == NULL || n_L_phi_scalar == NULL || f_i_phi_scalar1 == NULL ||

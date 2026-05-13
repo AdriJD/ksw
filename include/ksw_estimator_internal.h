@@ -34,12 +34,12 @@ double t_cubic_on_ring_dp(const long long *rule, const double *weights, const do
 */
 
 float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights, 
-			const float *f_i_phi_scalar1, const float *f_i_phi_scalar2,
-			const float *f_i_phi_tensor, int nrule, int nphi);
+			const float complex *f_i_phi_scalar1, const float complex *f_i_phi_scalar2,
+			const float complex *f_i_phi_tensor, int nrule, int nphi);
 
 double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights,
-			const double *f_i_phi_scalar1, const double *f_i_phi_scalar2,
-			const double *f_i_phi_tensor, int nrule, int nphi);
+			const double complex *f_i_phi_scalar1, const double complex *f_i_phi_scalar2,
+			const double complex *f_i_phi_tensor, int nrule, int nphi);
 
 
 /* Access alm entries*/
@@ -106,9 +106,9 @@ void backward_sp_mixed_sst(const int *L_list,
 			  int Lmax, int nell, int m_dim,
 			  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
 			  fftwf_plan plan_c2c_scalar, fftwf_plan plan_c2c_tensor,
-			  float *f_i_phi_scalar1, float *f_i_phi_scalar2, float *f_i_phi_tensor, 
+			  float complex *f_i_phi_scalar1, float complex *f_i_phi_scalar2, float complex *f_i_phi_tensor, 
 			  int nufact, int nphi,
-			  const float *kappa_i_L_scalar1, const float *kappa_i_L_scalar2,const float *kappa_i_L_tensor); 
+			  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor); 
 
 void backward_dp_mixed_sst(const int *L_list,
 			  int nL, int npol,
@@ -121,9 +121,9 @@ void backward_dp_mixed_sst(const int *L_list,
 			  int Lmax, int nell, int m_dim,
 			  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
 			  fftw_plan plan_c2c_scalar, fftw_plan plan_c2c_tensor,
-			  double *f_i_phi_scalar1, double *f_i_phi_scalar2, double *f_i_phi_tensor, 
+			  double complex *f_i_phi_scalar1, double complex *f_i_phi_scalar2, double complex *f_i_phi_tensor, 
 			  int nufact, int nphi,
-			  const double *kappa_i_L_scalar1, const double *kappa_i_L_scalar2,const double *kappa_i_L_tensor); 
+			  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor); 
 
 /*
  * Calculate the contribution of single ring to dT/dalm.
