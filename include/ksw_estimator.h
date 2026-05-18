@@ -57,7 +57,6 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
 		  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
-		  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 		  int Lmax, int nell,
 		  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
 		  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor);
@@ -71,7 +70,6 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
 		  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
-		  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 		  int Lmax, int nell,
 		  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
 		  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor);

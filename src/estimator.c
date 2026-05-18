@@ -1028,6 +1028,31 @@ double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights,
 		double wz = weights[ridx*3+2];
 
 		for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
+
+			/*
+			if (isnan((double)creal(f_i_phi_scalar1[rx*nphi+phidx])) || isnan((double)cimag(f_i_phi_scalar1[rx*nphi+phidx]))){
+				printf("NaN detected in t_cubic_on_ring_dp_sst s1 at ridx %d, phidx %d\n", (int)ridx, (int)phidx);
+			}
+			if (isnan((double)creal(f_i_phi_scalar2[rx*nphi+phidx])) || isnan((double)cimag(f_i_phi_scalar2[rx*nphi+phidx]))){
+				printf("NaN detected in t_cubic_on_ring_dp_sst s2 at ridx %d, phidx %d\n", (int)ridx, (int)phidx);
+			}
+			if (isnan((double)creal(f_i_phi_tensor[rx*nphi+phidx])) || isnan((double)cimag(f_i_phi_tensor[rx*nphi+phidx]))){
+				printf("NaN detected in t_cubic_on_ring_dp_sst tensor at ridx %d, phidx %d\n", (int)ridx, (int)phidx);
+			}
+				
+			printf("ridx %d, phidx %d, f_i_phi_scalar1 %e + %ei, f_i_phi_scalar2 %e + %ei, f_i_phi_tensor %e + %ei\n",
+				(int)ridx, (int)phidx,
+				(double)creal(f_i_phi_scalar1[rx*nphi+phidx]), (double)cimag(f_i_phi_scalar1[rx*nphi+phidx]),
+				(double)creal(f_i_phi_scalar2[ry*nphi+phidx]), (double)cimag(f_i_phi_scalar2[ry*nphi+phidx]),
+				(double)creal(f_i_phi_tensor[rz*nphi+phidx]), (double)cimag(f_i_phi_tensor[rz*nphi+phidx])
+			);
+			fflush(stdout);
+			*/
+
+			printf("[FIPHI1] f_i_phi_scalar1[0] = %g + %gi\n",
+       			(double)crealf(f_i_phi_scalar1[0]),
+       			(double)cimagf(f_i_phi_scalar1[0]));
+			fflush(stdout);
 			t_cubic += 3 * wx * wy * wz * f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_scalar2[ry*nphi+phidx]
 				* f_i_phi_tensor[rz*nphi+phidx];
 		}
@@ -1191,7 +1216,6 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
 		  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
-		  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 		  int Lmax, int nell,
 		  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
 		  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor){
@@ -1286,7 +1310,9 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 			  kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor);
 
 		t_cubic += t_cubic_on_ring_sp_sst(rule, weights, f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor, nrule, nphi)
-			*ct_weights[tidx];  
+			*ct_weights[tidx]; 
+		//printf("%f\n", f_i_phi_scalar1[0]);
+		printf("%ld %f\n", tidx, t_cubic); 
 
 	}
 
@@ -1320,7 +1346,6 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 		  int n_scalar1, int n_scalar2, int n_tensor,
 		  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
 		  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
-		  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 		  int Lmax, int nell,
 		  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
 		  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor){
@@ -1415,8 +1440,13 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 			  nufact, nphi,
 			  kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor);
 
-		t_cubic += t_cubic_on_ring_dp_sst(rule, weights, f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor, nrule, nphi)
-			*ct_weights[tidx];  
+		//t_cubic += t_cubic_on_ring_dp_sst(rule, weights, f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor, nrule, nphi)
+		//	*ct_weights[tidx];  
+		//printf("%f\n", t_cubic);
+		double tmp_t_cubic = t_cubic_on_ring_dp_sst(rule, weights, f_i_phi_scalar1, f_i_phi_scalar2, f_i_phi_tensor, nrule, nphi);
+		//*ct_weights[tidx];
+		printf("%ld %e %e\n", tidx, tmp_t_cubic, ct_weights[tidx]);
+		t_cubic += tmp_t_cubic * ct_weights[tidx];
 
 	}
 

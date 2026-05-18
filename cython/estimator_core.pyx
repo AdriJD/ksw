@@ -203,7 +203,6 @@ def compute_products_Afunc_sst(ct_weights, rule, weights,
           n_scalar1, n_scalar2, n_tensor,
           w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
           prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-          A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
           Lmax, nell,
 	      n_L_phi_scalar, n_L_phi_tensor,
           kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor):
@@ -255,18 +254,6 @@ def compute_products_Afunc_sst(ct_weights, rule, weights,
         raise ValueError(
             f'prefactors_tensor.shape = {prefactors_tensor.shape}, expected {(npol, ndeltaL_tensor, nL, m_dim)}')
 
-    if A_L_M_scalar1.shape != (npol, ndeltaL_scalar, nL, m_dim):
-        raise ValueError(
-            f'A_L_M_scalar1.shape = {A_L_M_scalar1.shape}, expected {(npol, ndeltaL_scalar, nL, m_dim)}')
-
-    if A_L_M_scalar2.shape != (npol, ndeltaL_scalar, nL, m_dim):
-        raise ValueError(
-            f'A_L_M_scalar2.shape = {A_L_M_scalar2.shape}, expected {(npol, ndeltaL_scalar, nL, m_dim)}')
-
-    if A_L_M_tensor.shape != (npol, ndeltaL_tensor, nL, m_dim):
-        raise ValueError(
-            f'A_L_M_tensor.shape = {A_L_M_tensor.shape}, expected {(npol, ndeltaL_tensor, nL, m_dim)}')
-
     if n_L_phi_scalar.shape != (npol, ndeltaL_scalar, nL, nphi):
         raise ValueError(
             f'n_L_phi_scalar.shape = {n_L_phi_scalar.shape}, expected {(npol, ndeltaL_scalar, nL, nphi)}')
@@ -303,7 +290,6 @@ def compute_products_Afunc_sst(ct_weights, rule, weights,
               n_scalar1, n_scalar2, n_tensor,
               w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
               prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-              A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
               Lmax, nell,
 	          n_L_phi_scalar, n_L_phi_tensor,
               kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
@@ -320,7 +306,6 @@ def compute_products_Afunc_sst(ct_weights, rule, weights,
               n_scalar1, n_scalar2, n_tensor,
               w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
               prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-              A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
               Lmax, nell,
 	          n_L_phi_scalar, n_L_phi_tensor,
               kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
@@ -336,7 +321,6 @@ def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
           n_scalar1, n_scalar2, n_tensor,
           w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
           prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-          A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
           Lmax, nell,
 	      n_L_phi_scalar, n_L_phi_tensor,
           kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor):
@@ -359,9 +343,6 @@ def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
     cdef float complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
     cdef float complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef float complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-    cdef float complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
-    cdef float complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
-    cdef float complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
     cdef float complex [::1] n_L_phi_scalar_ = n_L_phi_scalar.reshape(-1)
     cdef float complex [::1] n_L_phi_tensor_ = n_L_phi_tensor.reshape(-1)
     cdef float complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
@@ -377,7 +358,6 @@ def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
           n_scalar1, n_scalar2, n_tensor,
           &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
           &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
-          &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
 		  Lmax, nell,
           &n_L_phi_scalar_[0], &n_L_phi_tensor_[0],
           &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0])
@@ -390,7 +370,6 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
           n_scalar1, n_scalar2, n_tensor,
           w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
           prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-          A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
           Lmax, nell,
 	      n_L_phi_scalar, n_L_phi_tensor,
           kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor):
@@ -413,9 +392,6 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
     cdef double complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
     cdef double complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef double complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-    cdef double complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
-    cdef double complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
-    cdef double complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
     cdef double complex [::1] n_L_phi_scalar_ = n_L_phi_scalar.reshape(-1)
     cdef double complex [::1] n_L_phi_tensor_ = n_L_phi_tensor.reshape(-1)
     cdef double complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
@@ -431,7 +407,6 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
           n_scalar1, n_scalar2, n_tensor,
           &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
           &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
-          &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
 		  Lmax, nell,
           &n_L_phi_scalar_[0], &n_L_phi_tensor_[0],
           &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0])

@@ -707,10 +707,11 @@ class KSW():
         deltaL_list_tensor = np.array([-2, -1, 0, 1, 2])
 
         for com_idx in range(len(combins)):
+            print(com_idx)
             n_scalar1, n_scalar2, n_tensor = combins[com_idx]
-            w3j_product_scalar1 = AF.products_3j_array(S=1, n=n_scalar1, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0))
-            w3j_product_scalar2 = AF.products_3j_array(S=1, n=n_scalar2, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0))
-            w3j_product_tensor = AF.products_3j_array(S=2, n=n_tensor, L_list=L_list, deltaL_list=deltaL_list_tensor, Jindex=(-2, 0, 2))
+            w3j_product_scalar1 = AF.products_3j_array(S=1, n=n_scalar1, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
+            w3j_product_scalar2 = AF.products_3j_array(S=1, n=n_scalar2, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
+            w3j_product_tensor = AF.products_3j_array(S=2, n=n_tensor, L_list=L_list, deltaL_list=deltaL_list_tensor, Jindex=(-2, 0, 2), dtype=self.dtype)
 
             prefactors_scalar1 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
             prefactors_scalar2 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
@@ -728,9 +729,28 @@ class KSW():
                 ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
                 y_M_L = estimator_core.compute_ylm(thetas_batch, nL - 1, dtype=self.dtype)
 
-                A_L_M_scalar1 = estimator_core.compute_A_LM(L_list, deltaL_list_scalar, n_scalar1, a_ell_m, y_M_L, w3j_product_scalar1, prefactors_scalar1, Lmax)
-                A_L_M_scalar2 = estimator_core.compute_A_LM(L_list, deltaL_list_scalar, n_scalar2, a_ell_m, y_M_L, w3j_product_scalar2, prefactors_scalar2, Lmax)
-                A_L_M_tensor = estimator_core.compute_A_LM(L_list, deltaL_list_tensor, n_tensor, a_ell_m, y_M_L, w3j_product_tensor, prefactors_tensor, Lmax)
+                #A_L_M_scalar1 = estimator_core.compute_A_LM(L_list, deltaL_list_scalar, n_scalar1, a_ell_m, y_M_L, w3j_product_scalar1, prefactors_scalar1, Lmax)
+                #A_L_M_scalar2 = estimator_core.compute_A_LM(L_list, deltaL_list_scalar, n_scalar2, a_ell_m, y_M_L, w3j_product_scalar2, prefactors_scalar2, Lmax)
+                #A_L_M_tensor = estimator_core.compute_A_LM(L_list, deltaL_list_tensor, n_tensor, a_ell_m, y_M_L, w3j_product_tensor, prefactors_tensor, Lmax)
+
+                assert not np.isnan(n_L_phi_scalar).any()
+                assert not np.isnan(n_L_phi_tensor).any()
+                assert not np.isnan(kappa_i_L_scalar1).any()
+                assert not np.isnan(kappa_i_L_scalar2).any()
+                assert not np.isnan(kappa_i_L_tensor).any() 
+                assert not np.isnan(w3j_product_scalar1).any()
+                assert not np.isnan(w3j_product_scalar2).any()
+                assert not np.isnan(w3j_product_tensor).any()
+                assert not np.isnan(prefactors_scalar1).any()
+                assert not np.isnan(prefactors_scalar2).any()
+                assert not np.isnan(prefactors_tensor).any()
+                assert not np.isnan(ct_weights_batch).any()
+                assert not np.isnan(rule).any()
+                assert not np.isnan(weights).any()
+
+                print(w3j_product_scalar1.dtype)
+                print(w3j_product_scalar2.dtype)
+                print(w3j_product_tensor.dtype)
 
                 Afunc_product += estimator_core.compute_products_Afunc_sst(ct_weights_batch, rule, weights,
                                                                     a_ell_m, y_M_L,
@@ -739,11 +759,12 @@ class KSW():
                                                                     n_scalar1, n_scalar2, n_tensor,
                                                                     w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
                                                                     prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-                                                                    A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
                                                                     self.lmax, nell,
                                                                     n_L_phi_scalar, n_L_phi_tensor,
                                                                     kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
-            l1_min, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)# l1_min=1, vals is all w3j values in the order of increasing l1
+                print(Afunc_product)
+            _, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)# l1_min=1, vals is all w3j values in the order of increasing l1
+            print(vals[0])
             t_cubic += vals[0] * Afunc_product
 
         fnl = (t_cubic - lin_term) / fisher
