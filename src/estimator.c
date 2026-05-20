@@ -1,6 +1,7 @@
 #include "ksw_estimator_internal.h"
 #include <ksw_estimator.h>
 #include <stdlib.h>
+#include <complex.h>
 
 int get_forward_array_size(const long long *rule, int nrule){
 
@@ -260,7 +261,7 @@ float t_cubic_sp(const double *ct_weights, const long long *rule, const float *w
 				       1, nm,
 				       n_ell_phi, NULL,
 				       1, nphi,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
     fftwf_free(m_ell_m);
     fftwf_free(n_ell_phi);
 
@@ -322,13 +323,13 @@ void step_sp(const double *ct_weights, const long long *rule, const float *weigh
 				       1, nm,
 				       n_ell_phi, NULL,
 				       1, nphi,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
     plan_r2c = fftwf_plan_many_dft_r2c(1, nffts, npol * nell,
 				       n_ell_phi, NULL,
 				       1, nphi,
 				       m_ell_m, NULL,
 				       1, nm,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
     
     fftwf_free(m_ell_m);
     fftwf_free(n_ell_phi);
@@ -661,7 +662,7 @@ double t_cubic_dp(const double *ct_weights, const long long *rule, const double 
 				       1, nm,
 				       n_ell_phi, NULL,
 				       1, nphi,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
     fftw_free(m_ell_m);
     fftw_free(n_ell_phi);
 
@@ -723,13 +724,13 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
 				       1, nm,
 				       n_ell_phi, NULL,
 				       1, nphi,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
     plan_r2c = fftw_plan_many_dft_r2c(1, nffts, npol * nell,
 				       n_ell_phi, NULL,
 				       1, nphi,
 				       m_ell_m, NULL,
 				       1, nm,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
     
     fftw_free(m_ell_m);
     fftw_free(n_ell_phi);
@@ -862,6 +863,40 @@ double complex get_alm_entry_dp(const double complex *a_ell_m,
     }
 }
 
+float get_ylm_entry_sp(const float *y_ell_m,
+		    int nell, int ell, int m){
+
+	if (abs(m) >= nell){
+		return 0.f + 0.f * I;
+	}
+	
+    if (m >= 0){
+		return y_ell_m[ell * nell + m];
+    } 
+	else{
+		int mp = -m;
+		float base = y_ell_m[ell * nell + mp];
+		return (mp % 2) ? -base : base;
+    }
+}
+
+double get_ylm_entry_dp(const double *y_ell_m,
+		    int nell, int ell, int m){
+
+	if (abs(m) >= nell){
+		return 0. + 0. * I;
+	}
+	
+    if (m >= 0){
+		return y_ell_m[ell * nell + m];
+    } 
+	else{
+		int mp = -m;
+		double base = y_ell_m[ell * nell + mp];
+		return (mp % 2) ? -base : base;
+    }
+}
+
 void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 		     int nL, int ndeltaL, int npol, int n, 
 			 const float complex *a_ell_m,
@@ -869,9 +904,9 @@ void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 			 const float complex *prefactors, float complex *out,
 			 int Lmax, int nell, int m_dim){
 
-    int mdim_expected = 2 * Lmax + 1;
+    int mdim_expected = 3 * Lmax + 1;
     if (m_dim < mdim_expected){
-		fprintf(stderr, "compute_A_LM_sp: m_dim (%d) < 2*Lmax+1 (%d)\n",
+		fprintf(stderr, "compute_A_LM_sp: m_dim (%d) < 3*Lmax+1 (%d)\n",
 		m_dim, mdim_expected);
 		return;
     }
@@ -902,26 +937,29 @@ void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 				float complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
 
 				for (int M=-L; M<=L; M++){
-					int Moff = (int)(M + Lmax);
-					if (Moff < 0 || Moff >= m_dim){
-						continue;
-					}
+					int Midx = (int)(M + Lmax);
 
 					int m = - M - n;
 					if (llabs(m) > ell || llabs(m) >= nell){
 						continue;
 					}
 
-					float y_val = y_M_L[Moff * nL + L];
-					float w3j = w3j_product[(idL * nL + iL) * m_dim + Moff];
+					float w3j = w3j_product[(idL * nL + iL) * m_dim + Midx];
 					float complex alm_val = get_alm_entry_sp(alm_pol, nell, ell, m);
+					float y_val = get_ylm_entry_sp(y_M_L, nL, L, M);
 
-					float complex contrib = pref * w3j * alm_val * (y_val);
-					out[base + Moff] += contrib;
-				}
+					float complex contrib = pref * w3j * alm_val * y_val;
+
+					if (M>=0){
+						out[base+M] += contrib;
+					}
+					else{
+						out[base + (m_dim + M)] += contrib;
+					}
+			}
 			}
 		}
-    }
+	}
 }
 
 void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
@@ -931,9 +969,9 @@ void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
 			 const double complex *prefactors, double complex *out,
 			 int Lmax, int nell, int m_dim){
 
-    int mdim_expected = 2 * Lmax + 1;
+    int mdim_expected = 3 * Lmax + 1;
     if (m_dim < mdim_expected){
-		fprintf(stderr, "compute_A_LM_dp: m_dim (%d) < 2*Lmax+1 (%d)\n",
+		fprintf(stderr, "compute_A_LM_dp: m_dim (%d) < 3*Lmax+1 (%d)\n",
 		m_dim, mdim_expected);
 		return;
     }
@@ -951,9 +989,9 @@ void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
 		for (ptrdiff_t idL=0; idL<ndeltaL; idL++){
 			int deltaL = deltaL_list[idL];
 			for (ptrdiff_t iL=0; iL<nL; iL++){
-			int L = L_list[iL];
-			if (L < 0 || L >= nell){
-				continue;
+				int L = L_list[iL];
+				if (L < 0 || L >= nell){
+					continue;
 			}
 
 			int ell = L + deltaL;
@@ -965,22 +1003,24 @@ void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
 			double complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
 
 			for (int M=-L; M<=L; M++){
-				int Moff = (int)(M + Lmax);
-				if (Moff < 0 || Moff >= m_dim){
-					continue;
-				}
+				int Midx = (int)(M + Lmax);
 
 				int m = - M - n;
 				if (abs(m) > ell || abs(m) >= nell){
 					continue;
 				}
 
-				double y_val = y_M_L[Moff * nL + L];
-				double w3j = w3j_product[(idL * nL + iL) * m_dim + Moff];
+				double w3j = w3j_product[(idL * nL + iL) * m_dim + Midx];
 				double complex alm_val = get_alm_entry_dp(alm_pol, nell, ell, m);
+				double y_val = get_ylm_entry_dp(y_M_L, nL, L, M);
 
-				double complex contrib = pref * w3j * alm_val * (y_val);
-				out[base + Moff] += contrib;
+				double complex contrib = pref * w3j * alm_val * y_val;
+				if (M>=0){
+					out[base+M] += contrib;
+				}
+				else{
+					out[base + (m_dim + M)] += contrib;
+				}
 			}
 			}
 		}
@@ -1027,35 +1067,22 @@ double t_cubic_on_ring_dp_sst(const long long *rule, const double *weights,
 		double wy = weights[ridx*3+1];
 		double wz = weights[ridx*3+2];
 
+		FILE *f = fopen("/home1/p319540/ksw/debug_t_cubic.txt", "a");
+
 		for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 
-			/*
-			if (isnan((double)creal(f_i_phi_scalar1[rx*nphi+phidx])) || isnan((double)cimag(f_i_phi_scalar1[rx*nphi+phidx]))){
-				printf("NaN detected in t_cubic_on_ring_dp_sst s1 at ridx %d, phidx %d\n", (int)ridx, (int)phidx);
-			}
-			if (isnan((double)creal(f_i_phi_scalar2[rx*nphi+phidx])) || isnan((double)cimag(f_i_phi_scalar2[rx*nphi+phidx]))){
-				printf("NaN detected in t_cubic_on_ring_dp_sst s2 at ridx %d, phidx %d\n", (int)ridx, (int)phidx);
-			}
-			if (isnan((double)creal(f_i_phi_tensor[rx*nphi+phidx])) || isnan((double)cimag(f_i_phi_tensor[rx*nphi+phidx]))){
-				printf("NaN detected in t_cubic_on_ring_dp_sst tensor at ridx %d, phidx %d\n", (int)ridx, (int)phidx);
-			}
-				
-			printf("ridx %d, phidx %d, f_i_phi_scalar1 %e + %ei, f_i_phi_scalar2 %e + %ei, f_i_phi_tensor %e + %ei\n",
-				(int)ridx, (int)phidx,
-				(double)creal(f_i_phi_scalar1[rx*nphi+phidx]), (double)cimag(f_i_phi_scalar1[rx*nphi+phidx]),
-				(double)creal(f_i_phi_scalar2[ry*nphi+phidx]), (double)cimag(f_i_phi_scalar2[ry*nphi+phidx]),
-				(double)creal(f_i_phi_tensor[rz*nphi+phidx]), (double)cimag(f_i_phi_tensor[rz*nphi+phidx])
-			);
-			fflush(stdout);
-			*/
 
-			printf("[FIPHI1] f_i_phi_scalar1[0] = %g + %gi\n",
-       			(double)crealf(f_i_phi_scalar1[0]),
-       			(double)cimagf(f_i_phi_scalar1[0]));
-			fflush(stdout);
+			fprintf(f, "(%e + %ei) (%e + %ei) (%e + %ei)\n",
+        	creal(f_i_phi_scalar1[rx*nphi+phidx]),
+            cimag(f_i_phi_scalar1[rx*nphi+phidx]),
+            creal(f_i_phi_scalar2[ry*nphi+phidx]),
+            cimag(f_i_phi_scalar2[ry*nphi+phidx]),
+            creal(f_i_phi_tensor[rz*nphi+phidx]),
+            cimag(f_i_phi_tensor[rz*nphi+phidx]));
 			t_cubic += 3 * wx * wy * wz * f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_scalar2[ry*nphi+phidx]
 				* f_i_phi_tensor[rz*nphi+phidx];
 		}
+		fclose(f);
 	}
 	return t_cubic;
 }
@@ -1242,7 +1269,7 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 				       n_L_phi_scalarp, NULL,
 				       1, nphi,
 					   FFTW_BACKWARD,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
 	fftwf_free(A_L_M_scalarp);
 	fftwf_free(n_L_phi_scalarp);
 
@@ -1255,7 +1282,7 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 				       n_L_phi_tensorp, NULL,
 				       1, nphi,
 					   FFTW_BACKWARD,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
 	fftwf_free(A_L_M_tensorp);
 	fftwf_free(n_L_phi_tensorp);
 
@@ -1373,7 +1400,7 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 				       n_L_phi_scalarp, NULL,
 				       1, nphi,
 					   FFTW_BACKWARD,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
 	fftw_free(A_L_M_scalarp);
 	fftw_free(n_L_phi_scalarp);
 
@@ -1386,7 +1413,7 @@ double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const dou
 				       n_L_phi_tensorp, NULL,
 				       1, nphi,
 					   FFTW_BACKWARD,
-				       FFTW_MEASURE);
+				       FFTW_ESTIMATE);
 	fftw_free(A_L_M_tensorp);
 	fftw_free(n_L_phi_tensorp);
 

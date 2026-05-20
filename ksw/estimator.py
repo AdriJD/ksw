@@ -707,7 +707,7 @@ class KSW():
         deltaL_list_tensor = np.array([-2, -1, 0, 1, 2])
 
         for com_idx in range(len(combins)):
-            print(com_idx)
+            print(f'{com_idx=}')
             n_scalar1, n_scalar2, n_tensor = combins[com_idx]
             w3j_product_scalar1 = AF.products_3j_array(S=1, n=n_scalar1, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
             w3j_product_scalar2 = AF.products_3j_array(S=1, n=n_scalar2, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
@@ -748,10 +748,6 @@ class KSW():
                 assert not np.isnan(rule).any()
                 assert not np.isnan(weights).any()
 
-                print(w3j_product_scalar1.dtype)
-                print(w3j_product_scalar2.dtype)
-                print(w3j_product_tensor.dtype)
-
                 Afunc_product += estimator_core.compute_products_Afunc_sst(ct_weights_batch, rule, weights,
                                                                     a_ell_m, y_M_L,
                                                                     self.nphi,
@@ -762,9 +758,9 @@ class KSW():
                                                                     self.lmax, nell,
                                                                     n_L_phi_scalar, n_L_phi_tensor,
                                                                     kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
-                print(Afunc_product)
+                print(f'{Afunc_product=}')
             _, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)# l1_min=1, vals is all w3j values in the order of increasing l1
-            print(vals[0])
+            print(f'{vals[0]=}')
             t_cubic += vals[0] * Afunc_product
 
         fnl = (t_cubic - lin_term) / fisher

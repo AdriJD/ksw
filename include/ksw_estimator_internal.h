@@ -49,6 +49,13 @@ float complex get_alm_entry_sp(const float complex *a_ell_m,
 double complex get_alm_entry_dp(const double complex *a_ell_m,
 			        int nell, int ell, int m);
 
+/* Access ylm entries */
+float get_ylm_entry_sp(const float *y_ell_m,
+		       int nell, int ell, int m);
+
+double get_ylm_entry_dp(const double *y_ell_m,
+			int nell, int ell, int m);
+
 
 /*
  * Convolve a single ring of the map with all unique bispectrum factors.

@@ -192,7 +192,7 @@ def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
     Returns
     -------
     np.ndarray
-        Complex array with shape ``(npol, len(deltaL_list), len(L_list), 2*Lmax+1)``.
+        Complex array with shape ``(npol, len(deltaL_list), len(L_list))``.
 
     """
 
@@ -203,7 +203,7 @@ def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
     x_list = list(x)
 
     Lmax = np.max(L_list)
-    out = np.zeros((len(x_list), len(deltaL_list), len(L_list), 2*Lmax + 1), dtype=cdtype)
+    out = np.zeros((len(x_list), len(deltaL_list), len(L_list)), dtype=cdtype)
 
     for pidx, x_pol in enumerate(x_list):
         for idL, dL in enumerate(deltaL_list):
@@ -215,8 +215,7 @@ def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
 
                 gamma = gamma_Z(x_pol, Z, L, dL)
                 pref = phase * gamma
-                for M in range(-L, L+1):
-                    out[pidx, idL, iL, M + Lmax] = pref
+                out[pidx, idL, iL] = pref
 
     return out
 

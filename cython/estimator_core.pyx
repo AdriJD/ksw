@@ -242,17 +242,17 @@ def compute_products_Afunc_sst(ct_weights, rule, weights,
         raise ValueError(
             f'w3j_product_tensor.shape = {w3j_product_tensor.shape}, expected {(ndeltaL_tensor, nL, m_dim)}')
 
-    if prefactors_scalar1.shape != (npol, ndeltaL_scalar, nL, m_dim):
+    if prefactors_scalar1.shape != (npol, ndeltaL_scalar, nL):
         raise ValueError(
-            f'prefactors_scalar1.shape = {prefactors_scalar1.shape}, expected {(npol, ndeltaL_scalar, nL, m_dim)}')
+            f'prefactors_scalar1.shape = {prefactors_scalar1.shape}, expected {(npol, ndeltaL_scalar, nL)}')
 
-    if prefactors_scalar2.shape != (npol, ndeltaL_scalar, nL, m_dim):
+    if prefactors_scalar2.shape != (npol, ndeltaL_scalar, nL):
         raise ValueError(
-            f'prefactors_scalar2.shape = {prefactors_scalar2.shape}, expected {(npol, ndeltaL_scalar, nL, m_dim)}')
+            f'prefactors_scalar2.shape = {prefactors_scalar2.shape}, expected {(npol, ndeltaL_scalar, nL)}')
 
-    if prefactors_tensor.shape != (npol, ndeltaL_tensor, nL, m_dim):
+    if prefactors_tensor.shape != (npol, ndeltaL_tensor, nL):
         raise ValueError(
-            f'prefactors_tensor.shape = {prefactors_tensor.shape}, expected {(npol, ndeltaL_tensor, nL, m_dim)}')
+            f'prefactors_tensor.shape = {prefactors_tensor.shape}, expected {(npol, ndeltaL_tensor, nL)}')
 
     if n_L_phi_scalar.shape != (npol, ndeltaL_scalar, nL, nphi):
         raise ValueError(

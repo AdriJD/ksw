@@ -130,7 +130,7 @@ void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax)
  * deltaL_list : (ndeltaL) array with offsets deltaL such that ell = L + deltaL.
  * n           :  Magnetic quantum number that couples to S.
  * a_ell_m     : (npol * nell * nell) complex array storing alm with m>=0.
- * y_M_L       : (ntheta * nL * nL) real array with Y_{M, L} samples for one ring.
+ * y_M_L       : (ntheta * nL * nL) complex array with Y_{M, L} samples for one ring.
  * w3j_product : (ndeltaL * nL * m_dim) array with precomputed Wigner
  *                products, stored with ``ndeltaL`` leading and ``m`` last.
  * prefactors  : (npol * ndeltaL * nL) complex array containing gamma * phase
