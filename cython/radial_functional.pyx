@@ -246,13 +246,13 @@ def radial_func_dL_scalar(f_k, tr_L_k, k, radii, Ls):
     ndeltaL, = check_and_return_shape(delta_L_list, (None,))
 
     # Create output array.
-    f_L_r = np.empty((ndeltaL, nr, nL, npol, ncomp), dtype=float)
+    kappa_L_r = np.empty((ndeltaL, nr, nL, npol, ncomp), dtype=float)
 
     cdef double [::1] f_k_ = f_k.reshape(-1)
     cdef double [::1] tr_L_k_ = tr_L_k.reshape(-1)
     cdef double [::1] k_ = k.reshape(-1)
     cdef double [::1] radii_ = radii.reshape(-1)
-    cdef double [::1] f_L_r_ = f_L_r.reshape(-1)
+    cdef double [::1] kappa_L_r_ = kappa_L_r.reshape(-1)
     cdef int [::1] Ls_= Ls
 
     # Define local variables
@@ -279,14 +279,14 @@ def radial_func_dL_scalar(f_k, tr_L_k, k, radii, Ls):
                                          &tr_L_k_[0],
                                          &k_[0],
                                          &radii_[0],
-                                         &f_L_r_[index * (nr * nL * npol * ncomp)],
+                                         &kappa_L_r_[index * (nr * nL * npol * ncomp)],
                                          &ell_buf[0],
                                          nk,
                                          nL,
                                          nr,
                                          npol,
                                          ncomp)
-    return f_L_r
+    return kappa_L_r
 
 
 
@@ -336,13 +336,13 @@ def radial_func_dL_tensor(f_k, tr_L_k, k, radii, Ls):
     ndeltaL, = check_and_return_shape(delta_L_list, (None,))
 
     # Create output array.
-    f_L_r = np.empty((ndeltaL, nr, nL, npol, ncomp), dtype=float)
+    kappa_L_r = np.empty((ndeltaL, nr, nL, npol, ncomp), dtype=float)
 
     cdef double [::1] f_k_ = f_k.reshape(-1)
     cdef double [::1] tr_L_k_ = tr_L_k.reshape(-1)
     cdef double [::1] k_ = k.reshape(-1)
     cdef double [::1] radii_ = radii.reshape(-1)
-    cdef double [::1] f_L_r_ = f_L_r.reshape(-1)
+    cdef double [::1] kappa_L_r_ = kappa_L_r.reshape(-1)
     cdef int [::1] Ls_= Ls
 
     # Define local variables
@@ -369,11 +369,11 @@ def radial_func_dL_tensor(f_k, tr_L_k, k, radii, Ls):
                                          &tr_L_k_[0],
                                          &k_[0],
                                          &radii_[0],
-                                         &f_L_r_[index * (nr * nL * npol * ncomp)],
+                                         &kappa_L_r_[index * (nr * nL * npol * ncomp)],
                                          &ell_buf[0],
                                          nk,
                                          nL,
                                          nr,
                                          npol,
                                          ncomp)
-    return f_L_r
+    return kappa_L_r
