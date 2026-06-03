@@ -356,7 +356,6 @@ def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
     nrule = rule.shape[0]
     nL = L_list.size
     npol = a_ell_m.shape[0]
-    m_dim = y_M_L.shape[1]
     nufact = kappa_i_L_scalar1.shape[0]
 
     cdef float [::1] ct_weights_ = ct_weights.reshape(-1)
@@ -378,7 +377,7 @@ def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
 
     cdef t_cubic = cestimator_core.t_cubic_sp_sst(&ct_weights_[0], &rule_[0], &weights_[0],
           &a_ell_m_[0], &y_M_L_[0], ntheta, nrule,
-          nL, npol, m_dim, nufact, nphi,
+          nL, npol, nufact, nphi,
           &L_list_[0],
           n_scalar1, n_scalar2, n_tensor,
           &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
@@ -401,7 +400,6 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
     nrule = rule.shape[0]
     nL = L_list.size
     npol = a_ell_m.shape[0]
-    m_dim = y_M_L.shape[1]
     nufact = kappa_i_L_scalar1.shape[0]
 
     cdef double [::1] ct_weights_ = ct_weights.reshape(-1)
@@ -423,7 +421,7 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
 
     cdef t_cubic = cestimator_core.t_cubic_dp_sst(&ct_weights_[0], &rule_[0], &weights_[0],
           &a_ell_m_[0], &y_M_L_[0], ntheta, nrule,
-          nL, npol, m_dim, nufact, nphi,
+          nL, npol, nufact, nphi,
           &L_list_[0],
           n_scalar1, n_scalar2, n_tensor,
           &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],

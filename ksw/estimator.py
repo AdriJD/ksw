@@ -695,7 +695,6 @@ class KSW():
         L_list = np.asarray(L_list, dtype=np.int64)
         nL = L_list.size
         nell = self.lmax + 1
-        m_dim = self.nphi
         nufact = kappa_i_L_scalar1.shape[0]
         ndeltaL_scalar = 2
         ndeltaL_tensor = 5
@@ -729,7 +728,8 @@ class KSW():
                                                                     kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
             _, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)
             # l1_min=1, vals is all w3j values in the order of increasing l1
-            t_cubic += vals[0] * Afunc_product
+            t_cubic += vals[0] * Afunc_product * np.sqrt(2) / 54 * 3
+            # 3 is for 3 permutated terms; sst, sts, tss.
 
         fnl = (t_cubic - lin_term) / fisher
         print(f'{fnl=}, {t_cubic=}, {lin_term=}, {fisher=}') 

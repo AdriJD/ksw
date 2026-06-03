@@ -118,27 +118,27 @@ void backward_dp(const double *f_i_ell, const double complex *a_ell_m,
  * n_scalar1 : Magnetic quantum number that couples to S in w3j symbol for scalar1 A functional.
  * n_scalar2 : Magnetic quantum number that couples to S in w3j symbol for scalar2 A functional.
  * n_tensor  : Magnetic quantum number that couples to S in w3j symbol for tensor A functional.
- * a_ell_m   : (npol * nell * nell) SH coefficients in ell-major order.
+ * a_ell_m   : (npol, nell, nell) SH coefficients in ell-major order.
  * y_M_L     : (ntheta, nL, nL) Ylms in M-majors order for each ring.
  * w3j_product_scalar1/scalar2/tensor : 
- * 			   (ndeltaL_scalar/tensor, nL, m_dim) 
+ * 			   (ndeltaL_scalar/tensor, nL, 2*Lmax+1) array
  * 			    Product of Wigner 3j symbols for scalar1/scalar2/tensor A functional.
  * prefactors_scalar1/scalar2/tensor : 
  * 			   (npol, ndeltaL_scalar/tensor, nL)
  * 				gamma * phase factors for scalar1/scalar2/tensor A functional.
  * A_L_M_scalar1/scalar2/tensor : 
- * 			   (npol, ndeltaL, nL, m_dim)  
+ * 			   (npol, ndeltaL, nL, nphi)  
  * 			    Output array for compute_A_LM for scalar1/scalar2/tensor A functional.
  * Lmax      : Maximum value of L.
  * nell      : Number of ell values.
- * m_dim     : Size of m dimension for output array of FFT.
+ * nphi      : Number of phi values (>= 3*Lmax+1).
  * n_L_phi_scalar/tensor: 
- * 			   (npol * ndeltaL * nL * nphi) 
+ * 			   (npol, ndeltaL, nL, nphi) 
  *			   array for output of ring fft.
  * plan_c2c_scalar/tensor: 
  * 			   fftw plan for ring complex2complex fft.
  * f_i_phi_scalar1/scalar2/tensor: 
- *    		   (nufact * nphi) array for output unique factors on ring.
+ *    		   (nufact, nphi) array for output unique factors on ring.
  * nufact	 : Number of unique factors.
  * nphi		 : Number of phi elements on ring.
  * Kappa_i_L_scalar1/scalar2/tensor : 
@@ -153,7 +153,7 @@ void backward_sp_mixed_sst(const int *L_list,
 			  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
 			  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
 			  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
-			  int Lmax, int nell, int m_dim,
+			  int Lmax, int nell,
 			  float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
 			  fftwf_plan plan_c2c_scalar, fftwf_plan plan_c2c_tensor,
 			  float complex *f_i_phi_scalar1, float complex *f_i_phi_scalar2, float complex *f_i_phi_tensor, 
@@ -168,7 +168,7 @@ void backward_dp_mixed_sst(const int *L_list,
 			  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
 			  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
 			  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
-			  int Lmax, int nell, int m_dim,
+			  int Lmax, int nell, 
 			  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
 			  fftw_plan plan_c2c_scalar, fftw_plan plan_c2c_tensor,
 			  double complex *f_i_phi_scalar1, double complex *f_i_phi_scalar2, double complex *f_i_phi_tensor, 

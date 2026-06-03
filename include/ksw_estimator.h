@@ -36,23 +36,22 @@ double t_cubic_dp(const double *ct_weights, const long long *rule, const double 
 * ct_weights : (ntheta) array of quadrature weights for cos(theta).
 * rule       : (nrule, 3) array
 * weights    : (nrule, 3) array of weights for X_i, Y_i, Z_i
-* a_ell_m    : (npol * nell * nell) complex array with ell-major alms.
-* y_M_L      : (ntheta * nL * nL) array with m-major Ylms for each ring.
+* a_ell_m    : (npol, nell, nell) complex array with ell-major alms.
+* y_M_L      : (ntheta, nL, nL) array with m-major Ylms for each ring.
 * ntheta     : Number of thetas (rings).
 * nrule      : Number of rules.
 * nL         : Number of multipole values L.
 * npol       : Number of polarization.
-* m_dim      : Number of M values. (for w3j or for output?)
 * nufact     : Number of unique factors
 * nphi       : Number of phi per ring.
 * L_list     : (nL) array of L values.
 * n_scalar1/scalar2/tensor : 
 * 				Magnetic quantum number that couples to S in w3j symbol for scalar1/scalar2/tensor A functionals.
 * w3j_product_scalar1/scalar2/tensor : 
-* 			   (ndeltaL * nL * m_dim) 
+* 			   (ndeltaL, nL, 2*Lmax+1) array
 * 			    Product of Wigner 3j symbols for scalar1/scalar2/tensor A functional.
 * prefactors_scalar1/scalar2/tensor : 
-* 			   (npol * ndeltaL * nL) complex array containing gamma * phase
+* 			   (npol, ndeltaL, nL) complex array containing gamma * phase
 * Lmax	    : Maximum value of L.
 * nell	    : Number of ell values.
 * kappa_i_L_scalar1/scalar2/tensor :
@@ -61,7 +60,7 @@ double t_cubic_dp(const double *ct_weights, const long long *rule, const double 
 float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float *weights,
 		  const float complex *a_ell_m,
 		  const float *y_M_L, int ntheta, int nrule,
-		  int nL, int npol, int m_dim, 
+		  int nL, int npol,  
 		  int nufact, int nphi,
 		  const int *L_list,
 		  int n_scalar1, int n_scalar2, int n_tensor,
@@ -73,7 +72,7 @@ float t_cubic_sp_sst(const float *ct_weights, const long long *rule, const float
 double t_cubic_dp_sst(const double *ct_weights, const long long *rule, const double *weights,
 		  const double complex *a_ell_m,
 		  const double *y_M_L, int ntheta, int nrule,
-		  int nL, int npol, int m_dim, 
+		  int nL, int npol, 
 		  int nufact, int nphi,
 		  const int *L_list,
 		  int n_scalar1, int n_scalar2, int n_tensor,
@@ -130,23 +129,23 @@ void compute_ylm_dp(const double *thetas, double *y_m_ell, int ntheta, int lmax)
 
 /*
  * Compute A_{LM}(deltaL) = prefactor * w3j * alm * Y_{LM}(theta, 0) 
- * The shape of the output is (npol, ndeltaL, nL, m_dim) with m_dim >= 3*Lmax+1
+ * The shape of the output is (npol, ndeltaL, nL, nphi) with nphi >= 3*Lmax+1
  *
  * Arguments
  * ---------
  * L_list      : (nL) array of L values.
  * deltaL_list : (ndeltaL) array with offsets deltaL such that ell = L + deltaL.
  * n           :  Magnetic quantum number that couples to S.
- * a_ell_m     : (npol * nell * nell) complex array storing alm with m>=0.
- * y_M_L       : (ntheta * nL * nL) complex array with Y_{M, L} samples for one ring.
- * w3j_product : (ndeltaL * nL * m_dim) array with precomputed Wigner
+ * a_ell_m     : (npol, nell, nell) complex array storing alm with m>=0.
+ * y_M_L       : (ntheta, nL, nL) complex array with Y_{M, L} samples for one ring.
+ * w3j_product : (ndeltaL, nL, 2*Lmax+1) array with precomputed Wigner
  *                products, stored with ``ndeltaL`` leading and ``m`` last.
- * prefactors  : (npol * ndeltaL * nL) complex array containing gamma * phase
+ * prefactors  : (npol, ndeltaL, nL) complex array containing gamma * phase
  *                factors for each polarization.
- * out         : (npol * ndeltaL * nL * m_dim) complex output array for A_{LM}.    
+ * out         : (npol, ndeltaL, nL, nphi) complex output array for A_{LM}.    
  * Lmax        : Maximum value of L.
  * nell        : Number of multipoles (size of ell dimension).
- * m_dim       : Number of available M samples (>= 3*Lmax+1).
+ * nphi        : Number of phi values (>= 3*Lmax+1).
  */
 
 void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
@@ -154,14 +153,14 @@ void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 		       const float complex *a_ell_m,
 		       const float *y_M_L, const float *w3j_product,
 		       const float complex *prefactors, float complex *out,
-		       int Lmax, int nell, int m_dim);
+		       int Lmax, int nell, int nphi);
 
 void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
 	           int nL, int ndeltaL, int npol, int n,
 		       const double complex *a_ell_m,
 		       const double *y_M_L, const double *w3j_product,
 		       const double complex *prefactors, double complex *out,
-		       int Lmax, int nell, int m_dim);
+		       int Lmax, int nell, int nphi);
 
 
 

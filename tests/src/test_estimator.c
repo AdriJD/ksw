@@ -41,6 +41,7 @@ void test_t_cubic_on_ring_sp(void){
     free(f_i_phi);
 }
 
+
 void test_backward_sp(void){
 
     int nufact = 4;
@@ -613,6 +614,55 @@ void test_compute_ylm_sp(void){
     free(y_m_ell);
 }
 
+
+void test_t_cubic_on_ring_sp_sst(void){
+
+    float t_cubic;
+    int nrule = 2;
+    int nufact = 4;
+    int nphi = 4;
+    float delta = 1e-6;
+
+    long long *rule = malloc(sizeof *rule * nrule * 3);
+    float *weights = malloc(sizeof *weights * nrule * 3);
+    float complex *f_i_phi_scalar1 = malloc(sizeof *f_i_phi_scalar1 * nufact * nphi);
+    float complex *f_i_phi_scalar2 = malloc(sizeof *f_i_phi_scalar2 * nufact * nphi);
+    float complex *f_i_phi_tensor = malloc(sizeof *f_i_phi_tensor * nufact * nphi);
+
+    rule[0] = 0;
+    rule[1] = 0;
+    rule[2] = 0;
+    rule[3] = 0;
+    rule[4] = 1;
+    rule[5] = 2;
+
+    weights[0] = 1.;
+    weights[1] = 1.;
+    weights[2] = 1.;
+    weights[3] = 2.;
+    weights[4] = 2.;
+    weights[5] = 2.;
+
+    for (int i=0; i<nufact*nphi; i++){
+	f_i_phi_scalar1[i] = (float) i + 0. * I;
+	f_i_phi_scalar2[i] = (float) i + 0. * I;
+	f_i_phi_tensor[i] = (float) i + 0. * I;
+    }
+
+    t_cubic = t_cubic_on_ring_sp_sst(rule, weights, f_i_phi_scalar1,
+				     f_i_phi_scalar2, f_i_phi_tensor, nrule, nphi);
+
+    assert_float_equal(3204., t_cubic, delta);
+
+    free(rule);
+    free(weights);
+    free(f_i_phi_scalar1);     
+    free(f_i_phi_scalar2);
+    free(f_i_phi_tensor);
+}
+
+
+
 /* Double precision functions */
 
 void test_t_cubic_on_ring_dp(void){
@@ -1169,6 +1219,7 @@ void test_fixture_estimator(void){
   test_fixture_start();
 
   run_test(test_t_cubic_on_ring_sp);
+    run_test(test_t_cubic_on_ring_sp_sst);
   run_test(test_backward_sp);
   run_test(test_t_cubic_sp);
   run_test(test_forward_sp);

@@ -203,7 +203,7 @@ def radial_func_dL(f_k, tr_ell_k, k, radii, ells):
 def radial_func_dL_scalar(f_k, tr_L_k, k, radii, Ls):
     '''
     Compute kappa_L_^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_L(k r),
-    where f(k) is an arbitrary function of wavenumber k. For scalar modes.
+    where f(k) is an arbitrary function of wavenumber k and ell = L + delta_L. For scalar modes.
 
     Parameters
     ---------
@@ -293,7 +293,7 @@ def radial_func_dL_scalar(f_k, tr_L_k, k, radii, Ls):
 def radial_func_dL_tensor(f_k, tr_L_k, k, radii, Ls):
     '''
     Compute kappa_L_^X(r) = (2/pi) int k^2 dk f(k) transfer^X_ell(k) j_L(k r),
-    where f(k) is an arbitrary function of wavenumber k. For tensor modes.
+    where f(k) is an arbitrary function of wavenumber k, where ell = L + delta_L. For tensor modes.
 
     Parameters
     ---------
