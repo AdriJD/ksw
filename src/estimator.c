@@ -902,9 +902,9 @@ void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 			 const float complex *a_ell_m,
 			 const float *y_M_L, const float *w3j_product,
 			 const float complex *prefactors, float complex *out,
-			 int Lmax, int nell, int nm){
+			 int Lmax, int nell, int nphi){
 
-	ptrdiff_t total = (ptrdiff_t) npol * ndeltaL * nL * nm;
+	ptrdiff_t total = (ptrdiff_t) npol * ndeltaL * nL * nphi;
 
     for (ptrdiff_t idx=0; idx<total; idx++){
 		out[idx] = 0.f + 0.f * I;
@@ -926,7 +926,7 @@ void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 					continue;
 				}
 
-				ptrdiff_t base = ((pidx * ndeltaL + idL) * nL + iL) * nm;
+				ptrdiff_t base = ((pidx * ndeltaL + idL) * nL + iL) * nphi;
 				float complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
 
 				for (int M=-L; M<=L; M++){
@@ -947,7 +947,7 @@ void compute_A_LM_sp(const int *L_list, const int *deltaL_list,
 						out[base+M] += contrib;
 					}
 					else{
-						out[base + (nm + M)] += contrib;
+						out[base + (nphi + M)] += contrib;
 					}
 			}
 			}

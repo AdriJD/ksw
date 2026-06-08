@@ -661,6 +661,137 @@ void test_t_cubic_on_ring_sp_sst(void){
     free(f_i_phi_tensor);
 }
 
+void test_compute_A_LM_sp(void){
+
+    int Lmax = 3;
+    int nell = Lmax + 1;
+    int nphi = 3 * Lmax + 1;
+
+    int npol = 2;
+    int nL = 4;
+    int ndeltaL = 3;
+    int n = 0; 
+   
+    float delta = 1e-6;
+
+    int *L_list = malloc(sizeof *L_list * nL);
+    int *deltaL_list = malloc(sizeof *deltaL_list * ndeltaL);
+
+    float complex *a_ell_m = malloc(sizeof *a_ell_m * npol * nell * nell);
+    float *y_M_L = malloc(sizeof *y_M_L * nL * nL);
+    float *w3j_product = malloc(sizeof *w3j_product * ndeltaL * nL * nphi);
+    float complex *prefactors = malloc(sizeof *prefactors * npol * ndeltaL * nL);
+
+    ptrdiff_t total_out = (ptrdiff_t)npol * ndeltaL * nL * nphi;
+
+    float complex *out = malloc(sizeof *out * total_out);
+    
+
+    L_list[0] = 0;
+    L_list[1] = 1;
+    L_list[2] = 2;
+    L_list[3] = 3;
+
+    deltaL_list[0] = -1;
+    deltaL_list[1] = 0;
+    deltaL_list[2] = 1;
+
+    for (ptrdiff_t i=0; i<(ptrdiff_t)npol*nell*nell; i++){
+        a_ell_m[i] = i + 0.f * I;
+    }
+
+    for (ptrdiff_t i=0; i<(ptrdiff_t)nL*nL; i++){
+        y_M_L[i] = 1.f;
+    }
+
+    for (ptrdiff_t i=0; i<(ptrdiff_t)ndeltaL*nL*(2*Lmax+1); i++){
+        w3j_product[i] = 1.f;
+    }
+
+    for (ptrdiff_t i=0; i<(ptrdiff_t)npol*ndeltaL*nL; i++){
+        prefactors[i] = 1.f + 0.f * I;
+    }
+
+    for (ptrdiff_t i = 0; i < total_out; i++) {
+        out[i] = 999.f + 999.f * I;
+    }
+    compute_A_LM_sp(L_list, deltaL_list,
+                nL, ndeltaL, npol, n,
+                a_ell_m,
+                y_M_L, w3j_product,
+                prefactors, out,
+                Lmax, nell, nphi);
+
+    float expected[2][3][4][10] = {
+        {   /* pidx = 0 */
+            {   /* idL = 0, deltaL = -1 */
+                { 0.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f },
+                { 0.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f },
+                { 4.f,  -5.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,  -5.f },
+                { 8.f,  -9.f,  10.f,   0.f, 0.f, 0.f, 0.f,  0.f,  10.f,  -9.f }
+            },
+            {   /* idL = 1, deltaL = 0 */
+                { 0.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,   0.f,   0.f,   0.f },
+                { 4.f,  -5.f,   0.f,   0.f, 0.f, 0.f, 0.f,   0.f,   0.f,  -5.f },
+                { 8.f,  -9.f,  10.f,   0.f, 0.f, 0.f, 0.f,   0.f,  10.f,  -9.f },
+                {12.f, -13.f,  14.f, -15.f, 0.f, 0.f, 0.f, -15.f,  14.f, -13.f }
+            },
+            {   /* idL = 2, deltaL = 1 */
+                { 4.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f },
+                { 8.f,  -9.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,  -9.f },
+                {12.f, -13.f,  14.f,   0.f, 0.f, 0.f, 0.f,  0.f,  14.f, -13.f },
+                { 0.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f }
+            }
+        },
+        {   /* pidx = 1 */
+            {   /* idL = 0, deltaL = -1 */
+                { 0.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f },
+                {16.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f },
+                {20.f, -21.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f, -21.f },
+                {24.f, -25.f,  26.f,   0.f, 0.f, 0.f, 0.f,  0.f,  26.f, -25.f }
+            },
+            {   /* idL = 1, deltaL = 0 */
+                {16.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,   0.f,   0.f,   0.f },
+                {20.f, -21.f,   0.f,   0.f, 0.f, 0.f, 0.f,   0.f,   0.f, -21.f },
+                {24.f, -25.f,  26.f,   0.f, 0.f, 0.f, 0.f,   0.f,  26.f, -25.f },
+                {28.f, -29.f,  30.f, -31.f, 0.f, 0.f, 0.f, -31.f,  30.f, -29.f }
+            },
+            {   /* idL = 2, deltaL = 1 */
+                {20.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f },
+                {24.f, -25.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f, -25.f },
+                {28.f, -29.f,  30.f,   0.f, 0.f, 0.f, 0.f,  0.f,  30.f, -29.f },
+                { 0.f,   0.f,   0.f,   0.f, 0.f, 0.f, 0.f,  0.f,   0.f,   0.f }
+            }
+        }
+    };
+
+    for (int pidx = 0; pidx < npol; pidx++) {
+        for (int idL = 0; idL < ndeltaL; idL++) {
+            for (int iL = 0; iL < nL; iL++) {
+                for (int iphi = 0; iphi < nphi; iphi++) {
+
+                    ptrdiff_t idx =
+                        (((ptrdiff_t)pidx * ndeltaL + idL) * nL + iL) * nphi + iphi;
+
+                    assert_float_equal(expected[pidx][idL][iL][iphi],
+                                        crealf(out[idx]), delta);
+
+                    assert_float_equal(0.f, cimagf(out[idx]), delta);
+                }
+            }
+        }
+    }
+
+    free(L_list);
+    free(deltaL_list);
+    free(a_ell_m);
+    free(y_M_L);
+    free(w3j_product);
+    free(prefactors);
+    free(out);
+}
+    
+   
 
 
 /* Double precision functions */
