@@ -214,7 +214,7 @@ def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
                     continue
 
                 gamma = gamma_Z(x_pol, Z, L, dL)
-                pref = phase * gamma
+                pref = phase * gamma * np.sqrt(4*np.pi)
                 out[pidx, idL, iL] = pref
 
     return out
