@@ -667,9 +667,6 @@ class KSW():
         '''
         alm = utils.alm_return_2d(alm, self.npol, self.lmax)
 
-        t_cubic = 0             # The cubic estimate.
-        Afunc_product = 0       # The product of A functionals that goes into the cubic term.
-
         if fisher is None:
             fisher = 1
         if lin_term is None:
@@ -702,6 +699,8 @@ class KSW():
         deltaL_list_scalar = np.array([-1, 1])
         deltaL_list_tensor = np.array([-2, -1, 0, 1, 2])
 
+
+        t_cubic = 0             # The cubic estimate.
         for com_idx in range(len(combins)):
             n_scalar1, n_scalar2, n_tensor = combins[com_idx]
             w3j_product_scalar1 = AF.products_3j_array(S=1, n=n_scalar1, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
@@ -712,6 +711,7 @@ class KSW():
             prefactors_scalar2 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
             prefactors_tensor = AF.prefactor_product(deltaL_list_tensor, L_list, self.pol, "h", cdtype=self.cdtype)
         
+            Afunc_product = 0       # The product of A functionals that goes into the cubic term.
             for tidx_start in range(0, len(self.thetas), theta_batch):
                 thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
                 ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
