@@ -675,13 +675,12 @@ class KSW():
         a_ell_m = utils.alm2a_ell_m(alm)
         a_ell_m = a_ell_m.astype(self.cdtype)
 
-        
         red_bisp_scalar = self.red_bispectra[0]
         kappa_i_L_scalar1, rule, weights = self._init_reduced_bispectrum(
             red_bisp_scalar, keep_deltaL=True)
         kappa_i_L_scalar2 = kappa_i_L_scalar1.copy()
 
-        red_bisp_tensor = self.red_bispectra[-1]
+        red_bisp_tensor = self.red_bispectra[1]
         kappa_i_L_tensor, _, _ = self._init_reduced_bispectrum(
             red_bisp_tensor, keep_deltaL=True)
         

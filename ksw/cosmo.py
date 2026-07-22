@@ -166,9 +166,10 @@ class Cosmology:
             If lmax is too low (lmax < 300).
         '''
 
-        if lmax < 300:
+
+        #if lmax < 300:
             # CAMB crashes for too low lmax.
-            raise ValueError('Pick lmax >= 300.')
+        #    raise ValueError('Pick lmax >= 300.')
 
         #k_eta_fac = 2.5 # Default used by CAMB.
         self.camb_params.set_for_lmax(lmax, lens_margin=0,
@@ -235,14 +236,14 @@ class Cosmology:
             If lmax is too low (lmax < 300).
         """
 
-        if lmax < 300:
-            raise ValueError("Pick lmax >= 300.")
+        #if lmax < 300:
+        #    raise ValueError("Pick lmax >= 300.")
         
         self._setattr_camb('WantTensors', True, verbose=verbose)
-        lmax = max(lmax, 300)
+        #lmax = max(lmax, 300)
         #k_eta_fac = 2.5
         max_eta_k = k_eta_fac * lmax
-        max_eta_k = max(max_eta_k, 1000)
+        #max_eta_k = max(max_eta_k, 1000)
 
         self.camb_params.max_l = lmax
         self.camb_params.max_l_tensor = lmax
@@ -472,8 +473,8 @@ class Cosmology:
 
         f_k = prim_shape.get_f_k(k)
         amps = np.asarray(prim_shape.amps)
-        amps *= 2 * (2 * np.pi ** 2 * self.camb_params.InitPower.As) ** 2 * (3 / 5)
-
+        As = self.camb_params.InitPower.As
+        amps *= 16 * np.pi**4 * As**2 
         red_bisp = rf.radial_func_dL_scalar(f_k, tr_ell_k, k, radii, ells_sparse)
         factors, rule, weights = self._parse_prim_reduced_bispec_tensor(
             red_bisp, radii, prim_shape.rule, amps)
@@ -502,8 +503,7 @@ class Cosmology:
         f_k = prim_shape.get_f_k(k)
         amps = np.asarray(prim_shape.amps)
         As = self.camb_params.InitPower.As
-        r = self.camb_params.InitPower.r
-        amps *= 2 * (2 * np.pi ** 2 * As) ** 2 * r 
+        amps *= 16 * np.pi**4 * As**2 
 
         red_bisp = rf.radial_func_dL_tensor(f_k, tr_ell_k, k, radii, ells_sparse)
         factors, rule, weights = self._parse_prim_reduced_bispec_tensor(

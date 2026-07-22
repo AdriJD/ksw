@@ -178,7 +178,7 @@ def gamma_Z(x, Z, L, deltaL):
 
 def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
     """
-    Return the prefactor ``(1j)**deltaL * gamma_Z`` with leading polarization axis.
+    Return the prefactor ``(1j)**(ell+L) * gamma_Z`` with leading polarization axis.
 
     Parameters
     ----------
@@ -207,9 +207,10 @@ def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
 
     for pidx, x_pol in enumerate(x_list):
         for idL, dL in enumerate(deltaL_list):
-            phase = (1j) ** dL
+            # phase = (1j) ** dL
             for iL, L in enumerate(L_list):
                 ell = L + dL
+                phase = (1j) ** (ell+L)
                 if ell < 0:
                     continue
 
