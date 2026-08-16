@@ -112,13 +112,37 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
 	     double complex *grad_t, int ntheta, int nrule, int nell, int npol, 
 	     int nufact, int nphi);
 
+
+/*
+*/
+void step_sst_sp(const int *L_list,
+			  int nL, int npol, 
+			  int n_scalar1, int n_scalar2, int n_tensor, int n_scalar,   
+			  float complex *a_L_M_scalar, float complex *a_L_M_tensor,
+			  const float *y_M_L,
+			  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
+			  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
+			  int Lmax, int nell,
+			  fftwf_plan plan_c2c_scalar, fftwf_plan plan_c2c_tensor,
+			  float complex *f_i_phi_scalar1, float complex *f_i_phi_scalar2, float complex *f_i_phi_tensor, 
+			  int nufact, int nphi,
+			  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor,
+			  float complex *work_i_L_scalar1, float complex *work_i_L_scalar2, float complex *work_i_L_tensor,
+			  float complex *work_i_phi_scalar1, float complex *work_i_phi_scalar2, float complex *work_i_phi_tensor,
+			  float complex *n_L_phi_scalar1, float complex *n_L_phi_scalar2, float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
+			  float complex *m_L_M_scalar, float complex *m_L_M_tensor,
+			  const long long *rule, const float *weights, const float ct_weight,
+			  const float w3j, int nrule, int nw);
+
+		
+
 /*
  * Compute m-major Ylm(theta,0) for a range of thetas.
  *
  * Arguments
  * ---------
  * thetas  : (ntheta) array of theta values.
- * y_m_ell : (ntheta, nell, nell) output array.
+ * y_mell : (ntheta, nell, nell) output array.
  * ntheta  : number of theta values.
  * lmax    : Maximum multipole (determining nell=nm=lmax+1).
  */

@@ -67,15 +67,15 @@ double complex get_alm_entry_dp(const double complex *a_ell_m,
 *
 * Arguments
 * ---------
-* y_ell_m : (ntheta, nell, nell) array of ylm values in ell-major order.
+* y_m_ell : (ntheta, nell, nell) array of ylm values in m-major order. The last axis is ell. 
 * nell    : Number of multipoles (size of ell dimension).
 * ell     : multipole index.
 * m	      : magnetic quantum number index.
 */
-float get_ylm_entry_sp(const float *y_ell_m,
+float get_ylm_entry_sp(const float *y_m_ell,
 		       int nell, int ell, int m);
 
-double get_ylm_entry_dp(const double *y_ell_m,
+double get_ylm_entry_dp(const double *y_m_ell,
 			int nell, int ell, int m);
 
 
@@ -210,6 +210,96 @@ void forward_dp(const double *f_i_ell, double complex *a_ell_m, const double *y_
 		const double *f_i_phi, double *work_i_ell, double *work_i_phi,
 		const long long *rule, const double *weights, const double ct_weight,
 		int nrule, int nw, int nell, int npol, int nphi);
+
+
+/*
+ * Calculate the contribution of single ring to dT/dalm.
+ *
+ * Arguments
+ * ---------
+ * L_list    : (nL) array of L values.
+ * nL        : size of L_list.
+ * npol      : Number of polarizations.
+ * n_scalar1 : Magnetic quantum number that couples to S in w3j symbol for scalar1 A functional.
+ * n_scalar2 : Magnetic quantum number that couples to S in w3j symbol for scalar2 A functional.
+ * n_tensor  : Magnetic quantum number that couples to S in w3j symbol for tensor A functional.
+ * a_ell_m   : (npol, nell, nell) SH coefficients in ell-major order.
+ * y_M_L     : (ntheta, nL, nL) Ylms in M-majors order for each ring.
+ * w3j_product_scalar1/scalar2/tensor : 
+ * 			   (ndeltaL_scalar/tensor, nL, 2*Lmax+1) array
+ * 			    Product of Wigner 3j symbols for scalar1/scalar2/tensor A functional.
+ * prefactors_scalar1/scalar2/tensor : 
+ * 			   (npol, ndeltaL_scalar/tensor, nL)
+ * 				gamma * phase factors for scalar1/scalar2/tensor A functional.
+ * A_L_M_scalar1/scalar2/tensor : 
+ * 			   (npol, ndeltaL, nL, nphi)  
+ * 			    Output array for compute_A_LM for scalar1/scalar2/tensor A functional.
+ * Lmax      : Maximum value of L.
+ * nell      : Number of ell values.
+ * nphi      : Number of phi values (>= 3*Lmax+1).
+ * n_L_phi_scalar/tensor: 
+ * 			   (npol, ndeltaL, nL, nphi) 
+ *			   array for output of ring fft.
+ * plan_c2c_scalar/tensor: 
+ * 			   fftw plan for ring complex2complex fft.
+ * f_i_phi_scalar1/scalar2/tensor: 
+ *    		   (nufact, nphi) array for output unique factors on ring.
+ * nufact	 : Number of unique factors.
+ * nphi		 : Number of phi elements on ring.
+ * Kappa_i_L_scalar1/scalar2/tensor : 
+ * 			   (nufact, npol, ndeltaL_scalar/tensor, nL) array, kappa functionals.
+ * float *work_i_phi_scalar1/scalar2/tensor :
+ * 			   (nw, nufact, nphi) array for internal dT/dX_i_phi, dT/dY_i_phi, dT/dZ_i_phi calulations.
+ * const float *work_i_L_scalar1/scalar2/tensor :
+ * 			   (nw, npol, ndeltaL_scalar/tensor, nL) arrays
+ * const long long *rule
+ * const float *weights
+ * const double ct_weight
+ * int nrule
+ * int nw
+ */
+
+void forward_sst_sp(const int *L_list,
+			  int nL, int npol, 
+			  int n_scalar1, int n_scalar2, int n_tensor, int n_scalar,   
+			  float complex *a_L_M_scalar, float complex *a_L_M_tensor,
+			  const float *y_M_L,
+			  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
+			  const float complex *prefactors_scalar, const float complex *prefactors_tensor, 
+			  int Lmax, int nell,
+			  fftwf_plan plan_c2c_scalar, fftwf_plan plan_c2c_tensor,
+			  float complex *f_i_phi_scalar1, float complex *f_i_phi_scalar2, float complex *f_i_phi_tensor, 
+			  int nufact, int nphi,
+			  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor,
+			  float complex *work_i_L_scalar1, float complex *work_i_L_scalar2, float complex *work_i_L_tensor,
+			  float complex *work_i_phi_scalar1, float complex *work_i_phi_scalar2, float complex *work_i_phi_tensor,
+			  float complex *n_L_phi_scalar1, float complex *n_L_phi_scalar2, float complex *n_L_phi_scalar, float complex *n_L_phi_tensor,
+			  float complex *m_L_M_scalar, float complex *m_L_M_tensor,
+			  const long long *rule, const float *weights, const float ct_weight,
+			  const float w3j, int nrule, int nw);
+
+/*
+void forward_sst_dp(const int *L_list,
+			  int nL, int npol,
+			  int n_scalar1, int n_scalar2, int n_tensor,	
+			  const double complex *a_ell_m,
+			  const double *y_M_L, 
+			  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
+			  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
+			  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
+			  int Lmax, int nell, 
+			  double complex *n_L_phi_scalar, double complex *n_L_phi_tensor,
+			  fftw_plan plan_c2c_scalar, fftw_plan plan_c2c_tensor,
+			  double complex *f_i_phi_scalar1, double complex *f_i_phi_scalar2, double complex *f_i_phi_tensor, 
+			  int nufact, int nphi,
+			  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor,
+			  double complex *work_i_L_scalar1, double complex *work_i_L_scalar2, double complex *work_i_L_tensor,
+			  double *work_i_phi_scalar1, double *work_i_phi_scalar2, double *work_i_phi_tensor,
+			  const long long *rule, const double *weights, const double ct_weight,
+			  const double w3j, int nrule, int nw);
+*/
+
+
 
 /*
  * Compute the number of elements needed for the arrays in the forward function.
