@@ -431,6 +431,297 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
     return t_cubic
     
 
+def step_sst(L_list,
+        n_scalar1, n_scalar2, n_tensor, n_scalar,
+        a_L_M_scalar, a_L_M_tensor,
+        a_ell_m,
+        y_M_L,
+        w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+        prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+        A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+        kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
+        grad_t_zeta, grad_t_h,
+        rule, weights, ct_weight,
+        w3j, Lmax, nphi, ntheta):
+
+    
+    ndeltaL_scalar = 2
+    ndeltaL_tensor = 5
+
+    nL = L_list.size
+    npol = a_ell_m.shape[0]
+    nell = a_ell_m.shape[1]
+    nufact = kappa_i_L_scalar1.shape[0]
+    nrule = rule.shape[0]
+
+    if a_ell_m.shape != (npol, nell, nell):
+        raise ValueError(f'a_ell_m.shape = {a_ell_m.shape}, expected {(npol, nell, nell)}')
+
+    if grad_t_zeta.shape != (npol, ndeltaL_scalar, nL, nL):
+        raise ValueError(
+            f'grad_t_zeta.shape = {grad_t_zeta.shape}, expected {(npol, ndeltaL_scalar, nL, nL)}')
+
+    if grad_t_h.shape != (npol, ndeltaL_tensor, nL, nL):
+        raise ValueError(
+            f'grad_t_h.shape = {grad_t_h.shape}, expected {(npol, ndeltaL_tensor, nL, nL)}')
+
+    if L_list.dtype != np.int32:
+        raise ValueError(
+            f'L_list.dtype = {L_list.dtype}, expected int32')
+
+    if rule.dtype != np.int64:
+        raise ValueError(
+            f'rule.dtype = {rule.dtype}, expected int64')
+
+    if y_M_L.shape != (ntheta, nL, nL):
+        raise ValueError(
+            f'y_M_L.shape = {y_M_L.shape}, expected {(ntheta, nL, nL)}')
+
+    if w3j_product_scalar1.shape != (ndeltaL_scalar, nL, m_dim):
+        raise ValueError(
+            f'w3j_product_scalar1.shape = {w3j_product_scalar1.shape}, expected {(ndeltaL_scalar, nL, m_dim)}')
+
+    if w3j_product_scalar2.shape != (ndeltaL_scalar, nL, m_dim):
+        raise ValueError(
+            f'w3j_product_scalar2.shape = {w3j_product_scalar2.shape}, expected {(ndeltaL_scalar, nL, m_dim)}')
+
+    if w3j_product_tensor.shape != (ndeltaL_tensor, nL, m_dim):
+        raise ValueError(
+            f'w3j_product_tensor.shape = {w3j_product_tensor.shape}, expected {(ndeltaL_tensor, nL, m_dim)}')
+
+    if prefactors_scalar1.shape != (npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'prefactors_scalar1.shape = {prefactors_scalar1.shape}, expected {(npol, ndeltaL_scalar, nL)}')
+
+    if prefactors_scalar2.shape != (npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'prefactors_scalar2.shape = {prefactors_scalar2.shape}, expected {(npol, ndeltaL_scalar, nL)}')
+
+    if prefactors_tensor.shape != (npol, ndeltaL_tensor, nL):
+        raise ValueError(
+            f'prefactors_tensor.shape = {prefactors_tensor.shape}, expected {(npol, ndeltaL_tensor, nL)}')
+
+    if kappa_i_L_scalar1.shape != (nufact, npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'kappa_i_L_scalar1.shape = {kappa_i_L_scalar1.shape}, expected {(nufact, npol, ndeltaL_scalar, nL)}')
+
+    if kappa_i_L_scalar2.shape != (nufact, npol, ndeltaL_scalar, nL):
+        raise ValueError(
+            f'kappa_i_L_scalar2.shape = {kappa_i_L_scalar2.shape}, expected {(nufact, npol, ndeltaL_scalar, nL)}')
+
+    if kappa_i_L_tensor.shape != (nufact, npol, ndeltaL_tensor, nL):
+        raise ValueError(
+            f'kappa_i_L_tensor.shape = {kappa_i_L_tensor.shape}, expected {(nufact, npol, ndeltaL_tensor, nL)}')
+
+    if a_ell_m.dtype == np.complex64:
+        _step_sst_sp(
+            L_list,
+            a_L_M_scalar,
+            a_L_M_tensor,
+            a_ell_m,
+            y_M_L,
+            w3j_product_scalar1,
+            w3j_product_scalar2,
+            w3j_product_tensor,
+            prefactors_scalar1,
+            prefactors_scalar2,
+            prefactors_tensor,
+            A_L_M_scalar1,
+            A_L_M_scalar2,
+            A_L_M_tensor,
+            kappa_i_L_scalar1,
+            kappa_i_L_scalar2,
+            kappa_i_L_tensor,
+            grad_t_zeta,
+            grad_t_h,
+            rule,
+            weights,
+            nL,
+            npol,
+            n_scalar1,
+            n_scalar2,
+            n_tensor,
+            n_scalar,
+            Lmax,
+            nell,
+            nufact,
+            nphi,
+            ct_weight,
+            w3j,
+            nrule,
+            ntheta)
+
+    elif a_ell_m.dtype == np.complex128:
+        _step_sst_dp(
+            L_list,
+            a_L_M_scalar,
+            a_L_M_tensor,
+            a_ell_m,
+            y_M_L,
+            w3j_product_scalar1,
+            w3j_product_scalar2,
+            w3j_product_tensor,
+            prefactors_scalar1,
+            prefactors_scalar2,
+            prefactors_tensor,
+            A_L_M_scalar1,
+            A_L_M_scalar2,
+            A_L_M_tensor,
+            kappa_i_L_scalar1,
+            kappa_i_L_scalar2,
+            kappa_i_L_tensor,
+            grad_t_zeta,
+            grad_t_h,
+            rule,
+            weights,
+            nL,
+            npol,
+            n_scalar1,
+            n_scalar2,
+            n_tensor,
+            n_scalar,
+            Lmax,
+            nell,
+            nufact,
+            nphi,
+            ct_weight,
+            w3j,
+            nrule,
+            ntheta)
+
+    else:
+        raise ValueError(f'dtype: {a_ell_m.dtype} not supported')
+
+
+def _step_sst_sp(L_list,
+        a_L_M_scalar, a_L_M_tensor,
+        a_ell_m,
+        y_M_L,
+        w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+        prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+        A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+        kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
+        grad_t_zeta, grad_t_h,
+        rule, weights,
+        nL, npol,
+        n_scalar1, n_scalar2, n_tensor, n_scalar,
+        Lmax, nell,
+        nufact, nphi,
+        ct_weight, w3j, nrule, ntheta):
+
+    '''Single-precision version.'''
+
+    cdef int [::1] L_list_ = L_list.reshape(-1)
+
+    cdef float complex [::1] a_L_M_scalar_ = a_L_M_scalar.reshape(-1)
+    cdef float complex [::1] a_L_M_tensor_ = a_L_M_tensor.reshape(-1)
+    cdef float complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
+    cdef float [::1] y_M_L_ = y_M_L.reshape(-1)
+
+    cdef float [::1] w3j_product_scalar1_ = w3j_product_scalar1.reshape(-1)
+    cdef float [::1] w3j_product_scalar2_ = w3j_product_scalar2.reshape(-1)
+    cdef float [::1] w3j_product_tensor_ = w3j_product_tensor.reshape(-1)
+
+    cdef float complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
+    cdef float complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
+    cdef float complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
+
+    cdef float complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
+    cdef float complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
+    cdef float complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
+
+    cdef float complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef float complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
+    cdef float complex [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)
+
+    cdef float complex [::1] grad_t_zeta_ = grad_t_zeta.reshape(-1)
+    cdef float complex [::1] grad_t_h_ = grad_t_h.reshape(-1)
+
+    cdef long long [::1] rule_ = rule.reshape(-1)
+    cdef float [::1] weights_ = weights.reshape(-1)
+
+    cestimator_core.step_sst_sp(
+        &L_list_[0],
+        nL, npol,
+        n_scalar1, n_scalar2, n_tensor, n_scalar,
+        &a_L_M_scalar_[0], &a_L_M_tensor_[0],
+        &a_ell_m_[0],
+        &y_M_L_[0],
+        &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
+        &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
+        &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
+        Lmax, nell,
+        nufact, nphi,
+        &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0],
+        &grad_t_zeta_[0], &grad_t_h_[0],
+        &rule_[0], &weights_[0], ct_weight,
+        w3j, nrule, ntheta)
+
+
+def _step_sst_dp(
+        L_list,
+        a_L_M_scalar, a_L_M_tensor,
+        a_ell_m, y_M_L,
+        w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+        prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+        A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
+        kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
+        grad_t_zeta, grad_t_h,
+        rule, weights,
+        nL, npol,
+        n_scalar1, n_scalar2, n_tensor, n_scalar,
+        Lmax, nell,
+        nufact, nphi,
+        ct_weight, w3j, nrule, ntheta):
+
+    '''Double-precision version.'''
+
+    cdef int [::1] L_list_ = L_list.reshape(-1)
+
+    cdef double complex [::1] a_L_M_scalar_ = a_L_M_scalar.reshape(-1)
+    cdef double complex [::1] a_L_M_tensor_ = a_L_M_tensor.reshape(-1)
+    cdef double complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
+
+    cdef double [::1] y_M_L_ = y_M_L.reshape(-1)
+
+    cdef double [::1] w3j_product_scalar1_ = w3j_product_scalar1.reshape(-1)
+    cdef double [::1] w3j_product_scalar2_ = w3j_product_scalar2.reshape(-1)
+    cdef double [::1] w3j_product_tensor_ = w3j_product_tensor.reshape(-1)
+
+    cdef double complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
+    cdef double complex [::1] prefactors_scalar2_ =  prefactors_scalar2.reshape(-1)
+    cdef double complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
+
+    cdef double complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
+    cdef double complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
+    cdef double complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
+
+    cdef double complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef double complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
+    cdef double complex [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)
+
+    cdef double complex [::1] grad_t_zeta_ = grad_t_zeta.reshape(-1)
+    cdef double complex [::1] grad_t_h_ = grad_t_h.reshape(-1)
+
+    cdef long long [::1] rule_ = rule.reshape(-1)
+    cdef double [::1] weights_ = weights.reshape(-1)
+
+    cestimator_core.step_sst_dp(
+        &L_list_[0],
+        nL, npol,
+        n_scalar1, n_scalar2, n_tensor, n_scalar,
+        &a_L_M_scalar_[0], &a_L_M_tensor_[0], &a_ell_m_[0],
+        &y_M_L_[0],
+        &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
+        &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
+        &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
+        Lmax, nell,
+        nufact, nphi,
+        &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0],
+        &grad_t_zeta_[0], &grad_t_h_[0],
+        &rule_[0], &weights_[0], ct_weight,
+        w3j, nrule, ntheta)   
+
 def compute_ylm(thetas, lmax, dtype=np.float32):
     '''
     Compute Ylm(theta,0) for a range of thetas.
