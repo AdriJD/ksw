@@ -81,3 +81,4 @@ void _trapezoidal_weights(double const *k,
  */
 
 void * _malloc_checked(size_t size);
+

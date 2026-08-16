@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from scipy.special import spherical_jn
+from scipy.integrate import trapezoid
 import os
 import tempfile
 import pathlib
@@ -36,7 +37,7 @@ class TestCosmo(unittest.TestCase):
         self.assertIs(cosmo.camb_params.DoLensing, True)
         self.assertEqual(cosmo.camb_params.Accuracy.AccuracyBoost, 2)
         self.assertEqual(cosmo.camb_params.Accuracy.lSampleBoost, 2)
-        self.assertEqual(cosmo.camb_params.Accuracy.lAccuracyBoost, 2)
+        self.assertEqual(cosmo.camb_params.Accuracy.lAccuracyBoost, 2) 
         self.assertIs(cosmo.camb_params.Accuracy.AccurateBB, True)
         self.assertIs(cosmo.camb_params.Accuracy.AccurateReionization, True)
         self.assertEqual(cosmo.camb_params.Accuracy.BessIntBoost, 30)
@@ -124,6 +125,30 @@ class TestCosmo(unittest.TestCase):
         self.assertTrue(tr_ell_k.flags['OWNDATA'])
         self.assertEqual(ells[0], 2)
         self.assertEqual(ells[-1], lmax)
+
+    def test_cosmology_compute_transfer_tensor(self):
+
+        lmax = 300
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**self.cosmo_opts)
+
+        cosmo = Cosmology(pars)
+        cosmo.compute_transfer_tensor(lmax)
+
+        ells = cosmo.transfer['ells_tensor']
+        k = cosmo.transfer['k_tensor']
+        tr_ell_k = cosmo.transfer['tr_ell_k_tensor']
+
+        npol = 3   # tensor has T, E, B
+        nell = ells.size
+        nk = k.size
+
+        self.assertEqual(tr_ell_k.shape, (nell, nk, npol))
+        self.assertTrue(tr_ell_k.flags['C_CONTIGUOUS'])
+        self.assertTrue(tr_ell_k.flags['OWNDATA'])
+        self.assertEqual(ells[0], 2)
+        self.assertEqual(ells[-1], lmax)
+
 
     def test_cosmology_compute_transfer_err_value(self):
 
@@ -227,13 +252,13 @@ class TestCosmo(unittest.TestCase):
         for lidx in range(ells.size):
             
             # TT.
-            c_ell[lidx,0] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
+            c_ell[lidx,0] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
 
             # EE.
-            c_ell[lidx,1]  = np.trapz(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
+            c_ell[lidx,1]  = trapezoid(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
 
             # TE.
-            c_ell[lidx,3] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
+            c_ell[lidx,3] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
 
         c_ell *= (2 / np.pi)
 
@@ -275,13 +300,13 @@ class TestCosmo(unittest.TestCase):
         for lidx in range(ells.size):
             
             # TT.
-            c_ell[lidx,0] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
+            c_ell[lidx,0] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] ** 2, k)
 
             # EE.
-            c_ell[lidx,1]  = np.trapz(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
+            c_ell[lidx,1]  = trapezoid(k ** 2 * p_k * tr[lidx,:,1] ** 2, k)
 
             # TE.
-            c_ell[lidx,3] = np.trapz(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
+            c_ell[lidx,3] = trapezoid(k ** 2 * p_k * tr[lidx,:,0] * tr[lidx,:,1], k)
 
         c_ell *= (2 / np.pi)
 
@@ -375,7 +400,7 @@ class TestCosmo(unittest.TestCase):
 
         integrand = k ** 2 * spherical_jn(ell, radius * k)
         integrand *= tr_ell_k[lidx,:,pidx] * func
-        ans_expec = (2 / np.pi) * np.trapz(integrand, k)
+        ans_expec = (2 / np.pi) * trapezoid(integrand, k)
 
         lidx_full = ell - 2
         ans = red_bisp.factors[cidx*nr+ridx,pidx,lidx_full]
