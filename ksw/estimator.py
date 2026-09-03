@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import healpy as hp
 from scipy.special import roots_legendre
 
 from optweight import mat_utils
@@ -376,7 +377,8 @@ class KSW():
                 
         self.mc_idx += mc_idx
 
-    def step_batch_2pass(self, alm_loader, alm_files, comm=None, verbose=False, **kwargs):
+    def step_batch_2pass(self, alm_loader, alm_files, comm=None, verbose=False,
+                         ofilenames=None, **kwargs):
         '''
         Compute grad T its mean for a set of simulations, by loading and processing
         several alms in parallel using MPI.
@@ -390,6 +392,9 @@ class KSW():
         comm : MPI communicator, optional
         verbose : bool, optional
             Print process.
+        ofilenames : array_like, optional
+            List of output file paths for each grad_t. If given, save grad_t files
+            for debugging.
         kwargs : dict, optional
             Optional keyword arguments passed to "_step".        
         '''
@@ -401,8 +406,16 @@ class KSW():
         mc_idx_loc = 0
         mc_gt_loc = None
 
+        if ofilenames is not None:
+            if len(ofilenames) != len(alm_files):
+                raise ValueError(f'{len(ofilenames)=} != {len(alm_files)=}')
+        
+        aidxs_on_rank = range(len(alm_files))[comm.Get_rank():len(alm_files):comm.Get_size()]        
+        
         # Split alm_file loop over ranks.
-        for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
+        #for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
+        for aidx in aidxs_on_rank:
+            alm_file = alm_files[aidx]        
 
             if verbose:
                 print(f'rank {comm.rank:3}: loading {alm_file}')
@@ -411,6 +424,9 @@ class KSW():
                 print(f'rank {comm.rank:3}: done loading')
             grad_t = self._step(alm, **kwargs)
 
+            if ofilenames is not None:
+                hp.write_alm(ofilenames[aidx], grad_t, overwrite=True)
+            
             if mc_gt_loc is None:
                mc_gt_loc = grad_t
             else:
