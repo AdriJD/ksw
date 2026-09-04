@@ -63,11 +63,12 @@ class TestFisherOpt(unittest.TestCase):
         self.assertTrue(score < threshold)
         self.assertTrue(len(indices) == n_basis - 1) # Note, this is expected given low threshold.
         self.assertTrue(abs(score - score_ref) < threshold)
-        print(abs(1 - score / score_ref))
-        self.assertTrue(abs(1 - score / score_ref) < 1e-4)
-
+        np.testing.assert_allclose(score, score_ref, rtol=1e-3)
         np.testing.assert_allclose(weights, weights_ref)
-
+        
+        F00 = F[np.ix_(indices, indices)]
+        np.testing.assert_allclose(float(weights @ F00 @ weights), np.sum(F), rtol=1e-8)
+        
         # Again but with more stringent threshold. Now the final score is numerically
         # instable, but we should recover all terms.
         threshold = 1e-10
@@ -82,3 +83,6 @@ class TestFisherOpt(unittest.TestCase):
         # Only test absolute, relative different instable.
         self.assertTrue(abs(score) - abs(score_ref) < 1e-8)
         np.testing.assert_allclose(weights, weights_ref)
+
+        F00 = F[np.ix_(indices, indices)]
+        np.testing.assert_allclose(float(weights @ F00 @ weights), np.sum(F), rtol=1e-12)
