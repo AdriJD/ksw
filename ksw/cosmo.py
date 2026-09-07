@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import CubicSpline
+from scipy.fft import fht, fhtoffset
 import inspect
 import json
 
@@ -235,10 +236,10 @@ class Cosmology:
 
         c_ell_lenspotential = self._camb_data.get_lens_potential_cls(
             lmax=lmax, CMB_unit='muK', raw_cl=True)
-        
+
         ells_unlensed = np.arange(c_ell_unlensed_scalar.shape[0])
         ells_lensed = np.arange(c_ell_lensed_scalar.shape[0])
-        ells_lenspotential = np.arange(c_ell_lenspotential.shape[0])        
+        ells_lenspotential = np.arange(c_ell_lenspotential.shape[0])
 
         self.c_ell['unlensed_scalar'] = {}
         self.c_ell['unlensed_scalar']['ells'] = ells_unlensed
@@ -251,7 +252,7 @@ class Cosmology:
         self.c_ell['lenspotential'] = {}
         self.c_ell['lenspotential']['ells'] = ells_lenspotential
         self.c_ell['lenspotential']['c_ell'] = c_ell_lenspotential
-        
+
     def add_prim_reduced_bispectrum(self, prim_shape, radii, name=None):
         '''
         Compute the factors of the reduced bispectrum for a given
@@ -271,12 +272,12 @@ class Cosmology:
         -----
         We need to correct of the fact that the radiation transfer functions we
         extract from CAMB are for the curvature perturbation zeta instead of the
-        Bardeen potential phi (see shape.py, we use phi to match the Planck 
+        Bardeen potential phi (see shape.py, we use phi to match the Planck
         conventions). We also have to take into account that the scalar amplitude
         "As" extracted from CAMB is different than the value "A" in the Planck convention.
 
-        During matter domination on superhorizon scales we have for adiabatic 
-        perturbations: zeta = (5 / 3) phi. 
+        During matter domination on superhorizon scales we have for adiabatic
+        perturbations: zeta = (5 / 3) phi.
 
         Planck defines A as <phi_k1 phi_k2> = (2pi)^3 delta(k12) A / k^3.
         CAMB defines As as <zeta_k2 zeta_k2> = (2pi)^3 delta(k12) 2 * pi^2 As / k^3.
@@ -288,20 +289,21 @@ class Cosmology:
 
         So finally, to get the 2 A_phi^2 amplitude specified in shape.py and convert
         zeta to phi we need to multiply our templates by:
-        
-        2 * (2 * pi^2)^2 * A_s^2 * (3/5)        
+
+        2 * (2 * pi^2)^2 * A_s^2 * (3/5)
         '''
 
         tr_ell_k = self.transfer['tr_ell_k']
         k = self.transfer['k']
         ells_sparse = self.transfer['ells']
 
-        f_k = prim_shape.get_f_k(k) 
+        f_k = prim_shape.get_f_k(k)
         amps = np.asarray(prim_shape.amps)
         amps *= 2 * (2 * np.pi ** 2 * self.camb_params.InitPower.As) ** 2 * (3 / 5)
 
         # Call C code.
-        red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
+        #red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
+        red_bisp = radial_func_fftlog(f_k, tr_ell_k, k, radii, ells_sparse)
 
         factors, rule, weights = self._parse_prim_reduced_bispec(
             red_bisp, radii, prim_shape.rule, amps)
@@ -355,16 +357,16 @@ class Cosmology:
         start = 0
         for amp, ru in zip(amps, prim_rule):
 
-            # Note, each term needs to be multiplied by number of distinct 
-            # permutations in rule, so e.g. 3 for local. 
+            # Note, each term needs to be multiplied by number of distinct
+            # permutations in rule, so e.g. 3 for local.
             nperm = self.num_permutations(ru)
             amp_per_r = (amp * dr * nperm)
 
-            # Note each factor gets 1/3 power of overall amplitude such that 
+            # Note each factor gets 1/3 power of overall amplitude such that
             # fl1 * fl2 * fl3 has correct amplitude.
 
             # If amp * dr is negative you get complex answers to the 3rd root.
-            # To extract the real value of the root (always exists for n=3), we 
+            # To extract the real value of the root (always exists for n=3), we
             # take the root of the absolute value and apply the sign afterwards.
 
             signs = np.sign(amp_per_r)
@@ -387,12 +389,12 @@ class Cosmology:
         This is not the full ISW-lensing bispectrum, because pol is ignored.
 
         Implements: b_l1l2l3^TTT = Cl2^Tphi * tilde(C)l3^TT fl1l2l3^T + 5 perm.
-        see first line of Eq. 38 in Planck NG 2018.        
+        see first line of Eq. 38 in Planck NG 2018.
         '''
 
         ells = self.c_ell['lensed_scalar']['ells']
         assert np.allclose(ells, self.c_ell['lenspotential']['ells'])
-        
+
         c_ell_tt = self.c_ell['lensed_scalar']['c_ell'][:,0]
         c_ell_tphi = self.c_ell['lenspotential']['c_ell'][:,1]
 
@@ -407,11 +409,11 @@ class Cosmology:
 
         # Set all monopoles and dipoles to zero.
         factors[:,:,:2] = 0
-        
-        rule = np.asarray([[0, 1, 2], [0, 5, 3], [4, 5, 2]])        
+
+        rule = np.asarray([[0, 1, 2], [0, 5, 3], [4, 5, 2]])
         weights = np.asarray([[1., 1., 1.], [1., 1., 1.], [-1., -1., -1.]])
-        # This is due to the 1/6 in the def of b_l1l2l3 and the factor 1/2 in f_l1l2l3        
-        weights *= 3 ** (1 / 3) 
+        # This is due to the 1/6 in the def of b_l1l2l3 and the factor 1/2 in f_l1l2l3
+        weights *= 3 ** (1 / 3)
         name = 'ttt_lensing'
 
         self.red_bispectra.append(
@@ -426,7 +428,7 @@ class Cosmology:
         Notes
         -----
         This implements the full lensing-ISW/reion bispectrum, i.e. both lines
-        from Eq. 38 in Planck NG 2018.        
+        from Eq. 38 in Planck NG 2018.
         '''
 
         ells = self.c_ell['lensed_scalar']['ells']
@@ -440,18 +442,18 @@ class Cosmology:
 
         c_ell_xz[0] = self.c_ell['lensed_scalar']['c_ell'][:,0]
         c_ell_xz[1] = self.c_ell['lensed_scalar']['c_ell'][:,1]
-        c_ell_xz[2] = self.c_ell['lensed_scalar']['c_ell'][:,2]        
-        
+        c_ell_xz[2] = self.c_ell['lensed_scalar']['c_ell'][:,2]
+
         factors, rule, weights = self.get_lensing_bispectrum_factors(
             ells, c_ell_yphi, c_ell_xz)
-        
+
         name = 'lensing'
 
         self.red_bispectra.append(
             ReducedBispectrum(factors, rule, weights, ells, name))
 
     @staticmethod
-    def get_lensing_bispectrum_factors(ells, c_ell_yphi, c_ell_xz):        
+    def get_lensing_bispectrum_factors(ells, c_ell_yphi, c_ell_xz):
         '''
         Compute the factors of a lensing x (ISW, CIB, tSZ, etc.)
         reduced bispectrum.
@@ -480,30 +482,30 @@ class Cosmology:
         denom_fact[2:] = 1 / np.sqrt((ells[2:] - 1) * (ells[2:] + 2) * ells[2:] * (ells[2:] + 1))
         num_fact = np.zeros_like(denom_fact)
         num_fact[2:] = np.sqrt(ells[2:] * (ells[2:] + 1) / ((ells[2:] - 1) * (ells[2:] + 1)))
-        
+
         c_ell_tt = c_ell_xz[0]
         c_ell_ee = c_ell_xz[1]
         c_ell_te = c_ell_xz[2]
 
         c_ell_tphi = c_ell_yphi[0]
-        c_ell_ephi = c_ell_yphi[1]        
-        
+        c_ell_ephi = c_ell_yphi[1]
+
         factors = np.zeros((20, 2, ells.size))
         # Start with the X1 = T case.
         # For the factors that do not contain C_ells the E index is always zero.
         factors[0,0,:] = np.ones(ells.size)
-        
+
         factors[1,0,:] = c_ell_tphi * ells * (ells + 1)
-        factors[1,1,:] = c_ell_ephi * ells * (ells + 1)        
-        
+        factors[1,1,:] = c_ell_ephi * ells * (ells + 1)
+
         factors[2,0,:] = c_ell_tt
         factors[2,1,:] = c_ell_te
-        
+
         factors[3,0,:] = c_ell_tt * ells * (ells + 1)
         factors[3,1,:] = c_ell_te * ells * (ells + 1)
-        
+
         factors[4,0,:] = ells * (ells + 1)
-        
+
         factors[5,0,:] = c_ell_tphi
         factors[5,1,:] = c_ell_ephi
 
@@ -513,14 +515,14 @@ class Cosmology:
 
         factors[7,0,:] = c_ell_te * denom_fact
         factors[7,1,:] = c_ell_ee * denom_fact
-        
+
         factors[8,0,:] = ells * (ells + 1) * c_ell_te * denom_fact
         factors[8,1,:] = ells * (ells + 1) * c_ell_ee * denom_fact
 
         factors[9,1,:] = ells ** 3 * (ells + 1) ** 3 * denom_fact
 
         factors[10,1,:] = 1 * denom_fact
-        
+
         factors[11,0,:] = ells ** 2 * (ells + 1) ** 2 * c_ell_te * denom_fact
         factors[11,1,:] = ells ** 2 * (ells + 1) ** 2 * c_ell_ee * denom_fact
 
@@ -536,7 +538,7 @@ class Cosmology:
         factors[15,1,:] = ells ** 2 * (ells + 1) ** 2 * c_ell_ephi
 
         factors[16,1,:] = num_fact
-        
+
         factors[17,0,:] = num_fact * c_ell_te
         factors[17,1,:] = num_fact * c_ell_ee
 
@@ -544,7 +546,7 @@ class Cosmology:
         factors[18,1,:] = ells * (ells + 1) * num_fact * c_ell_ee
 
         factors[19,1,:] = ells * (ells + 1) * num_fact
-        
+
         # Set all monopoles and dipoles to zero.
         factors[:,:,:2] = 0
 
@@ -622,7 +624,7 @@ class Cosmology:
         weights[19] *= 3   ** (1 / 3) # 10F.
 
         return factors, rule, weights
-        
+
     @staticmethod
     def num_permutations(rule):
         '''
@@ -631,7 +633,7 @@ class Cosmology:
         Parameters
         ----------
         rule : (3,) array-like
-            
+
         Returns
         -------
         n_perm : int
@@ -673,7 +675,7 @@ class Cosmology:
 
         rb = utils.bcast(rb, comm)
         self.red_bispectra.append(rb)
-        
+
     def write_transfer(self, filename):
         '''
         Write the transfer functions to disk.
@@ -728,7 +730,7 @@ class Cosmology:
                     data=self.c_ell['unlensed_scalar']['ells'])
             unlens_scal.create_dataset('c_ell',
                     data=self.c_ell['unlensed_scalar']['c_ell'])
-            
+
             lenspotential = f.create_group('lenspotential')
             lenspotential.create_dataset('ells',
                     data=self.c_ell['lenspotential']['ells'])
@@ -746,7 +748,7 @@ class Cosmology:
         comm : MPI communicator, optional
             If provided, broadcast after load.
         '''
-        
+
         if comm is None:
             comm = utils.FakeMPIComm()
 
@@ -770,12 +772,12 @@ class Cosmology:
                 c_ell = f['lenspotential/c_ell'][()]
                 self.c_ell['lenspotential'] = {}
                 self.c_ell['lenspotential']['ells'] = ells
-                self.c_ell['lenspotential']['c_ell'] = c_ell                
+                self.c_ell['lenspotential']['c_ell'] = c_ell
         else:
             self.c_ell = None
-    
+
         self.c_ell = utils.bcast(self.c_ell, comm)
-                            
+
     def write_camb_params(self, filename):
         '''
         Write the CAMB parameters to human readable file.
@@ -812,6 +814,238 @@ class Cosmology:
         with open(filename + '.json', 'w') as f:
             json.dump(params, f, sort_keys=True, indent=4)
 
+# This function would benefit from MPI parallization because the fft is not
+# parallized. Or replace the scipy FFTlog with ducc. For now, it's fast enough.
+def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells):
+    '''
+    FFTlog-based version to compute f_ell^X(r) = (2/pi) int k^2 dk f(k)
+    transfer^X_ell(k) j_ell(k r), where f(k) is an arbitrary function of
+    wavenumber k.
+
+    Parameters
+    ---------
+    f_k : (nk, ncomp) array
+        Input functions.
+    tr_ell_k : (nell, nk, npol) array
+        Transfer functions.
+    wavenumbers : (nk) array
+        Wavenumbers in 1/Mpc.
+    radii : (nr) array
+        Output radii in Mpc.
+    ells : (nell) array
+        Multipoles. Can be a sparsely sampled array.
+
+    Returns
+    -------
+    f_ell_r : (nr, nell, npol, ncomp) array
+        Evaluted integral for all radii, multipoles, polarizations
+        and input function components.
+
+    Raises
+    ------
+    ValueError
+        If input array shapes are incorrect.
+        If the input arrays contain nans or infs.
+    '''
+
+    # Check input for nans and infs. Taken from Cython version, can't hurt.
+    f_k = np.asarray_chkfinite(f_k, dtype=float, order='C')
+    tr_ell_k = np.asarray_chkfinite(tr_ell_k, dtype=float, order='C')
+    wavenumbers = np.asarray_chkfinite(wavenumbers, dtype=float, order='C')
+    radii = np.asarray_chkfinite(radii, dtype=float, order='C')
+    ells = np.asarray_chkfinite(ells, dtype=np.int32, order='C')
+
+    # Check for input shapes.
+    nk, = utils.check_and_return_shape(wavenumbers, (None,))
+    nr, = utils.check_and_return_shape(radii, (None,))
+    nell, = utils.check_and_return_shape(ells, (None,))
+    nk, ncomp = utils.check_and_return_shape(f_k, (nk, None))
+    nell, nk, npol = utils.check_and_return_shape(tr_ell_k, (nell, nk, None))
+
+    if np.any(wavenumbers <= 0):
+        raise ValueError('Wavenumbers not strictly positive.')
+
+    # rmin of fftlog output is given by exp(fhtoffset) / kmax \approx 1 / kmax.
+    # So pick kmax corresponding to input rmin.
+    # We also do some zero-padding at low k even though rmax is huge.
+    if radii.min() > 0:
+        kmax = max(wavenumbers.max(), 1 / radii.min())
+    else:
+        kmax = max(wavenumbers.max(), 1 / 0.5) # 0.5 Mpc is reasonable min. r.
+
+    k_log = _get_fftlog_k(wavenumbers, kmin=wavenumbers.min() * 0.5, kmax=kmax)
+    dlog = np.log(k_log[1] / k_log[0])
+
+    # Create output array and tmp array to store output before interpolation.
+    f_ell_r = np.empty((nr, nell, npol, ncomp), dtype=float)
+
+    # These for loops are used to be memory efficient.
+    for cidx in range(ncomp):
+
+        cs_fk = CubicSpline(wavenumbers, f_k[:,cidx], extrapolate=False)
+        prefactor = np.nan_to_num(cs_fk(k_log), nan=0.0) # Null extrapolated values.
+        # Multiply f_k with k^2 * 2 / pi because _bessel_integral_fftlog does not
+        # include these factors.
+        prefactor *= (2 / np.pi)
+        prefactor *= k_log
+        prefactor *= k_log
+
+        for lidx, ell in enumerate(ells):
+            for pidx in range(npol):
+
+                cs_tr = CubicSpline(wavenumbers, tr_ell_k[lidx,:,pidx], extrapolate=False)
+                tr_ell_k_log = np.nan_to_num(cs_tr(k_log), nan=0.0)
+                tr_ell_k_log *= prefactor
+
+                f_ell_r_tmp, radii_tmp = _bessel_integral_fftlog(tr_ell_k_log, ell, k_log, dlog)
+
+                # Interpolate to output r bins. `radii_tmp` are different for each ell.
+                cs = CubicSpline(radii_tmp, f_ell_r_tmp, axis=-1, extrapolate=False)
+                f_ell_r[:,lidx,pidx,cidx] = np.nan_to_num(cs(radii), nan=0.0)
+
+    return f_ell_r
+
+def _bessel_integral_fftlog(f_in, ell, k_log, dlog):
+    '''
+    Compute f(r) = int dk X(k) j_ell(kr) for given ell.
+
+    Arguments
+    ---------
+    x_k : (..., nk)
+        Input function X(k).
+    ell : int
+        Mulipole.
+    k_log : (nk,) array
+        Uniformly log-spaced wavenumber array.
+    dlog : float
+        Spacing of the log-spaced wavenumber array used for input X(k).
+
+    Returns
+    -------
+    f_r : (..., nr) array
+        Output array.
+    radii : (nr,) array
+        Output radii.
+
+    Notes
+    -----
+    fht computes f_r = r int alpha(k) J_mu(kr) dk
+                     = r int alpha(k) sqrt(2kr / pi) j_{mu-0.5](kr) dk
+    so for alpha(k) = r^-1.5 k^-0.5 sqrt(pi/2) X(k) and mu = ell + 0.5, you
+    get the desired integral.
+    '''
+
+    mu = ell + 0.5
+    offset = fhtoffset(dlog, mu, initial=0, bias=0)
+
+    alpha = k_log ** -0.5 * f_in
+    alpha *= np.sqrt(np.pi / 2)
+    f_r = fht(alpha, dlog, mu, offset=offset, bias=0)
+    radii = np.exp(offset) / k_log[::-1]
+    f_r /= radii ** 1.5
+
+    return f_r, radii
+
+# This function oversamples the log-spaced k-bins too much with oversample=1 and r_ref = 1 Mpc.
+# With changes below it still works, but the newer version of the function has a better,
+# phyically motivated way to pick the log-k spacing.
+def _get_fftlog_k_old(k_input, kmin=None, kmax=None, oversample=0.01): # Hack.
+    '''
+    Get a log-spaced array of wavenumbers given an (e.g. linearly spaced) input
+    wavenumber array. Making sure the sampling is atleast as fine as the input.
+
+    Arguments
+    ---------
+    k_input : (nk') array
+        Input wavenumber array.
+    kmin : float, optional
+        Minimum k in output array. If not given take mimimum from input.
+    kmax : float, optional
+        Maximum k in output array. If not given take maximum from input.
+    oversample : int, float, optional
+        Oversample the output array by this factor.
+
+    Returns
+    -------
+    k_out : (nk) array
+        Log-spaced array from kmin, to kmax with FFT-friendly length.
+    '''
+
+    k_input = np.asarray(k_input, dtype=float)
+    dk_min = np.diff(k_input).min()
+
+    if kmin is None:
+        kmin = k_input.min()
+    if kmax is None:
+        kmax = k_input.max()
+
+    if kmin <= 0:
+        raise ValueError(f'{kmin=} cannot be <= 0')
+    if kmax <= kmin:
+        raise ValueError(f'{kmax=} cannot be <= {kmin=}')
+
+    # Hack.
+    k_ref = 0.01 * kmax
+
+    dlnk_required = (dk_min / k_ref) / oversample
+    nk = int(np.ceil(np.log(kmax / kmin) / dlnk_required)) + 1
+    # Round up to next FFT-friendly size.
+    nk = utils.compute_fftlen_fftw(nk)
+
+    return np.logspace(np.log10(kmin), np.log10(kmax), nk)
+
+def _get_fftlog_k(k_input, kmin=None, kmax=None):
+    '''
+    Get a log-spaced array of wavenumbers given an (e.g. linearly spaced) input
+    wavenumber array. Making sure the sampling is atleast as fine as the input.
+
+    Arguments
+    ---------
+    k_input : (nk') array
+        Input wavenumber array.
+    kmin : float, optional
+        Minimum k in output array. If not given take mimimum from input.
+    kmax : float, optional
+        Maximum k in output array. If not given take maximum from input.
+    oversample : int, float, optional
+        Oversample the output array by this factor.
+
+    Returns
+    -------
+    k_out : (nk) array
+        Log-spaced array from kmin, to kmax with FFT-friendly length.
+    '''
+
+    k_input = np.asarray(k_input, dtype=float)
+
+    # This is based on the idea that the transfer function is given by:
+    # T(k) = int S(k,tau) j_ell(k (tau_0 - tau)), where S is the source function.
+    # This integral over conformal time tau is dominated by tau = tau_star ~ 14,200 Mpc / c.
+    # Then, given that j_ell(x) ~ sin(x), the smallest period in k is approx given by
+    # 2 pi / (tau - tau_star). We add a large safety factor to make sure we oversample
+    # the oscillations enough. In pracise this seems to work very well, probably still too
+    # conservative but I have better things to do.
+    tau_star = 14200.0 # Only approx, but with safety factor this should be fine.
+    n_safety = 15
+
+    if kmin is None:
+        kmin = k_input.min()
+    if kmax is None:
+        kmax = k_input.max()
+
+    if kmin <= 0:
+        raise ValueError(f'{kmin=} cannot be <= 0')
+    if kmax <= kmin:
+        raise ValueError(f'{kmax=} cannot be <= {kmin=}')
+
+    dlnk_required = (2 * np.pi / tau_star) / (kmax * n_safety)
+    nk = int(np.ceil(np.log(kmax / kmin) / dlnk_required)) + 1
+
+    # Round up to next FFT-friendly size.
+    nk = utils.compute_fftlen_fftw(nk)
+
+    return np.logspace(np.log10(kmin), np.log10(kmax), nk)
+
 class ReducedBispectrum:
     '''
     A ReducedBispectrum instance represents a reduced bispectrum
@@ -823,7 +1057,7 @@ class ReducedBispectrum:
     Parameters
     ----------
     factors = (n, npol, nell_sparse)
-        Unique f_ells (e.g. X(i)_ell, Y(i)_ell) that make up the reduced 
+        Unique f_ells (e.g. X(i)_ell, Y(i)_ell) that make up the reduced
         bispectrum.
     rule : (nfact, 3) int array
         Indices to first dimension of unique factors array that
@@ -835,7 +1069,7 @@ class ReducedBispectrum:
         multipoles.
     name : str
         A name to identify the reduced bispectrum.
-    
+
     Attributes
     ----------
     factors : (n, npol, nell)
@@ -967,8 +1201,8 @@ class ReducedBispectrum:
 
     @property
     def lmin(self):
-        return self.ells_full[0]    
-        
+        return self.ells_full[0]
+
     def _interp_factors(self, factors):
         '''
         Return factors of reduced bispectrum interpolated
@@ -1021,7 +1255,6 @@ class ReducedBispectrum:
             rule = f['rule'][()]
             weights = f['weights'][()]
             ells = f['ells_full'][()]
-            name = f['name'][()].decode("utf-8") 
+            name = f['name'][()].decode("utf-8")
 
         return cls(factors, rule, weights, ells, name)
-            

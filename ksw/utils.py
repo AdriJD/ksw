@@ -483,6 +483,44 @@ def numpy_to_mpi_type(dtype):
     # Could also used mpi.util.dtlib. But was only added in mpi4py 3.1.0.
     return MPI._typedict[np.dtype(dtype).char]    
 
+def check_and_return_shape(arr, exp_shape):
+    '''
+    Return shape of input array if it matches expections.
+
+    Parameters
+    ---------
+    arr : array
+        Array to be checked.
+    exp_shape : array_like
+        Expected shape of array, use `None` for unknown dimension
+        sizes.
+
+    Returns
+    -------
+    shape : tuple
+
+    Raises
+    ------
+    ValueError
+        If array shape is incorrect.    
+    '''
+    
+    if arr.ndim != len(exp_shape):
+        raise ValueError(
+            "Array dimensions incorrect (expected {}, got {})".format(
+                len(exp_shape), arr.ndim))
+    
+    for idx, (n, n_exp) in enumerate(zip(arr.shape, exp_shape)):
+        
+        if n_exp is None:
+            continue
+        
+        if n != n_exp:
+            raise ValueError(
+                "Incorrect size of dim {} (expected {}, got {})".format(
+                    idx, n_exp, n))            
+    return arr.shape
+
 class FakeMPIComm():
     ''' Mimic an actual MPI communicator.'''
     

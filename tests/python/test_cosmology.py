@@ -9,7 +9,7 @@ import json
 
 import camb
 
-from ksw import Cosmology, Shape, ReducedBispectrum
+from ksw import cosmo, Cosmology, Shape, ReducedBispectrum
 
 class TestCosmo(unittest.TestCase):
 
@@ -475,7 +475,7 @@ class TestCosmo(unittest.TestCase):
 
         rule = [3, 3]
         self.assertRaises(ValueError, Cosmology.num_permutations, rule)
-
+        
 class TestCosmoIO(unittest.TestCase):
 
     def setUp(self):
