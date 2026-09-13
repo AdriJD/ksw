@@ -384,6 +384,69 @@ def bcast_array(arr, comm, root=0):
 
     return arr
 
+def gatherv_array(arr_local, sel_per_rank, total_shape, comm, root=0):
+    '''
+    Gather possibly unevenly sized arrays into a total array on the root rank.
+
+    Parameters
+    ----------
+    arr_local : array
+        Array on each rank to be gathered on root.
+    sel_per_rank : tuple of slices, lists
+        The slices that turn the global into the local array, e.g.
+        global_arr[sel_per_rank] = arr_local. See np.s_.
+    total_shape : tuple
+        The shape of the gobal array.
+    comm : mpi4py.MPI.Op object
+        MPI communicator.
+    root : int
+        Root rank.
+
+    Returns
+    -------
+    arr_global : array, None
+        The gathered array on the root rank, None otherwise.
+    '''
+
+    if isinstance(comm, FakeMPIComm) or comm.size == 1:
+        return arr_local
+    
+    arr_local = np.ascontiguousarray(arr_local)
+
+    all_sels = comm.gather(sel_per_rank, root=root)
+    all_shapes = comm.gather(arr_local.shape, root=root)
+    dtypes = comm.gather(arr_local.dtype, root=root)
+
+    if comm.rank == root:
+        assert all([d == dtypes[0] for d in dtypes]), "dtypes do not match"
+        dtype = dtypes[0]
+        mpi_type = numpy_to_mpi_type(dtype)        
+        counts = np.asarray([np.prod(s) for s in all_shapes])        
+        displs = np.zeros(len(counts), dtype=np.int64)
+        displs[1:] = np.cumsum(counts)[:-1]
+        recv_buf = np.empty(sum(counts), dtype=dtype)
+    else:
+        counts = None
+        displs = None
+        recv_buf = None
+
+    comm.Gatherv(
+        sendbuf=arr_local,
+        recvbuf=[recv_buf, counts, displs, mpi_type] if comm.rank == root else None,
+        root=root)
+    
+    if comm.rank != root:
+        return None
+
+    arr_global = np.empty(total_shape, dtype=dtype)
+    offset = 0
+    for sel, shp, cnt in zip(all_sels, all_shapes, counts):
+        piece = recv_buf[offset : offset + cnt].reshape(shp)
+        arr_global[sel] = piece
+        offset += cnt
+
+    return arr_global
+
 def reduce(obj, comm, op=None, root=0):
     '''
     Reduce python object to root.

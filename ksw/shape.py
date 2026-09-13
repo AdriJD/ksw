@@ -1,5 +1,28 @@
 import numpy as np
 
+class PowerLaw:
+    '''
+    Callable power-law function f(k) = amp * k^exponent, with the
+    exponent and amplitude exposed as attributes.
+
+    Parameters
+    ----------
+    exponent : float
+        Power-law exponent.
+    amp : float, optional
+        Amplitude.
+    '''
+
+    def __init__(self, exponent, amp=1.):
+        self.exponent = exponent
+        self.amp = amp
+
+    def __call__(self, k):
+        return self.amp * k ** self.exponent
+
+    def __repr__(self):
+        return f'PowerLaw(exponent={self.exponent}, amp={self.amp})'
+    
 class Shape:
     '''
     A shape represents an f(k1, k2, k3) primordial shape function.
@@ -76,6 +99,21 @@ class Shape:
             raise ValueError(errmsg) from e
         self.__name = name
 
+    @property
+    def exponents(self):
+        '''
+        Power-law exponent for each function in self.funcs.
+
+        Returns
+        -------
+        exponents : (ncomp) array
+            Exponent per function. NaN for any funcion that is not a
+            PowerLaw instance
+        '''
+        
+        exps = [getattr(f, 'exponent', np.nan) for f in self.funcs]
+        return np.asarray(exps, dtype=float)
+        
     def get_f_k(self, k):
         '''
         Calculate f(k) for an array of wavenumbers k.
@@ -117,13 +155,11 @@ class Shape:
 
         Returns
         -------
-        f : callable func
-            Power law function f(k).
+        f : PowerLaw instance
+            Callable with .exponent and .amp exposed as attributes.
         '''
 
-        def f(k):
-            return amp * k ** exponent
-        return f
+        return PowerLaw(exponent, amp)
 
     @staticmethod
     def prim_local(ns=1, pivot=0.05, name='local'):

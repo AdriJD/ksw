@@ -475,6 +475,95 @@ class TestCosmo(unittest.TestCase):
 
         rule = [3, 3]
         self.assertRaises(ValueError, Cosmology.num_permutations, rule)
+
+    def test_cosmology_get_real_space_phi_cov(self):
+
+        lmax = 5
+        pars = camb.CAMBparams()
+        pars.set_cosmology(**self.cosmo_opts)
+
+        cosmo = Cosmology(pars)
+
+        radii = np.asarray([14000, 14200])        
+        phi_cov = cosmo.get_real_space_phi_cov(radii, lmax)
+        
+        shape_exp = (radii.size, radii.size, lmax + 1)
+        self.assertEqual(phi_cov.shape, shape_exp)
+
+        np.testing.assert_equal(
+            phi_cov[:,:,:2], np.zeros((radii.size, radii.size, 2)))
+                
+        phi_cov_t = phi_cov.transpose(1, 0, 2)
+        diff = (phi_cov - phi_cov_t)[:,:,2:]
+        diff /= np.max(np.abs(phi_cov)[:,:,2:], axis=(0, 1))
+        # Not great precision, but hopefully good enough.
+        np.testing.assert_almost_equal(diff, np.zeros_like(diff), decimal=4)
+        # Test if matrix is PSD.
+        self.assertTrue(np.all(np.linalg.eig(phi_cov[:,:,0])[0] >= 0))
+        self.assertTrue(np.all(np.linalg.eig(phi_cov[:,:,1])[0] >= 0))
+        self.assertTrue(np.all(np.linalg.eig(phi_cov[:,:,2])[0] >= 0))
+        self.assertTrue(np.all(np.linalg.eig(phi_cov[:,:,3])[0] >= 0))        
+        self.assertTrue(np.all(np.linalg.eig(phi_cov[:,:,4])[0] >= 0))
+        self.assertTrue(np.all(np.linalg.eig(phi_cov[:,:,5])[0] >= 0))        
+        
+    def test_cosmology_get_sparse_log_ell(self):
+
+        lmin = 2
+        lmax = 50
+        num = 300
+        ells_sparse = cosmo._get_sparse_log_ell(lmin, lmax, num=num)
+
+        self.assertTrue(ells_sparse[0] == 2)
+        self.assertTrue(ells_sparse[-1] == lmax)
+        self.assertTrue(ells_sparse.size < 300)
+        self.assertTrue(np.all(np.diff(ells_sparse)))
+        
+        lmin = 2
+        lmax = 5000
+        num = 300
+        ells_sparse = cosmo._get_sparse_log_ell(lmin, lmax, num=num,
+                                                lmin_ref=2, lmax_ref=5000)
+        
+        self.assertTrue(ells_sparse[0] == 2)
+        self.assertTrue(ells_sparse[-1] == lmax)
+        self.assertTrue(np.all(np.diff(ells_sparse)))        
+        self.assertTrue(ells_sparse.size < 300) # becuase of duplicates.
+
+    def test_cosmology_get_jl_interpolant_ell2(self):
+
+        kmin = 1e-7
+        kmax = 10
+        xmax = kmax * 17_000
+
+        x = np.linspace(0, xmax, 10_000)
+        
+        ell = 2        
+        cs = cosmo._get_jl_interpolant(ell, xmax, n_safety=15)
+
+        out = cs(x)
+        out_exp = spherical_jn(ell, x)
+        
+        num = np.sqrt(np.sum((out - out_exp) ** 2))
+        denom = np.sqrt(np.sum(out_exp ** 2))
+        self.assertTrue(num / denom < 1e-4)
+
+    def test_cosmology_get_jl_interpolant_ell1000(self):
+
+        kmin = 1e-7
+        kmax = 10
+        xmax = kmax * 17_000
+
+        x = np.linspace(0, xmax, 10_000)
+        
+        ell = 1000
+        cs = cosmo._get_jl_interpolant(ell, xmax, n_safety=15)
+
+        out = cs(x)
+        out_exp = spherical_jn(ell, x)
+        
+        num = np.sqrt(np.sum((out - out_exp) ** 2))
+        denom = np.sqrt(np.sum(out_exp ** 2))
+        self.assertTrue(num / denom < 1e-4)
         
 class TestCosmoIO(unittest.TestCase):
 

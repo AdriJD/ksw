@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.fft import fht, fhtoffset
+from scipy.special import spherical_jn
 import inspect
 import json
 
@@ -303,7 +304,12 @@ class Cosmology:
 
         # Call C code.
         #red_bisp = rf.radial_func(f_k, tr_ell_k, k, radii, ells_sparse)
-        red_bisp = radial_func_fftlog(f_k, tr_ell_k, k, radii, ells_sparse)
+
+        # Empirically, seems like for k^-3 bias=0 does not work, -1 works.
+        biases = np.asarray(
+            [2 * (e / 3) if np.isfinite(e) else 0 for e in prim_shape.exponents])
+        red_bisp = radial_func_fftlog(f_k, tr_ell_k, k, radii, ells_sparse,
+                                      biases=biases)
 
         factors, rule, weights = self._parse_prim_reduced_bispec(
             red_bisp, radii, prim_shape.rule, amps)
@@ -625,6 +631,123 @@ class Cosmology:
 
         return factors, rule, weights
 
+    def get_real_space_phi_cov(self, radii, lmax, comm=None, root=0, verbose=False):
+        '''
+        Compute the covariance matrix of the Bardeen potential in real space:
+        <Phi(r1) Phi(r2)>_ell = 4 pi int dk k^2 P(k) j_ell(kr1) j_ell(kr2),
+        where P(k) = As (k/k0)^(ns-1) / k^3.
+
+        Parameters
+        ----------
+        radii : (nr,) array
+            Radii in Mpc. These do not have to go much above recombination, e.g.
+            15,000 Mpc should be enough I think.
+        lmax : int
+            Compute the matrix up to and including this multipole
+        comm : MPI communicator, optional
+            If provided, use MPI for parallel computations.
+        root : int, optional
+            The root rank.
+        verbose : bool, optional
+            Print progress.
+
+        Returns
+        -------
+        p_cov_ell : (nr, nr, lmax+1) array, None
+            Output covariance matrix on root rank, None otherwise.
+
+        Notes
+        -----
+        Eq. A17 in astro-ph/0306248:
+        <Phi(r1) Phi(r2)>_ell = (2 / pi) int dk k^2 P_phi(k) j_ell(kr1) j_ell(kr2),
+        where P_phi is defined as <Phi(k) Phi(k')> = (2pi)^3 P_phi(k) delta(k-k').
+        CAMB defines As by:
+        <zeta(k)zeta(k')> = (2pi)^3 delta(k-k') * 2 * pi^2 As (k / k0)^(ns - 1) / k^3.
+        During matter domination on superhorizon scales we have for adiabatic
+        perturbations: zeta = (5 / 3) phi. As a result, we thus have:
+        P_phi(k) = (3 / 5)^2 * 2 * pi^2 As (k / k0)^(ns - 1) / k^3.
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        ells_sparse =  _get_sparse_log_ell(2, lmax, num=300)
+        dtype_internal = np.float64 # This is crucial, single prec only works for ell < 200.
+        
+        As = self.camb_params.InitPower.As
+        ns = self.camb_params.InitPower.ns
+        k0 = self.camb_params.InitPower.pivot_scalar
+
+        lidxs_per_rank = np.arange(ells_sparse.size)[comm.rank::comm.size]
+        ells_per_rank = ells_sparse[lidxs_per_rank]
+        p_cov_ell_per_rank = np.zeros((radii.size, radii.size, ells_per_rank.size))
+
+        for lidx, ell in enumerate(ells_per_rank):            
+
+            if ell < 5:
+                bias = -2
+            else:
+                bias = -3
+
+            xmax = int(500 * ell)
+            xmin = 0.1 * ell
+
+            cs = _get_jl_interpolant(ell, xmax, n_safety=15)
+
+            for ridx, radius in enumerate(radii):
+                
+                print(f'{comm.rank=},\t {ell=},\t {radius=}')
+                
+                kmin = max((xmin / radius) * 0.01, 1e-6)
+                kmin = min(kmin, 1 / (2 * radius))
+                kmax = (xmax / radius)  * 0.05
+
+                # This array can get very large (1e9) for small r and high ell, so we
+                # limit the number of copies.
+                k_log = _get_fftlog_k(kmin, kmax, n_safety=15, dtype=dtype_internal)
+                dlog = np.log(k_log[1] / k_log[0])
+                
+                # P_phi is given by 2 pi^2 As / k^3 (k / k0)^(ns-1) * (3/5)^2.                
+                # Pre-multiply p_k with the k^2 the bessel integral:                
+                # phi_k_phi = 2 * pi ** 2 * As * (k / k0)^(ns - 1) * k^2.
+                # Then multiply with 4 * pi: prefactor from the final integral,
+                # and (3 / 5)^2: the conversion from <zeta^2> to <Phi^2>.
+                p_k_phi = k_log.copy()
+                p_k_phi **= (ns - 2)
+                p_k_phi /= k0 ** -(ns - 1)
+                p_k_phi *= 2 * np.pi ** 2 * As * (3 / 5) ** 2 * 4 * np.pi
+                
+                integrand = cs(k_log * radius) # Interpolate j_ell to kr.
+                integrand = integrand.astype(dtype_internal)
+                integrand = np.nan_to_num(integrand, nan=0.0, copy=False) # Null extrapolation.
+                integrand *= p_k_phi
+                del p_k_phi
+
+                f_ell_r_tmp, radii_tmp = _bessel_integral_fftlog(
+                    integrand, ell, k_log, dlog, bias=bias)
+
+                # Interpolate to output r bins. `radii_tmp` are different for each ell.
+                # This casts back to 64 bit, which is fine because radii.size is small.
+                cs_r = CubicSpline(radii_tmp, f_ell_r_tmp, axis=-1, extrapolate=False)
+                del f_ell_r_tmp
+                p_cov_ell_per_rank[:,ridx,lidx] = np.nan_to_num(cs_r(radii), nan=0.0, copy=False)
+                del radii_tmp
+                
+        # Gather before interpolating, probably faster to send smaller messages.
+        sel_per_rank = np.s_[:,:,lidxs_per_rank]
+        total_shape = (radii.size, radii.size, ells_sparse.size)
+        p_cov_ell = utils.gatherv_array(p_cov_ell_per_rank, sel_per_rank,
+                                        total_shape, comm, root=0)
+
+        if comm.rank != root:
+            return None
+
+        # Interpolate over ell.
+        ells = np.arange(lmax + 1) # We include ell=0, ell=1 but they are zero.
+        cs_cov = CubicSpline(ells_sparse, p_cov_ell, axis=-1, extrapolate=False)
+
+        return np.nan_to_num(cs_cov(ells), nan=0.0, copy=False)
+
     @staticmethod
     def num_permutations(rule):
         '''
@@ -816,7 +939,7 @@ class Cosmology:
 
 # This function would benefit from MPI parallization because the fft is not
 # parallized. Or replace the scipy FFTlog with ducc. For now, it's fast enough.
-def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells):
+def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells, biases=None):
     '''
     FFTlog-based version to compute f_ell^X(r) = (2/pi) int k^2 dk f(k)
     transfer^X_ell(k) j_ell(k r), where f(k) is an arbitrary function of
@@ -834,6 +957,8 @@ def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells):
         Output radii in Mpc.
     ells : (nell) array
         Multipoles. Can be a sparsely sampled array.
+    biases : (ncomp) array, optional
+        A bias value for each component. Defaults to 0.
 
     Returns
     -------
@@ -865,6 +990,11 @@ def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells):
     if np.any(wavenumbers <= 0):
         raise ValueError('Wavenumbers not strictly positive.')
 
+    if biases is not None:
+        ncomp, = utils.check_and_return_shape(biases, (ncomp,))
+    else:
+        biases = np.zeros(ncomp)
+
     # rmin of fftlog output is given by exp(fhtoffset) / kmax \approx 1 / kmax.
     # So pick kmax corresponding to input rmin.
     # We also do some zero-padding at low k even though rmax is huge.
@@ -873,7 +1003,7 @@ def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells):
     else:
         kmax = max(wavenumbers.max(), 1 / 0.5) # 0.5 Mpc is reasonable min. r.
 
-    k_log = _get_fftlog_k(wavenumbers, kmin=wavenumbers.min() * 0.5, kmax=kmax)
+    k_log = _get_fftlog_k(wavenumbers.min() * 0.5, kmax)
     dlog = np.log(k_log[1] / k_log[0])
 
     # Create output array and tmp array to store output before interpolation.
@@ -883,7 +1013,8 @@ def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells):
     for cidx in range(ncomp):
 
         cs_fk = CubicSpline(wavenumbers, f_k[:,cidx], extrapolate=False)
-        prefactor = np.nan_to_num(cs_fk(k_log), nan=0.0) # Null extrapolated values.
+        # Null extrapolated values.
+        prefactor = np.nan_to_num(cs_fk(k_log), nan=0.0, copy=False)
         # Multiply f_k with k^2 * 2 / pi because _bessel_integral_fftlog does not
         # include these factors.
         prefactor *= (2 / np.pi)
@@ -894,18 +1025,19 @@ def radial_func_fftlog(f_k, tr_ell_k, wavenumbers, radii, ells):
             for pidx in range(npol):
 
                 cs_tr = CubicSpline(wavenumbers, tr_ell_k[lidx,:,pidx], extrapolate=False)
-                tr_ell_k_log = np.nan_to_num(cs_tr(k_log), nan=0.0)
+                tr_ell_k_log = np.nan_to_num(cs_tr(k_log), nan=0.0, copy=False)
                 tr_ell_k_log *= prefactor
 
-                f_ell_r_tmp, radii_tmp = _bessel_integral_fftlog(tr_ell_k_log, ell, k_log, dlog)
+                f_ell_r_tmp, radii_tmp = _bessel_integral_fftlog(
+                    tr_ell_k_log, ell, k_log, dlog, bias=biases[cidx])
 
                 # Interpolate to output r bins. `radii_tmp` are different for each ell.
                 cs = CubicSpline(radii_tmp, f_ell_r_tmp, axis=-1, extrapolate=False)
-                f_ell_r[:,lidx,pidx,cidx] = np.nan_to_num(cs(radii), nan=0.0)
+                f_ell_r[:,lidx,pidx,cidx] = np.nan_to_num(cs(radii), nan=0.0, copy=False)
 
     return f_ell_r
 
-def _bessel_integral_fftlog(f_in, ell, k_log, dlog):
+def _bessel_integral_fftlog(f_in, ell, k_log, dlog, bias=0):
     '''
     Compute f(r) = int dk X(k) j_ell(kr) for given ell.
 
@@ -919,6 +1051,8 @@ def _bessel_integral_fftlog(f_in, ell, k_log, dlog):
         Uniformly log-spaced wavenumber array.
     dlog : float
         Spacing of the log-spaced wavenumber array used for input X(k).
+    bias : float, optional
+        Bias value for FFTlog.
 
     Returns
     -------
@@ -936,11 +1070,13 @@ def _bessel_integral_fftlog(f_in, ell, k_log, dlog):
     '''
 
     mu = ell + 0.5
-    offset = fhtoffset(dlog, mu, initial=0, bias=0)
+    offset = fhtoffset(dlog, mu, initial=0, bias=bias)
 
-    alpha = k_log ** -0.5 * f_in
+    alpha = k_log ** -0.5
+    alpha *= f_in
     alpha *= np.sqrt(np.pi / 2)
-    f_r = fht(alpha, dlog, mu, offset=offset, bias=0)
+    f_r = fht(alpha, dlog, mu, offset=offset, bias=bias)
+    del alpha
     radii = np.exp(offset) / k_log[::-1]
     f_r /= radii ** 1.5
 
@@ -994,29 +1130,27 @@ def _get_fftlog_k_old(k_input, kmin=None, kmax=None, oversample=0.01): # Hack.
 
     return np.logspace(np.log10(kmin), np.log10(kmax), nk)
 
-def _get_fftlog_k(k_input, kmin=None, kmax=None):
+def _get_fftlog_k(kmin, kmax, n_safety=15, dtype=np.float64):
     '''
     Get a log-spaced array of wavenumbers given an (e.g. linearly spaced) input
-    wavenumber array. Making sure the sampling is atleast as fine as the input.
+    wavenumber array. Making sure the sampling is fine enough.
 
     Arguments
     ---------
-    k_input : (nk') array
-        Input wavenumber array.
-    kmin : float, optional
-        Minimum k in output array. If not given take mimimum from input.
-    kmax : float, optional
-        Maximum k in output array. If not given take maximum from input.
-    oversample : int, float, optional
-        Oversample the output array by this factor.
+    kmin : float
+        Minimum k in output array.
+    kmax : float
+        Maximum k in output array.
+    n_safety : int
+        Oversample factor.
+    dtype : type
+        Numpy dtype of output array.
 
     Returns
     -------
     k_out : (nk) array
         Log-spaced array from kmin, to kmax with FFT-friendly length.
     '''
-
-    k_input = np.asarray(k_input, dtype=float)
 
     # This is based on the idea that the transfer function is given by:
     # T(k) = int S(k,tau) j_ell(k (tau_0 - tau)), where S is the source function.
@@ -1026,12 +1160,6 @@ def _get_fftlog_k(k_input, kmin=None, kmax=None):
     # the oscillations enough. In pracise this seems to work very well, probably still too
     # conservative but I have better things to do.
     tau_star = 14200.0 # Only approx, but with safety factor this should be fine.
-    n_safety = 15
-
-    if kmin is None:
-        kmin = k_input.min()
-    if kmax is None:
-        kmax = k_input.max()
 
     if kmin <= 0:
         raise ValueError(f'{kmin=} cannot be <= 0')
@@ -1044,7 +1172,80 @@ def _get_fftlog_k(k_input, kmin=None, kmax=None):
     # Round up to next FFT-friendly size.
     nk = utils.compute_fftlen_fftw(nk)
 
-    return np.logspace(np.log10(kmin), np.log10(kmax), nk)
+    return np.logspace(np.log10(kmin), np.log10(kmax), nk, dtype=dtype)
+
+def _get_jl_interpolant(ell, xmax, n_safety=15, xmin=0):
+    '''
+    Return an interpolant for j_ell(x) over x in [0, xmax],
+
+    Parameters
+    ----------
+    ell : int
+        Multipole.
+    xmax : float
+        Maximum x should be set to k_max * r_max.
+    n_safety : int, optional
+        The number of points per oscillation period at x >> ell.
+    xmin : float, optional
+        Minimum x, defaults to 0.
+
+    Returns
+    -------
+    cs : scipy.interpolate._cubic.CubicSpline object
+        Cubic spline callable
+    '''
+
+    if xmin >= xmax:
+        raise ValueError(f'{xmin=} should be < {xmax=}')
+
+    dx = (2 * np.pi) / n_safety
+    n_points = int(np.ceil((xmax - xmin) / dx)) + 1
+    x = np.linspace(xmin, xmax, n_points)
+    j_vals = spherical_jn(ell, x)
+
+    return CubicSpline(x, j_vals, extrapolate=False)
+
+def _get_sparse_log_ell(lmin, lmax, num=300, lmin_ref=2, lmax_ref=5000):
+    '''
+    Get log-spaced multipole array.
+
+    Parameters
+    ----------
+    lmin : int
+        Minimum multipole.
+    lmax : int
+        Maximum multipole.
+    num : int, optional
+        Number of logarithmic points between lmin/lmax_ref
+        (counting duplicate integers).
+    lmin_ref : int, optional
+        Reference minimum multiple.
+    lmin_ref : int, optional
+        Reference maximum multiple.
+
+    Returns
+    -------
+    ells_sparse : (num,) int array
+        Output multipoles
+    '''
+
+    if lmin < 0:
+        raise ValueError(f'{lmin=} cannot be negative')
+
+    if lmax <= lmin:
+        raise ValueError(f'{lmax=} has to be > {lmin=}')
+
+    if num <= 0:
+        raise ValueError(f'{num=} has be be > 0.')
+
+    if lmin == 0:
+        lmin += 0.1
+
+    log_step = np.log(lmax_ref / lmin_ref) / num
+    n_out = int(np.floor(np.log(lmax / lmin) / log_step)) + 1
+
+    return np.unique(np.round(
+        np.logspace(np.log10(lmin), np.log10(lmax), n_out)).astype(int))
 
 class ReducedBispectrum:
     '''

@@ -211,4 +211,33 @@ class TestShape(unittest.TestCase):
         name = 'myname'
         orthogonal = Shape.prim_orthogonal(name=name)
         self.assertEqual(orthogonal.name, name)
+ 
+    def test_shape_prim_exponents(self):
+
+        local = Shape.prim_local()
+        equilateral = Shape.prim_equilateral()
+        orthogonal = Shape.prim_orthogonal()
+
+        np.testing.assert_equal(local.exponents, np.asarray([0., -3.]))
+        np.testing.assert_equal(equilateral.exponents, np.asarray([0., -3., -1, -2]))
+        np.testing.assert_equal(orthogonal.exponents, np.asarray([0., -3., -1, -2]))
+
+    def test_shape_prim_exponents_ns(self):
+
+        local = Shape.prim_local(ns=0.9)
+        equilateral = Shape.prim_equilateral(ns=0.9)
+        orthogonal = Shape.prim_orthogonal(ns=0.9)
+
+        np.testing.assert_equal(local.exponents, np.asarray([0., -3.1]))
+        np.testing.assert_equal(equilateral.exponents,
+                                np.asarray([0., -3.1, (-4 + 0.9) / 3, 2 * (-4 + 0.9) / 3]))
+        np.testing.assert_equal(orthogonal.exponents,
+                                np.asarray([0., -3.1, (-4 + 0.9) / 3, 2 * (-4 + 0.9) / 3]))
         
+    def test_shape_prim_exponents_nan(self):
+
+        non_power_law_shape = Shape(
+            [lambda k: np.sin(k), lambda k : 1], [(1,1,0)], [1], 'bla')
+        self.assertTrue(np.all(np.isnan(non_power_law_shape.exponents)))
+                                
+       
