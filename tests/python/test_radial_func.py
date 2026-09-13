@@ -4,6 +4,7 @@ Test the cython wrapper of the radial_functional c code.
 import unittest
 import numpy as np
 from scipy.special import spherical_jn
+from scipy.integrate import trapezoid
 
 from ksw import radial_functional as rf
 
@@ -154,7 +155,7 @@ class TestRadialFunc(unittest.TestCase):
         
         exp_f_ell_r = np.zeros((nr, nell, npol, ncomp), dtype=float)
         for ridx, rp in enumerate(radii_prime):            
-            exp_f_ell_r[0,0,0,ridx] = (2. / np.pi) * np.trapz(
+            exp_f_ell_r[0,0,0,ridx] = (2. / np.pi) * trapezoid(
              f_k[:,ridx] * spherical_jn(ell, k * radius) * k ** 2, k)
         
         f_ell_r = rf.radial_func(f_k, tr_ell_k, k, radii, ells)

@@ -42,8 +42,9 @@ TEST_OBJECTS = $(TDIR)/obj/seatest.o \
                $(TDIR)/obj/run_tests.o
 
 LINK_COMMON = -lm
-LINK_FFTW = -L$(FFTWROOT) -lfftw3 -lfftw3f
-LINK_MKL = -L${MKLROOT}/lib/intel64 -lmkl_rt -Wl,--no-as-needed -lpthread -lm -ldl
+LINK_FFTW = -L$(FFTW_HOME)/lib -lfftw3 -lfftw3f -Wl,-rpath,${FFTW_HOME}/lib
+CFLAGS_FFTW = -I"${FFTW_HOME}/include"
+LINK_MKL = -L${MKLROOT}/lib -lmkl_rt -Wl,--no-as-needed,-rpath,${MKLROOT}/lib -lpthread -lm -ldl
 CFLAGS_MKL = -m64  -I"${MKLROOT}/include"
 
 all: $(LDIR)/libradial_functional.so ${LDIR}/libksw_estimator.so ${LDIR}/libksw_fisher.so
@@ -64,25 +65,25 @@ $(ODIR)/hyperspherical.o: $(HS_SDIR)/hyperspherical.c $(HS_IDIR)/*.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(HS_IDIR)
 
 $(LDIR)/libksw_estimator.so: $(EST_OBJECTS) $(LP_OBJECTS) $(IDIR)/ksw_estimator.h
-	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
+	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(CFLAGS_FFTW) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
 
 $(LDIR)/libksw_fisher.so: $(FIS_OBJECTS) $(LP_OBJECTS) $(IDIR)/ksw_fisher.h
-	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
+	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(CFLAGS_FFTW) $(OMPFLAG) $(OPTFLAG) -shared -o $@ $< $(LP_OBJECTS) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
 
 $(ODIR)/estimator.o: $(SDIR)/estimator.c $(IDIR)/*.h
-	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp
+	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(CFLAGS_FFTW) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR)
 
 $(ODIR)/fisher.o: $(SDIR)/fisher.c $(IDIR)/*.h
-	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) $(LINK_MKL)
+	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON)
 
 $(ODIR)/ylmgen_c.o: $(LP_SDIR)/ylmgen_c.c $(LP_IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) 
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR)
 
 $(ODIR)/c_utils.o: $(LP_SDIR)/c_utils.c $(LP_IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) 
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR)
 
 $(ODIR)/walltime_c.o: $(LP_SDIR)/walltime_c.c $(LP_IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) $(LINK_COMMON) 
+	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR)
 
 check: check_c check_python
 
@@ -93,7 +94,7 @@ check_python:
 	cd $(TDIR); python -m pytest python/
 
 $(TDIR)/bin/run_tests: $(TEST_OBJECTS) $(LDIR)/libradial_functional.so $(LDIR)/libksw_estimator.so $(LDIR)/libksw_fisher.so
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -L$(LDIR) -lradial_functional -lksw_estimator -lksw_fisher $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp -Wl,-rpath,$(LDIR)
+	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(CFLAGS_FFTW) $(OMPFLAG) $(OPTFLAG) -o $@ $(TEST_OBJECTS) -L$(LDIR) -lradial_functional -lksw_estimator -lksw_fisher $(LINK_COMMON) $(LINK_FFTW) $(LINK_MKL) -lgomp -Wl,-rpath,$(LDIR)
 
 $(TDIR)/obj/run_tests.o: $(TDIR)/src/run_tests.c $(TDIR)/include/seatest.h
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(TDIR)/include -I$(IDIR) -I$(LP_IDIR)
@@ -105,10 +106,10 @@ $(TDIR)/obj/test_radial_functional.o: $(TDIR)/src/test_radial_functional.c $(IDI
 	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(HS_IDIR) -I$(TDIR)/include
 
 $(TDIR)/obj/test_estimator.o: $(TDIR)/src/test_estimator.c $(IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) -I$(TDIR)/include
+	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(CFLAGS_FFTW) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) -I$(TDIR)/include
 
 $(TDIR)/obj/test_fisher.o: $(TDIR)/src/test_fisher.c $(IDIR)/*.h
-	$(CC) $(CFLAGS) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) -I$(TDIR)/include
+	$(CC) $(CFLAGS) $(CFLAGS_MKL) $(CFLAGS_FFTW) $(OMPFLAG) $(OPTFLAG) -c -o $@ $< -I$(IDIR) -I$(LP_IDIR) -I$(TDIR)/include
 
 clean:
 	rm -rf $(ODIR)
