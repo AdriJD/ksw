@@ -634,8 +634,7 @@ class Cosmology:
     def get_real_space_phi_cov(self, radii, lmax, comm=None, root=0, verbose=False):
         '''
         Compute the covariance matrix of the Bardeen potential in real space:
-        <Phi(r1) Phi(r2)>_ell = 4 pi int dk k^2 P(k) j_ell(kr1) j_ell(kr2),
-        where P(k) = As (k/k0)^(ns-1) / k^3.
+        <Phi(r1) Phi(r2)>_ell = (2 / pi) int dk k^2 P_phi(k) j_ell(kr1) j_ell(kr2).
 
         Parameters
         ----------
@@ -708,14 +707,14 @@ class Cosmology:
                 dlog = np.log(k_log[1] / k_log[0])
                 
                 # P_phi is given by 2 pi^2 As / k^3 (k / k0)^(ns-1) * (3/5)^2.                
-                # Pre-multiply p_k with the k^2 the bessel integral:                
-                # phi_k_phi = 2 * pi ** 2 * As * (k / k0)^(ns - 1) * k^2.
-                # Then multiply with 4 * pi: prefactor from the final integral,
+                # Pre-multiply p_k with the k^2 from the bessel integral:                
+                # integrand = 2 * pi ** 2 * As * (k / k0)^(ns - 1) * k^2.
+                # Then multiply with (2 / pi): prefactor from the final integral,
                 # and (3 / 5)^2: the conversion from <zeta^2> to <Phi^2>.
                 p_k_phi = k_log.copy()
                 p_k_phi **= (ns - 2)
                 p_k_phi /= k0 ** -(ns - 1)
-                p_k_phi *= 2 * np.pi ** 2 * As * (3 / 5) ** 2 * 4 * np.pi
+                p_k_phi *= 2 * np.pi ** 2 * As * (3 / 5) ** 2 * (2 /  np.pi)
                 
                 integrand = cs(k_log * radius) # Interpolate j_ell to kr.
                 integrand = integrand.astype(dtype_internal)
