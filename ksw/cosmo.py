@@ -713,7 +713,7 @@ class Cosmology:
                 # and (3 / 5)^2: the conversion from <zeta^2> to <Phi^2>.
                 p_k_phi = k_log.copy()
                 p_k_phi **= (ns - 2)
-                p_k_phi /= k0 ** -(ns - 1)
+                p_k_phi *= k0 ** -(ns - 1)
                 p_k_phi *= 2 * np.pi ** 2 * As * (3 / 5) ** 2 * (2 /  np.pi)
                 
                 integrand = cs(k_log * radius) # Interpolate j_ell to kr.
