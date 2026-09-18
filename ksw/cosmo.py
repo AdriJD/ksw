@@ -1422,6 +1422,29 @@ class ReducedBispectrum:
         cs = CubicSpline(self.ells_sparse, factors, axis=2)
         return cs(self.ells_full)
 
+    def subsample_factors(self, indices, weights):
+        '''
+        Reduce the bispectrum from Nfact factors to Nopt re-weighted factors.
+        
+        Parameters
+        ----------
+        indices : (Nopt,) int array
+            Indices of factors to keep.
+        weights : (Nopt,) array
+            Weights for each kept factor.
+        '''
+
+        if indices.shape != weights.shape:
+            raise ValueError(f'{indices.size=} != {weights.size=}')
+        if indices.ndim != 1:
+            raise ValueError(f'{indices.ndim=} != 1')
+
+        signs = np.sign(weights)
+        weights = signs * np.abs(weights) ** (1 / 3)
+        
+        self.weights = self.weights[indices] * weights[:,np.newaxis]
+        self.rule = self.rule[indices]
+    
     def write(self, filename):
         '''
         Write the reduced bispectrum to disk.

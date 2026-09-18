@@ -186,6 +186,74 @@ class TestReducedBispectrum(unittest.TestCase):
         np.testing.assert_almost_equal(rb.factors, factors_expec,
                                        decimal=4)
 
+    def test_reducedbispectrum_subsample_factors(self):
+        
+        n_unique = 2
+        nfact = 3
+        npol = 2
+        nell = 3
+
+        factors = np.ones((n_unique, npol, nell))
+        weights = np.ones((nfact, 3))
+        rule = np.zeros((nfact, 3), dtype=int)
+        rule[0] = [0, 0, 0]
+        rule[1] = [0, 0, 1]
+        rule[2] = [0, 1, 1]
+        ells = np.arange(nell)
+        name = 'test_bispec'
+
+        rb = ReducedBispectrum(factors, rule, weights, ells, name)
+
+        # Only keep first 2 factors.
+        indices = np.asarray([0, 1])
+        weights_opt = np.asarray([10., 20.])
+
+        rule_exp = rule[:2].copy()
+        weights_exp = weights[:2].copy()
+        weights_exp *= (np.asarray([10, 20]) ** (1 / 3))[:,np.newaxis]
+        nfact_exp = 2
+        
+        rb.subsample_factors(indices, weights_opt)
+        
+        np.testing.assert_almost_equal(rb.factors, factors)
+        np.testing.assert_almost_equal(rb.rule, rule_exp)        
+        np.testing.assert_almost_equal(rb.weights, weights_exp)
+        # Check that unique factors was not updated.
+        np.testing.assert_almost_equal(rb.factors, factors)        
+        self.assertEqual(rb.nfact, nfact_exp)
+
+    def test_reducedbispectrum_subsample_factors_err(self):
+        
+        n_unique = 2
+        nfact = 3
+        npol = 2
+        nell = 3
+
+        factors = np.ones((n_unique, npol, nell))
+        weights = np.ones((nfact, 3))
+        rule = np.zeros((nfact, 3), dtype=int)
+        rule[0] = [0, 0, 0]
+        rule[1] = [0, 0, 1]
+        rule[2] = [0, 1, 1]
+        ells = np.arange(nell)
+        name = 'test_bispec'
+
+        rb = ReducedBispectrum(factors, rule, weights, ells, name)
+
+        # Indices and weights not equal.
+        indices = np.asarray([0])
+        weights_opt = np.asarray([10., 20.])
+        
+        self.assertRaises(ValueError, rb.subsample_factors,
+                          indices, weights_opt)
+        
+        # 2D indices and weights.
+        indices = np.asarray([[0]])
+        weights_opt = np.asarray([[10., 20.]])
+
+        self.assertRaises(ValueError, rb.subsample_factors,
+                          indices, weights_opt)
+        
 class TestReducedBispectrumIO(unittest.TestCase):
 
     def setUp(self):
