@@ -433,17 +433,14 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
 
 def step_sst(L_list,
         n_scalar1, n_scalar2, n_tensor, n_scalar,
-        a_L_M_scalar, a_L_M_tensor,
         a_ell_m,
         y_M_L,
         w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
         prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-        A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
         kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
         grad_t_zeta, grad_t_h,
-        rule, weights, ct_weight,
-        w3j, Lmax, nphi, ntheta):
-
+        rule, weights, ct_weights,
+        w3j, Lmax, nphi):
     
     ndeltaL_scalar = 2
     ndeltaL_tensor = 5
@@ -453,6 +450,8 @@ def step_sst(L_list,
     nell = a_ell_m.shape[1]
     nufact = kappa_i_L_scalar1.shape[0]
     nrule = rule.shape[0]
+    ntheta = ct_weights.size
+    m_dim = 2 * Lmax + 1
 
     if a_ell_m.shape != (npol, nell, nell):
         raise ValueError(f'a_ell_m.shape = {a_ell_m.shape}, expected {(npol, nell, nell)}')
@@ -516,8 +515,6 @@ def step_sst(L_list,
     if a_ell_m.dtype == np.complex64:
         _step_sst_sp(
             L_list,
-            a_L_M_scalar,
-            a_L_M_tensor,
             a_ell_m,
             y_M_L,
             w3j_product_scalar1,
@@ -526,9 +523,6 @@ def step_sst(L_list,
             prefactors_scalar1,
             prefactors_scalar2,
             prefactors_tensor,
-            A_L_M_scalar1,
-            A_L_M_scalar2,
-            A_L_M_tensor,
             kappa_i_L_scalar1,
             kappa_i_L_scalar2,
             kappa_i_L_tensor,
@@ -546,7 +540,7 @@ def step_sst(L_list,
             nell,
             nufact,
             nphi,
-            ct_weight,
+            ct_weights,
             w3j,
             nrule,
             ntheta)
@@ -554,8 +548,6 @@ def step_sst(L_list,
     elif a_ell_m.dtype == np.complex128:
         _step_sst_dp(
             L_list,
-            a_L_M_scalar,
-            a_L_M_tensor,
             a_ell_m,
             y_M_L,
             w3j_product_scalar1,
@@ -564,9 +556,6 @@ def step_sst(L_list,
             prefactors_scalar1,
             prefactors_scalar2,
             prefactors_tensor,
-            A_L_M_scalar1,
-            A_L_M_scalar2,
-            A_L_M_tensor,
             kappa_i_L_scalar1,
             kappa_i_L_scalar2,
             kappa_i_L_tensor,
@@ -584,7 +573,7 @@ def step_sst(L_list,
             nell,
             nufact,
             nphi,
-            ct_weight,
+            ct_weights,
             w3j,
             nrule,
             ntheta)
@@ -594,12 +583,10 @@ def step_sst(L_list,
 
 
 def _step_sst_sp(L_list,
-        a_L_M_scalar, a_L_M_tensor,
         a_ell_m,
         y_M_L,
         w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
         prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-        A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
         kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
         grad_t_zeta, grad_t_h,
         rule, weights,
@@ -607,14 +594,13 @@ def _step_sst_sp(L_list,
         n_scalar1, n_scalar2, n_tensor, n_scalar,
         Lmax, nell,
         nufact, nphi,
-        ct_weight, w3j, nrule, ntheta):
+        ct_weights, w3j, nrule, ntheta):
 
     '''Single-precision version.'''
 
     cdef int [::1] L_list_ = L_list.reshape(-1)
+    cdef float [::1] ct_weights_ = ct_weights.reshape(-1)
 
-    cdef float complex [::1] a_L_M_scalar_ = a_L_M_scalar.reshape(-1)
-    cdef float complex [::1] a_L_M_tensor_ = a_L_M_tensor.reshape(-1)
     cdef float complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
     cdef float [::1] y_M_L_ = y_M_L.reshape(-1)
 
@@ -625,10 +611,6 @@ def _step_sst_sp(L_list,
     cdef float complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
     cdef float complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef float complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-
-    cdef float complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
-    cdef float complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
-    cdef float complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
 
     cdef float complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
     cdef float complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
@@ -644,27 +626,23 @@ def _step_sst_sp(L_list,
         &L_list_[0],
         nL, npol,
         n_scalar1, n_scalar2, n_tensor, n_scalar,
-        &a_L_M_scalar_[0], &a_L_M_tensor_[0],
         &a_ell_m_[0],
         &y_M_L_[0],
         &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
         &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
-        &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
         Lmax, nell,
         nufact, nphi,
         &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0],
         &grad_t_zeta_[0], &grad_t_h_[0],
-        &rule_[0], &weights_[0], ct_weight,
+        &rule_[0], &weights_[0], &ct_weights_[0],
         w3j, nrule, ntheta)
 
 
 def _step_sst_dp(
         L_list,
-        a_L_M_scalar, a_L_M_tensor,
         a_ell_m, y_M_L,
         w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
         prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-        A_L_M_scalar1, A_L_M_scalar2, A_L_M_tensor,
         kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
         grad_t_zeta, grad_t_h,
         rule, weights,
@@ -672,14 +650,12 @@ def _step_sst_dp(
         n_scalar1, n_scalar2, n_tensor, n_scalar,
         Lmax, nell,
         nufact, nphi,
-        ct_weight, w3j, nrule, ntheta):
+        ct_weights, w3j, nrule, ntheta):
 
     '''Double-precision version.'''
 
     cdef int [::1] L_list_ = L_list.reshape(-1)
-
-    cdef double complex [::1] a_L_M_scalar_ = a_L_M_scalar.reshape(-1)
-    cdef double complex [::1] a_L_M_tensor_ = a_L_M_tensor.reshape(-1)
+    cdef double [::1] ct_weights_ = ct_weights.reshape(-1)
     cdef double complex [::1] a_ell_m_ = a_ell_m.reshape(-1)
 
     cdef double [::1] y_M_L_ = y_M_L.reshape(-1)
@@ -691,10 +667,6 @@ def _step_sst_dp(
     cdef double complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
     cdef double complex [::1] prefactors_scalar2_ =  prefactors_scalar2.reshape(-1)
     cdef double complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-
-    cdef double complex [::1] A_L_M_scalar1_ = A_L_M_scalar1.reshape(-1)
-    cdef double complex [::1] A_L_M_scalar2_ = A_L_M_scalar2.reshape(-1)
-    cdef double complex [::1] A_L_M_tensor_ = A_L_M_tensor.reshape(-1)
 
     cdef double complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
     cdef double complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
@@ -710,16 +682,15 @@ def _step_sst_dp(
         &L_list_[0],
         nL, npol,
         n_scalar1, n_scalar2, n_tensor, n_scalar,
-        &a_L_M_scalar_[0], &a_L_M_tensor_[0], &a_ell_m_[0],
+        &a_ell_m_[0],
         &y_M_L_[0],
         &w3j_product_scalar1_[0], &w3j_product_scalar2_[0], &w3j_product_tensor_[0],
         &prefactors_scalar1_[0], &prefactors_scalar2_[0], &prefactors_tensor_[0],
-        &A_L_M_scalar1_[0], &A_L_M_scalar2_[0], &A_L_M_tensor_[0],
         Lmax, nell,
         nufact, nphi,
         &kappa_i_L_scalar1_[0], &kappa_i_L_scalar2_[0], &kappa_i_L_tensor_[0],
         &grad_t_zeta_[0], &grad_t_h_[0],
-        &rule_[0], &weights_[0], ct_weight,
+        &rule_[0], &weights_[0], &ct_weights_[0],
         w3j, nrule, ntheta)   
 
 def compute_ylm(thetas, lmax, dtype=np.float32):

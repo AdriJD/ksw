@@ -114,37 +114,67 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
 
 
 /*
+ * Compute forward and backward operation on collection of rings for sst bispectra.
+ *
+ * Arguments
+ * ---------
+ * L_list    : (nL) array of L values.
+ * nL        : size of L_list.
+ * npol      : Number of polarizations.
+ * n_scalar1 : Magnetic quantum number that couples to S in w3j symbol for scalar1 A functional.
+ * n_scalar2 : Magnetic quantum number that couples to S in w3j symbol for scalar2 A functional.
+ * n_tensor  : Magnetic quantum number that couples to S in w3j symbol for tensor A functional.
+ * n_scalar  : Magnetic quantum number that couples to S in w3j symbol for scalar A functional. 
+ * a_ell_m   : (npol * nell * nell) complex array with ell-major alms.
+ * y_M_L     : (ntheta, nL, nL) Ylms in M-majors order for each ring.
+ * w3j_product_scalar1/scalar2/tensor : 
+ * 			   (ndeltaL_scalar/tensor, nL, 2*Lmax+1) array
+ * 			   Product of Wigner 3j symbols for scalar1/scalar2/tensor A functional.
+ * prefactors_scalar1/scalar2/tensor : 
+ * 			   (npol, ndeltaL_scalar/tensor, nL)
+ * 			   gamma * phase factors for scalar1/scalar2/tensor A functional.
+ * Lmax      : Maximum value of L.
+ * nell      : Number of ell values.
+ * nufact	 : Number of unique factors.
+ * nphi		 : Number of phi values on ring (>= 3*Lmax+1).
+ * kappa_i_L_scalar1/scalar2/tensor : 
+ * 			   (nufact, npol, ndeltaL_scalar/tensor, nL) array, kappa functionals.
+ * grad_t_zeta/grad_t_h :
+ * 			   (npol, ndeltaL_scalar/tensor, nL, nL) complex array.
+ * rule      : (nrule, 3) array of indices into f_i_phi that give X_i Y_i Z_i.
+ * weights   : (nrule, 3) array of weights for X_i Y_i Z_i.
+ * ct_weight : Single quadruture weight (for cos(theta)) for this ring.
+ * w3j       : wigner 3j symbol in cubic term of the estimator, given m_a, m_b, M.
+ * nrule     : Number of rules.
+ * ntheta    : Number of theta values (rings).
+ * 
 */
 void step_sst_sp(const int *L_list,
 			  int nL, int npol, 
 			  int n_scalar1, int n_scalar2, int n_tensor, int n_scalar,   
-			  float complex *a_L_M_scalar, float complex *a_L_M_tensor,
 			  const float complex *a_ell_m,
 			  const float *y_M_L,
 			  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
 			  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
-			  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 			  int Lmax, int nell,
 			  int nufact, int nphi,
 			  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor,
 			  float complex *grad_t_zeta, float complex *grad_t_h,
-			  const long long *rule, const float *weights, const float ct_weight,
+			  const long long *rule, const float *weights, const float *ct_weights,
 			  const float w3j, int nrule, int ntheta);
 
 void step_sst_dp(const int *L_list,
 			  int nL, int npol, 
 			  int n_scalar1, int n_scalar2, int n_tensor, int n_scalar,   
-			  double complex *a_L_M_scalar, double complex *a_L_M_tensor,
 			  const double complex *a_ell_m,
 			  const double *y_M_L,
 			  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
 			  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
-			  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 			  int Lmax, int nell,
 			  int nufact, int nphi,
 			  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor,
 			  double complex *grad_t_zeta, double complex *grad_t_h,
-			  const long long *rule, const double *weights, const double ct_weight,
+			  const long long *rule, const double *weights, const double *ct_weights,
 			  const double w3j, int nrule, int ntheta);
 
 		

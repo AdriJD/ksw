@@ -211,7 +211,7 @@ def prefactor_product(deltaL_list, L_list, x, Z, cdtype=np.complex64):
             for iL, L in enumerate(L_list):
                 ell = L + dL
                 phase = (1j) ** (ell+L)
-                if ell < 0:
+                if ell < 0: 
                     continue
 
                 gamma = gamma_Z(x_pol, Z, L, dL)

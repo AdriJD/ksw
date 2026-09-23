@@ -505,13 +505,16 @@ void forward_sst_sp(const int *L_list,
 					for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
 
 					a_L_M_tensor[0*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-					* m_L_M_tensor[0*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] * prefactors_tensor[0*ndeltaL_tensor*nL+deltaLidx*nL+Lidx];
+					* m_L_M_tensor[0*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] * prefactors_tensor[0*ndeltaL_tensor*nL+deltaLidx*nL+Lidx]
+					* w3j_product_tensor[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + Midx];
 
 					a_L_M_tensor[1*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-					* m_L_M_tensor[1*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] * prefactors_tensor[1*ndeltaL_tensor*nL+deltaLidx*nL+Lidx];
+					* m_L_M_tensor[1*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] * prefactors_tensor[1*ndeltaL_tensor*nL+deltaLidx*nL+Lidx]
+					* w3j_product_tensor[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + Midx];
 
 					a_L_M_tensor[2*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-					* m_L_M_tensor[2*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] * prefactors_tensor[2*ndeltaL_tensor*nL+deltaLidx*nL+ Lidx];
+					* m_L_M_tensor[2*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] * prefactors_tensor[2*ndeltaL_tensor*nL+deltaLidx*nL+ Lidx]
+					* w3j_product_tensor[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + Midx];
 
 					}
 				}
@@ -655,7 +658,6 @@ void step_sp(const double *ct_weights, const long long *rule, const float *weigh
     }
 
     fftwf_free(m_ell_m);
-    fftwf_free(n_ell_phi);
     fftwf_free(f_i_phi);
     fftwf_free(work_i_ell);
     fftwf_free(work_i_phi);
@@ -671,17 +673,15 @@ void step_sp(const double *ct_weights, const long long *rule, const float *weigh
 void step_sst_sp(const int *L_list,
 			  int nL, int npol, 
 			  int n_scalar1, int n_scalar2, int n_tensor, int n_scalar,   
-			  float complex *a_L_M_scalar, float complex *a_L_M_tensor,
 			  const float complex *a_ell_m,
 			  const float *y_M_L,
 			  const float *w3j_product_scalar1, const float *w3j_product_scalar2, const float *w3j_product_tensor,
 			  const float complex *prefactors_scalar1, const float complex *prefactors_scalar2, const float complex *prefactors_tensor, 
-			  float complex *A_L_M_scalar1, float complex *A_L_M_scalar2, float complex *A_L_M_tensor,
 			  int Lmax, int nell,
 			  int nufact, int nphi,
 			  const float complex *kappa_i_L_scalar1, const float complex *kappa_i_L_scalar2, const float complex *kappa_i_L_tensor,
 			  float complex *grad_t_zeta, float complex *grad_t_h,
-			  const long long *rule, const float *weights, const float ct_weight,
+			  const long long *rule, const float *weights, const float *ct_weights,
 			  const float w3j, int nrule, int ntheta){
 
 
@@ -741,6 +741,10 @@ void step_sst_sp(const int *L_list,
 
 			float complex *m_L_M_scalar = fftwf_malloc(sizeof *m_L_M_scalar * npol * ndeltaL_scalar * nL * nphi);
 			float complex *m_L_M_tensor = fftwf_malloc(sizeof *m_L_M_tensor * npol * ndeltaL_tensor * nL * nphi);
+
+			float complex *A_L_M_scalar1 = fftwf_malloc(sizeof *A_L_M_scalar1 * npol * ndeltaL_scalar * nL * nphi);
+			float complex *A_L_M_scalar2 = fftwf_malloc(sizeof *A_L_M_scalar2 * npol * ndeltaL_scalar * nL * nphi);
+			float complex *A_L_M_tensor = fftwf_malloc(sizeof *A_L_M_tensor * npol * ndeltaL_tensor * nL * nphi);
 
 			float complex *n_L_phi_scalar1 = fftwf_malloc(sizeof *n_L_phi_scalar1 * npol * ndeltaL_scalar * nL * nphi);
 			float complex *n_L_phi_scalar2 = fftwf_malloc(sizeof *n_L_phi_scalar2 * npol * ndeltaL_scalar * nL * nphi);
@@ -845,7 +849,7 @@ void step_sst_sp(const int *L_list,
 				work_i_phi_scalar1, work_i_phi_scalar2, work_i_phi_tensor,
 				n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_scalar, n_L_phi_tensor,
 				m_L_M_scalar, m_L_M_tensor,
-				rule, weights, ct_weight,
+				rule, weights, ct_weights[tidx],
 				w3j, nrule, nw);	
     		}
 
@@ -2246,17 +2250,15 @@ void forward_sst_dp(const int *L_list,
 void step_sst_dp(const int *L_list,
 			  int nL, int npol, 
 			  int n_scalar1, int n_scalar2, int n_tensor, int n_scalar,   
-			  double complex *a_L_M_scalar, double complex *a_L_M_tensor,
 			  const double complex *a_ell_m,
 			  const double *y_M_L,
 			  const double *w3j_product_scalar1, const double *w3j_product_scalar2, const double *w3j_product_tensor,
 			  const double complex *prefactors_scalar1, const double complex *prefactors_scalar2, const double complex *prefactors_tensor, 
-			  double complex *A_L_M_scalar1, double complex *A_L_M_scalar2, double complex *A_L_M_tensor,
 			  int Lmax, int nell,
 			  int nufact, int nphi,
 			  const double complex *kappa_i_L_scalar1, const double complex *kappa_i_L_scalar2, const double complex *kappa_i_L_tensor,
 			  double complex *grad_t_zeta, double complex *grad_t_h,
-			  const long long *rule, const double *weights, const double ct_weight,
+			  const long long *rule, const double *weights, const double *ct_weights,
 			  const double w3j, int nrule, int ntheta){
 
 
@@ -2316,6 +2318,10 @@ void step_sst_dp(const int *L_list,
 
 			double complex *m_L_M_scalar = fftw_malloc(sizeof *m_L_M_scalar * npol * ndeltaL_scalar * nL * nphi);
 			double complex *m_L_M_tensor = fftw_malloc(sizeof *m_L_M_tensor * npol * ndeltaL_tensor * nL * nphi);
+
+			double complex *A_L_M_scalar1 = fftw_malloc(sizeof *A_L_M_scalar1 * npol * ndeltaL_scalar * nL * nphi);
+			double complex *A_L_M_scalar2 = fftw_malloc(sizeof *A_L_M_scalar2 * npol * ndeltaL_scalar * nL * nphi);
+			double complex *A_L_M_tensor = fftw_malloc(sizeof *A_L_M_tensor * npol * ndeltaL_tensor * nL * nphi);
 
 			double complex *n_L_phi_scalar1 = fftw_malloc(sizeof *n_L_phi_scalar1 * npol * ndeltaL_scalar * nL * nphi);
 			double complex *n_L_phi_scalar2 = fftw_malloc(sizeof *n_L_phi_scalar2 * npol * ndeltaL_scalar * nL * nphi);
@@ -2420,7 +2426,7 @@ void step_sst_dp(const int *L_list,
 				work_i_phi_scalar1, work_i_phi_scalar2, work_i_phi_tensor,
 				n_L_phi_scalar1, n_L_phi_scalar2, n_L_phi_scalar, n_L_phi_tensor,
 				m_L_M_scalar, m_L_M_tensor,
-				rule, weights, ct_weight,
+				rule, weights, ct_weights[tidx],
 				w3j, nrule, nw);	
     		}
 

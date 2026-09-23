@@ -1,4 +1,3 @@
-# %%
 import sys
 import os
 import numpy as np
@@ -9,91 +8,141 @@ from ksw import estimator
 import camb
 import healpy as hp
 
+from pixell import curvedsky
+from optweight import alm_utils
+
 from ksw import Afunctionals
 
-# %%
+def cinv_filter_TEB(alms, clTT, clEE, clBB, clTE,lmax):
+    """
+    Apply isotropic inverse-covariance filtering to TEB alms.
+    alms order : T, E, B
+    
+    Assumes covariance per cell:
+        C_l = [[TT, TE, 0],
+               [TE, EE, 0],
+               [0, 0, BB]]
+    """
+    
+    almT, almE, almB = alms
+
+    almT_f = np.zeros_like(almT)
+    almE_f = np.zeros_like(almE)                
+    almB_f = np.zeros_like(almB)
+
+    for ell in range(lmax + 1):
+        # T/E covaraince block
+        C_TE = np.array([
+            [clTT[ell], clTE[ell]],
+            [clTE[ell], clEE[ell]],
+        ], dtype=float)
+
+        Cinv_TE = np.linalg.pinv(C_TE)
+
+        idx = hp.Alm.getidx(lmax, ell, np.arange(ell+1))
+
+        aT = almT[idx]
+        aE = almE[idx]
+
+        almT_f[idx] = Cinv_TE[0, 0] * aT + Cinv_TE[0, 1] * aE
+        almE_f[idx] = Cinv_TE[1, 0] * aT + Cinv_TE[1, 1] * aE
+
+        # B 
+        idxB = hp.Alm.getidx(lmax, ell, np.arange(ell+1))
+        if clBB[ell] != 0 and np.isfinite(clBB[ell]):
+            almB_f[idxB] = almB[idxB] / clBB[ell]
+    
+    return np.array([almT_f, almE_f, almB_f])
+
+lmax = 600
+
 # Setup CAMB parameters
 pars = camb.CAMBparams()
 pars.WantTensors=True
-pars.set_cosmology(H0=67.66, ombh2=0.02242, omch2=0.11933)
-pars.InitPower.set_params(As=2.1056e-9, ns=0.9665, r=0.001)
-cosmo = cosmo.Cosmology(pars, verbose=False)
+pars.set_cosmology(H0=67.32117, ombh2=0.0223828, omch2=0.1201075, tau=0.05430842, mnu=0.06)
+pars.InitPower.set_params(As=2.100549e-9, ns=0.9660499, r=0)
+cosmo_esti = cosmo.Cosmology(pars, verbose=False)
+cosmo_esti.compute_transfer(lmax=lmax)
 
-# Compute transfer functions
-print("Computing transfer functions...")
-cosmo.compute_transfer(lmax=300)
 
-# Compute angular power spectra
-print("Computing angular power spectra...")
-#cosmo.compute_c_ell()
-
-# %%
 from ksw.shape import Shape
 # radii = np.logspace(0, 3, 10)  # Small number of radii for quick testing
-radii = np.asarray([10000, 10100])
+radii = np.asarray([13000, 14500])
 
-prim_shape = Shape.prim_local(ns=0.9665)
+prim_shape = Shape.prim_local(ns=0.9660499)
 #radii = np.logspace(0, 3, 10)
 
-cosmo.compute_transfer(lmax=300)
-cosmo.add_prim_reduced_bispectrum_scalar_dL(prim_shape, radii)
+cosmo_esti.compute_transfer(lmax=lmax)
+cosmo_esti.add_prim_reduced_bispectrum_scalar_dL(prim_shape, radii)
 
-cosmo.compute_transfer_tensor(lmax=300)
-cosmo.add_prim_reduced_bispectrum_tensor_dL(prim_shape, radii)
+cosmo_esti.compute_transfer_tensor(lmax=lmax)
+cosmo_esti.add_prim_reduced_bispectrum_tensor_dL(prim_shape, radii)
 
-# %%
 # Create a estimator instance
-red_bispectra = cosmo.red_bispectra
+red_bispectra = cosmo_esti.red_bispectra
 icov = lambda alm: alm
 pol = ('T', 'E', 'B')
-lmax = 5
 estimator_con = estimator.KSW(red_bispectra, icov, lmax=lmax, pol=pol, precision='double')
 
-# %%
-import healpy as hp
-lmax = estimator_con.lmax
-nelem = hp.Alm.getsize(lmax+1)
-print(nelem)
+'''
+estimates = []
 
-# %%
-# Generate sample alm data for testing
-lmax = estimator_con.lmax
-print(f'{lmax=}')
-npol = 3
-#nelem = (lmax + 1) * (lmax + 2) // 2   # HEALPix alm element count
-nelem = hp.Alm.getsize(lmax)
+for sim in range(100):
+    alm_file = f"/scratch/hb-CosmoGroup/bispectrum_benchmark/sims/lensed_cmb_sims/alms/lensed_cmb_alms_{sim:03d}.npy"
+    alm_test = np.load(alm_file)
 
-# Create random alm with correct shape
-np.random.seed(20)
-#alm_test = np.random.randn(npol, nelem) + 1j * np.random.randn(npol, nelem)
-cls = np.zeros((4, lmax + 1))
-cls[0] = np.ones(lmax + 1)
-cls[1] = np.ones(lmax + 1)
-cls[2] = np.ones(lmax + 1)
-alm_test = hp.synalm((cls[0], cls[1], cls[2], cls[3]), lmax=lmax)
-print(f'{alm_test[0,0]=}')
-print(f'{alm_test.shape=}')
-print(f'{alm_test.dtype=}')
+    Lmax = lmax
+    L_list = np.arange(Lmax + 1)
 
-# Try to call compute_estimate_sst
+    estimate, cubic, lin_term, fisher = estimator_con.compute_estimate_sst(
+        alm_test,
+        L_list,
+        Lmax,
+        theta_batch=25
+    )
+
+    estimates.append(estimate)
+
+estimates = np.array(estimates)
+np.save("estimates_000_99.npy", estimates)
+'''
+
+sim = int(os.environ["SLURM_ARRAY_TASK_ID"])
+
+out_dir = f"estimates_sst_lmax{lmax}"
+os.makedirs(out_dir, exist_ok=True)
+
+Cl_th = np.load(
+    f"/scratch/hb-CosmoGroup/bispectrum_benchmark/power_spectra/lensed_cmb_spectra_{lmax}.npz"
+)
+
+clTT = Cl_th["TT"] * 1e12
+clEE = Cl_th["EE"] * 1e12
+clBB = Cl_th["BB"] * 1e12
+clTE = Cl_th["TE"] * 1e12
+
+alm_file = f"/scratch/hb-CosmoGroup/bispectrum_benchmark/sims/lensed_cmb_sims/alms_{lmax}/lensed_cmb_alms_{sim:03d}.npy"
+alm_test = np.load(alm_file) * 1e6
+
+alm_T = alm_test[0]
+
+alms_f = cinv_filter_TEB(
+    alm_test,
+    clTT,
+    clEE,
+    clBB,
+    clTE,
+    lmax=lmax
+)
 
 Lmax = lmax
 L_list = np.arange(Lmax + 1)
 
-print(alm_test.dtype)
-print(L_list.dtype)
-
 estimate, cubic, lin_term, fisher = estimator_con.compute_estimate_sst(
-    alm_test,
+    alms_f,
     L_list,
     Lmax,
     theta_batch=25
 )
 
-# %%
-
-
-# %%
-
-
-
+np.save(f"{out_dir}/estimate_{sim:03d}.npy", estimate)

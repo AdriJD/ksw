@@ -9,6 +9,7 @@ from ducc0.misc import wigner3j_int
 from ksw import utils, legendre, estimator_core, fisher_core
 import ksw.radial_functional as rf
 from ksw import Afunctionals as AF
+from tests.python.test_estimate_sst_200 import Lmax
 
 
 
@@ -83,6 +84,11 @@ class KSW():
         self.mc_gt = None
         self.mc_gt_sq = None
 
+        # SST estimator MC quantities.
+        self.mc_idx_sst = 0
+        self.mc_gt_sst = None
+        self.mc_gt_sq_sst = None
+
         self.gt_local = []
         
         self.lmax = lmax
@@ -148,6 +154,30 @@ class KSW():
     @mc_gt_sq.setter
     def mc_gt_sq(self, mc_gt_sq):
         self.__mc_gt_sq = mc_gt_sq
+
+    @property
+    def mc_gt_sst(self):
+        mc_gt_sst = self.__mc_gt_sst
+        try:
+            return mc_gt_sst / self.mc_idx_sst
+        except TypeError:
+            return mc_gt_sst
+
+    @mc_gt_sst.setter
+    def mc_gt_sst(self, mc_gt_sst):
+        self.__mc_gt_sst = mc_gt_sst
+
+    @property
+    def mc_gt_sq_sst(self):
+        mc_gt_sq_sst = self.__mc_gt_sq_sst
+        try:
+            return mc_gt_sq_sst / self.mc_idx_sst
+        except TypeError:
+            return mc_gt_sq_sst
+
+    @mc_gt_sq_sst.setter
+    def mc_gt_sq_sst(self, mc_gt_sq_sst):
+        self.__mc_gt_sq_sst = mc_gt_sq_sst
 
     def get_coords(self):
         '''
@@ -246,6 +276,263 @@ class KSW():
         weights = red_bisp.weights.astype(self.dtype)
 
         return f_i_ell, rule, weights
+
+    def _step_sst(self, alm, L_list, Lmax, theta_batch=25):
+        '''
+        Calculate grad T (C^-1 a) for sst spectra.
+
+        Parameters
+        ----------
+        alm : (npol, nelem) complex array
+            HEALPix-ordered inverse-covariance filtered data.
+        L_list : array
+            List of L values.
+        Lmax : int
+            Maximum L value.
+        theta_batch : int, optional
+            Process loops over theta in batches of this size. Higher values
+            take up more memory.
+        
+        Returns
+        -------
+        grad_t : (npol, nelem) complex array
+            HEALPix-ordered alm array.
+        '''
+
+        alm = utils.alm_return_2d(alm, self.npol, self.lmax)
+        a_ell_m = utils.alm2a_ell_m(alm)
+        a_ell_m = a_ell_m.astype(self.cdtype)
+    
+        red_bisp_scalar = self.red_bispectra[0]
+        kappa_i_L_scalar1, rule, weights = self._init_reduced_bispectrum(
+            red_bisp_scalar, keep_deltaL=True)
+        kappa_i_L_scalar2 = kappa_i_L_scalar1.copy()
+
+        red_bisp_tensor = self.red_bispectra[1]
+        kappa_i_L_tensor, _, _ = self._init_reduced_bispectrum(
+            red_bisp_tensor, keep_deltaL=True)
+
+        combins = [(1,1,-2), (1,0,-1), (0,1,-1), (1,-1,0), (0,0,0)]
+        n_tensor_list = [-2, -1, 0]
+        n_scalar_list = [1, -1, 0]
+
+        L_list = np.asarray(L_list, dtype=np.int64)
+        nL = L_list.size
+        nell = self.lmax + 1
+        nufact = kappa_i_L_scalar1.shape[0]
+        ndeltaL_scalar = 2
+        ndeltaL_tensor = 5
+
+        deltaL_list_scalar = np.array([-1, 1])
+        deltaL_list_tensor = np.array([-2, -1, 0, 1, 2])
+
+        grad_t_zeta_accum = np.zeros((self.npol, nL, nL), dtype=self.cdtype)
+        grad_t_h_accum = np.zeros((self.npol, nL, nL), dtype=self.cdtype)
+        grad_t = np.zeros((self.npol, nL, nL), dtype=self.cdtype)
+
+        for n_scalar in n_scalar_list:
+            for com_idx in range(len(combins)):
+                n_scalar1, n_scalar2, n_tensor = combins[com_idx]
+                w3j_product_scalar1 = AF.products_3j_array(S=1, n=n_scalar1, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
+                w3j_product_scalar2 = AF.products_3j_array(S=1, n=n_scalar2, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
+                w3j_product_tensor = AF.products_3j_array(S=2, n=n_tensor, L_list=L_list, deltaL_list=deltaL_list_tensor, Jindex=(-2, 0, 2), dtype=self.dtype)
+
+                prefactors_scalar1 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
+                prefactors_scalar2 = AF.prefactor_product(deltaL_list_scalar, L_list, self.pol, "zeta", cdtype=self.cdtype)
+                prefactors_tensor = AF.prefactor_product(deltaL_list_tensor, L_list, self.pol, "h", cdtype=self.cdtype)
+
+                _, w3j = wigner3j_int(1, 2, n_scalar2, n_tensor)
+
+                grad_t_zeta = np.zeros((self.npol, ndeltaL_scalar, nL, nL), dtype=self.cdtype)
+                grad_t_h = np.zeros((self.npol, ndeltaL_tensor, nL, nL), dtype=self.cdtype)
+        
+                for tidx_start in range(0, len(self.thetas), theta_batch):
+                    thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
+                    ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
+                    y_M_L = estimator_core.compute_ylm(thetas_batch, nL-1, dtype=self.dtype)
+
+                    estimator_core.step_sst(L_list,
+                        n_scalar1, n_scalar2, n_tensor, n_scalar,
+                        a_ell_m,
+                        y_M_L,
+                        w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+                        prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+                        kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
+                        grad_t_zeta, grad_t_h,
+                        rule, weights, ct_weights_batch,
+                        w3j, Lmax, self.nphi)
+
+                grad_t_zeta = np.sum(grad_t_zeta, axis=1)
+                grad_t_h = np.sum(grad_t_h, axis=1)
+                    
+                grad_t_zeta_accum += grad_t_zeta
+                grad_t_h_accum += grad_t_h
+        grad_t = grad_t_zeta_accum + grad_t_h_accum
+
+        # Turn back into HEALPix shape.
+        grad_t = utils.a_ell_m2alm(grad_t).astype(self.cdtype)
+
+        return grad_t
+
+    def step_sst(self, alm, L_list, Lmax, theta_batch=25):
+        '''
+        Add one iteration to SST Monte Carlo estimates
+
+            <grad T_sst>
+            <grad T_sst C^-1 grad T_sst^*>
+
+        Parameters
+        ----------
+        alm : (npol, nelem) complex array
+            HEALPix-ordered inverse-covariance filtered data.
+        L_list : array_like
+            List of L values.
+        Lmax : int
+            Maximum L value.
+        theta_batch : int, optional
+            Process loops over theta in batches of this size.
+        '''
+
+        grad_t = self._step_sst(
+            alm,
+            L_list,
+            Lmax,
+            theta_batch=theta_batch
+        )
+
+        # Add to <grad T_sst>.
+        if self.mc_gt_sst is None:
+            self.mc_gt_sst = grad_t
+        else:
+            self.__mc_gt_sst += grad_t
+
+        # Add to <grad T_sst C^-1 grad T_sst^*>.
+        mc_gt_sq_sst = utils.contract_almxblm(
+            grad_t,
+            np.conj(self.icov(grad_t))
+        )
+
+        if self.mc_gt_sq_sst is None:
+            self.mc_gt_sq_sst = mc_gt_sq_sst
+        else:
+            self.__mc_gt_sq_sst += mc_gt_sq_sst
+
+        self.mc_idx_sst += 1
+
+    
+            
+    def step_batch_sst(self, alm_loader, alm_files, L_list, Lmax, comm=None, verbose=False, **kwargs):
+        '''
+        Add iterations to SST Monte Carlo estimates by loading and
+        processing several alms in parallel using MPI.
+
+        Parameters
+        ----------
+        alm_loader : callable
+            Function that returns alms given filename as first argument.
+        alm_files : array_like
+            List of alm files to load.
+        L_list : array_like
+            List of L values.
+        Lmax : int
+            Maximum L value.
+        comm : MPI communicator, optional
+        verbose : bool, optional
+            Print progress.
+        kwargs : dict, optional
+            Optional keyword arguments passed to "_step_sst".
+        '''
+
+        if comm is None:
+            comm = utils.FakeMPIComm()
+
+        # Monte Carlo quantities local to each rank.
+        mc_idx_sst_loc = 0
+        mc_gt_sst_loc = None
+        mc_gt_sq_sst_loc = None
+
+        # Split alm files over MPI ranks.
+        for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
+
+            if verbose:
+                print(f'rank {comm.rank:3}: loading {alm_file}')
+            alm = alm_loader(alm_file)
+            if verbose:
+                print(f'rank {comm.rank:3}: done loading')
+
+            grad_t = self._step_sst(
+                alm,
+                L_list,
+                Lmax,
+                **kwargs
+            )
+
+            # Accumulate grad T_sst
+            if mc_gt_sst_loc is None:
+                mc_gt_sst_loc = grad_t
+            else:
+                mc_gt_sst_loc += grad_t
+
+            # Accumulate grad T_sst C^-1 grad T_sst^* 
+            mc_gt_sq_sst = utils.contract_almxblm(
+                grad_t,
+                np.conj(self.icov(grad_t))
+            )
+
+            if mc_gt_sq_sst_loc is None:
+                mc_gt_sq_sst_loc = mc_gt_sq_sst
+            else:
+                mc_gt_sq_sst_loc += mc_gt_sq_sst
+
+            mc_idx_sst_loc += 1
+
+        print(f'rank : {comm.rank:3} waiting in step_batch_sst')
+
+        # Allow allreduce when number of ranks > number of alm files.
+        shape, dtype = utils.bcast_array_meta(
+            mc_gt_sst_loc,
+            comm,
+            root=0
+        )
+
+        if mc_gt_sst_loc is None:
+            mc_gt_sst_loc = np.zeros(shape, dtype=dtype)
+
+        if mc_gt_sq_sst_loc is None:
+            mc_gt_sq_sst_loc = 0.
+
+        # MPI reductions.
+        mc_gt_sst = utils.allreduce_array(
+            mc_gt_sst_loc,
+            comm
+        )
+
+        mc_gt_sq_sst = utils.allreduce(
+            mc_gt_sq_sst_loc,
+            comm
+        )
+
+        mc_idx_sst = utils.allreduce(
+            mc_idx_sst_loc,
+            comm
+        )
+
+        print(f'rank : {comm.rank:3} after reduce in step_batch_sst')
+
+        # All ranks update their own internal SST MC quantities.
+        if self.mc_gt_sst is None:
+            self.mc_gt_sst = mc_gt_sst
+        else:
+            self.__mc_gt_sst += mc_gt_sst
+
+        if self.mc_gt_sq_sst is None:
+            self.mc_gt_sq_sst = mc_gt_sq_sst
+        else:
+            self.__mc_gt_sq_sst += mc_gt_sq_sst
+
+        self.mc_idx_sst += mc_idx_sst
+
+
 
     def _step(self, alm, theta_batch=25):
         '''
@@ -786,6 +1073,35 @@ class KSW():
         alm = utils.alm_return_2d(alm, self.npol, self.lmax)
             
         return utils.contract_almxblm(alm, np.conj(self.mc_gt))
+
+    def compute_linear_term_sst(self, alm):
+        '''
+        Return SST linear term for input data alm.
+
+        Parameters
+        ----------
+        alm : (npol, nelem) complex array
+            HEALPix-ordered inverse-covariance filtered data.
+
+        Returns
+        -------
+        lin_term : float, None
+            SST linear term of the estimator.
+        '''
+
+        if self.mc_gt_sst is None:
+            return None
+
+        alm = utils.alm_return_2d(
+            alm,
+            self.npol,
+            self.lmax
+        )
+
+        return utils.contract_almxblm(
+            alm,
+            np.conj(self.mc_gt_sst)
+        )
 
     def compute_fisher_isotropic(self, icov_ell, return_matrix=False, fsky=1, 
                                  comm=None):
