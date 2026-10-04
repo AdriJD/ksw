@@ -23,9 +23,10 @@ An implementation of the Komatsu-Spergel-Wandelt bispectrum estimator for modern
 
 Start by making sure the MKL library is loaded in your environment. On most clusters this can be achieved by loading a predefined module. On the Princeton `della` and `tiger` clusters you can use `module load intel-mkl` (see [here](https://researchcomputing.princeton.edu/faq/how-to-build-using-intel-mkl) for more information). On `NERSC` you can use `load intel` (see [here](https://docs-dev.nersc.gov/cgpu/software/math/)). Once you have loaded the module, check if the `MKLROOT` environment variable has been set (`echo $MKLROOT`).
 
+Then do the same for the FFTW library. Right now, the Makefile assumes that the `FFTW_HOME` environment variable is set. So that make sure that is the case and that `FFTW_HOME/lib` and `FFTW_HOME/include` point to the correct directories.
 
 
-Once the MKL environment has been set, `git clone` this repository, go into the directory and run:
+Once the MKL and FFTW environments have been set, `git clone` this repository, go into the directory and run:
 
 
 ```
