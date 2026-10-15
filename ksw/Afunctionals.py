@@ -136,8 +136,8 @@ def products_3j_array(S, n , L_list, deltaL_list, Jindex, dtype=np.float32):
     L_list = np.asarray(L_list, dtype=int)
     Lmax = int(np.max(L_list))
 
-    w3j_J = wigner_J(S, L_list, deltaL_list, Jindex)
-    w3j_vals = w3j(S, n, L_list, deltaL_list)
+    w3j_J = wigner_J(S, L_list, deltaL_list, Jindex, dtype=dtype)
+    w3j_vals = w3j(S, n, L_list, deltaL_list, dtype=dtype)
 
     out = np.zeros((len(deltaL_list), len(L_list), 2*Lmax+1), dtype=dtype)
 

@@ -9,7 +9,6 @@ from ducc0.misc import wigner3j_int
 from ksw import utils, legendre, estimator_core, fisher_core
 import ksw.radial_functional as rf
 from ksw import Afunctionals as AF
-from tests.python.test_estimate_sst_200 import Lmax
 
 
 
@@ -316,7 +315,7 @@ class KSW():
         n_tensor_list = [-2, -1, 0]
         n_scalar_list = [1, -1, 0]
 
-        L_list = np.asarray(L_list, dtype=np.int64)
+        L_list = np.asarray(L_list, dtype=self.cdtype)
         nL = L_list.size
         nell = self.lmax + 1
         nufact = kappa_i_L_scalar1.shape[0]
@@ -360,7 +359,7 @@ class KSW():
                         kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor,
                         grad_t_zeta, grad_t_h,
                         rule, weights, ct_weights_batch,
-                        w3j, Lmax, self.nphi)
+                        w3j[0], Lmax, self.nphi)
 
                 grad_t_zeta = np.sum(grad_t_zeta, axis=1)
                 grad_t_h = np.sum(grad_t_h, axis=1)
@@ -987,6 +986,7 @@ class KSW():
 
 
         t_cubic = 0             # The cubic estimate.
+        t_cubic_list = []
         for com_idx in range(len(combins)):
             n_scalar1, n_scalar2, n_tensor = combins[com_idx]
             w3j_product_scalar1 = AF.products_3j_array(S=1, n=n_scalar1, L_list=L_list, deltaL_list=deltaL_list_scalar, Jindex=(0, 0, 0), dtype=self.dtype)
@@ -998,28 +998,54 @@ class KSW():
             prefactors_tensor = AF.prefactor_product(deltaL_list_tensor, L_list, self.pol, "h", cdtype=self.cdtype)
         
             Afunc_product = 0       # The product of A functionals that goes into the cubic term.
-            for tidx_start in range(0, len(self.thetas), theta_batch):
-                thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
-                ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
-                y_M_L = estimator_core.compute_ylm(thetas_batch, nL - 1, dtype=self.dtype)
 
-                Afunc_product += estimator_core.compute_products_Afunc_sst(ct_weights_batch, rule, weights,
-                                                                    a_ell_m, y_M_L,
-                                                                    self.nphi,
-                                                                    L_list,
-                                                                    n_scalar1, n_scalar2, n_tensor,
-                                                                    w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
-                                                                    prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
-                                                                    self.lmax, nell,
-                                                                    kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
+
+            if combins[com_idx] == (0, 0, 0):
+                for tidx_start in range(0, len(self.thetas), theta_batch):
+                                thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
+                                ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
+                                y_M_L = estimator_core.compute_ylm(thetas_batch, nL - 1, dtype=self.dtype)
+
+
+                                Afunc_product_000 = 1/2 * estimator_core.compute_products_Afunc_sst(ct_weights_batch, rule, weights,
+                                                                                    a_ell_m, y_M_L,
+                                                                                    self.nphi,
+                                                                                    L_list,
+                                                                                    n_scalar1, n_scalar2, n_tensor,
+                                                                                    w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+                                                                                    prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+                                                                                    self.lmax, nell,
+                                                                                    kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
+                
+                                Afunc_product += Afunc_product_000
+
+                                
+            else:
+                for tidx_start in range(0, len(self.thetas), theta_batch):
+                    thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
+                    ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
+                    y_M_L = estimator_core.compute_ylm(thetas_batch, nL - 1, dtype=self.dtype)
+
+                    Afunc_product += estimator_core.compute_products_Afunc_sst(ct_weights_batch, rule, weights,
+                                                                        a_ell_m, y_M_L,
+                                                                        self.nphi,
+                                                                        L_list,
+                                                                        n_scalar1, n_scalar2, n_tensor,
+                                                                        w3j_product_scalar1, w3j_product_scalar2, w3j_product_tensor,
+                                                                        prefactors_scalar1, prefactors_scalar2, prefactors_tensor,
+                                                                        self.lmax, nell,
+                                                                        kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
             _, vals = wigner3j_int(1, 2, n_scalar2, n_tensor)
             # l1_min=1, vals is all w3j values in the order of increasing l1
-            t_cubic += vals[0] * Afunc_product * np.sqrt(2) / 54 * 3
+            t_cubic_com = vals[0] * Afunc_product * np.sqrt(2) / 54 * 3
+            t_cubic += t_cubic_com
+            t_cubic_list.append(t_cubic_com)
+
             # 3 is for 3 permutated terms; sst, sts, tss.
 
         fnl = (t_cubic - lin_term) / fisher
         print(f'{fnl=}, {t_cubic=}, {lin_term=}, {fisher=}') 
-        return fnl, t_cubic, lin_term, fisher
+        return fnl, t_cubic, t_cubic_list, lin_term, fisher
 
 
     def compute_fisher(self, return_icov_mc_gt=False):
