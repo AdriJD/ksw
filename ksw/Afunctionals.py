@@ -106,7 +106,7 @@ def w3j(S, n, L_list, deltaL_list, dtype=np.float32):
                 l1_min, vals = wigner3j_int(L, ell, M, m)
                 iS = S - l1_min
                 if 0 <= iS < len(vals):
-                    out[idL, iL, M + Lmax] = vals[iS]
+                    out[idL, iL, M + Lmax] = vals[iS] * np.sqrt((2*S+1)*(2*L+1)*(2*ell+1)/(4*np.pi))
     return out
 
 def products_3j_array(S, n , L_list, deltaL_list, Jindex, dtype=np.float32):

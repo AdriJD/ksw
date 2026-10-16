@@ -512,8 +512,9 @@ void forward_sst_sp(const int *L_list,
 				}
 			}
 		}
-			
-	
+}
+
+
 float t_cubic_sp(const double *ct_weights, const long long *rule, const float *weights,
 		 const float *f_i_ell, const float complex *a_ell_m,
 		 const float *y_m_ell, int ntheta, int nrule,
