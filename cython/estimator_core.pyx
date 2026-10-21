@@ -308,9 +308,9 @@ def compute_products_Afunc_sst(ct_weights, rule, weights,
 
     if a_ell_m.dtype == np.complex64:
 
-        kappa_i_L_scalar1 = np.ascontiguousarray(kappa_i_L_scalar1, dtype=np.float32)
-        kappa_i_L_scalar2 = np.ascontiguousarray(kappa_i_L_scalar2, dtype=np.float32)
-        kappa_i_L_tensor = np.ascontiguousarray(kappa_i_L_tensor, dtype=np.float32)
+        kappa_i_L_scalar1 = np.ascontiguousarray(kappa_i_L_scalar1, dtype=np.complex64)
+        kappa_i_L_scalar2 = np.ascontiguousarray(kappa_i_L_scalar2, dtype=np.complex64)
+        kappa_i_L_tensor = np.ascontiguousarray(kappa_i_L_tensor, dtype=np.complex64)
 
         t_cubic = _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
               a_ell_m, y_M_L,
@@ -323,9 +323,9 @@ def compute_products_Afunc_sst(ct_weights, rule, weights,
               kappa_i_L_scalar1, kappa_i_L_scalar2, kappa_i_L_tensor)
     elif a_ell_m.dtype == np.complex128:
 
-        kappa_i_L_scalar1 = np.ascontiguousarray(kappa_i_L_scalar1, dtype=np.float64)
-        kappa_i_L_scalar2 = np.ascontiguousarray(kappa_i_L_scalar2, dtype=np.float64)
-        kappa_i_L_tensor = np.ascontiguousarray(kappa_i_L_tensor, dtype=np.float64)
+        kappa_i_L_scalar1 = np.ascontiguousarray(kappa_i_L_scalar1, dtype=np.complex128)
+        kappa_i_L_scalar2 = np.ascontiguousarray(kappa_i_L_scalar2, dtype=np.complex128)
+        kappa_i_L_tensor = np.ascontiguousarray(kappa_i_L_tensor, dtype=np.complex128)
 
         t_cubic = _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
               a_ell_m, y_M_L,
@@ -369,9 +369,9 @@ def _compute_products_Afunc_sst_sp(ct_weights, rule, weights,
     cdef float complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
     cdef float complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef float complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-    cdef float [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
-    cdef float [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
-    cdef float [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
+    cdef float complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef float complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
+    cdef float complex [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
 
     cdef int [::1] L_list_ = L_list.reshape(-1)
 
@@ -413,9 +413,9 @@ def _compute_products_Afunc_sst_dp(ct_weights, rule, weights,
     cdef double complex [::1] prefactors_scalar1_ = prefactors_scalar1.reshape(-1)
     cdef double complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef double complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
-    cdef double [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
-    cdef double [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
-    cdef double [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
+    cdef double complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef double complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
+    cdef double complex [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)   
 
     cdef int [::1] L_list_ = L_list.reshape(-1)
 
@@ -513,6 +513,11 @@ def step_sst(L_list,
             f'kappa_i_L_tensor.shape = {kappa_i_L_tensor.shape}, expected {(nufact, npol, ndeltaL_tensor, nL)}')
 
     if a_ell_m.dtype == np.complex64:
+
+        kappa_i_L_scalar1 = np.ascontiguousarray(kappa_i_L_scalar1, dtype=np.complex64)
+        kappa_i_L_scalar2 = np.ascontiguousarray(kappa_i_L_scalar2, dtype=np.complex64)
+        kappa_i_L_tensor = np.ascontiguousarray(kappa_i_L_tensor, dtype=np.complex64)
+
         _step_sst_sp(
             L_list,
             a_ell_m,
@@ -546,6 +551,11 @@ def step_sst(L_list,
             ntheta)
 
     elif a_ell_m.dtype == np.complex128:
+
+        kappa_i_L_scalar1 = np.ascontiguousarray(kappa_i_L_scalar1, dtype=np.complex128)
+        kappa_i_L_scalar2 = np.ascontiguousarray(kappa_i_L_scalar2, dtype=np.complex128)
+        kappa_i_L_tensor = np.ascontiguousarray(kappa_i_L_tensor, dtype=np.complex128)
+
         _step_sst_dp(
             L_list,
             a_ell_m,
@@ -612,9 +622,9 @@ def _step_sst_sp(L_list,
     cdef float complex [::1] prefactors_scalar2_ = prefactors_scalar2.reshape(-1)
     cdef float complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
 
-    cdef float [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
-    cdef float [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
-    cdef float [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)
+    cdef float complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef float complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
+    cdef float complex [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)
 
     cdef float complex [::1] grad_t_zeta_ = grad_t_zeta.reshape(-1)
     cdef float complex [::1] grad_t_h_ = grad_t_h.reshape(-1)
@@ -668,9 +678,9 @@ def _step_sst_dp(
     cdef double complex [::1] prefactors_scalar2_ =  prefactors_scalar2.reshape(-1)
     cdef double complex [::1] prefactors_tensor_ = prefactors_tensor.reshape(-1)
 
-    cdef double [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
-    cdef double [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
-    cdef double [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)
+    cdef double complex [::1] kappa_i_L_scalar1_ = kappa_i_L_scalar1.reshape(-1)
+    cdef double complex [::1] kappa_i_L_scalar2_ = kappa_i_L_scalar2.reshape(-1)
+    cdef double complex [::1] kappa_i_L_tensor_ = kappa_i_L_tensor.reshape(-1)
 
     cdef double complex [::1] grad_t_zeta_ = grad_t_zeta.reshape(-1)
     cdef double complex [::1] grad_t_h_ = grad_t_h.reshape(-1)

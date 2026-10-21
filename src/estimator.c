@@ -423,7 +423,7 @@ void forward_sst_sp(const int *L_list,
 
 			long long size_scalar = npol * ndeltaL_scalar * nL * nphi;
 
-			if (n_scalar1==n_scalar2)
+			if (n_scalar==n_scalar1 && n_scalar1==n_scalar2)
 			{
 				for (ptrdiff_t i = 0; i < size_scalar; i++)
 				{
@@ -495,6 +495,8 @@ void forward_sst_sp(const int *L_list,
 				}
 		
 
+			// Tensor part only once per combination.
+			if (n_scalar==n_scalar1){
 			fftwf_execute_dft(plan_c2c_tensor, n_L_phi_tensor, m_L_M_tensor);
 
 			for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_tensor; deltaLidx++){
@@ -503,8 +505,8 @@ void forward_sst_sp(const int *L_list,
 
 					for (ptrdiff_t pidx=0; pidx<npol; pidx++){
 
-					a_L_M_tensor[pidx*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-					* m_L_M_tensor[pidx*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] 
+					a_L_M_tensor[pidx*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx]
+					* m_L_M_tensor[pidx*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx]
 					* prefactors_tensor[pidx*ndeltaL_tensor*nL+deltaLidx*nL+Lidx]
 					* w3j_product_tensor[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
 
@@ -512,6 +514,7 @@ void forward_sst_sp(const int *L_list,
 				}
 			}
 		}
+			}
 }
 
 
@@ -2047,7 +2050,7 @@ void forward_sst_dp(const int *L_list,
 			work_i_phi_scalar1[widx_scalar1*nphi+phidx] = f_i_phi_scalar2[ry*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_scalar1[(widx_scalar1+1)*nphi+phidx] = f_i_phi_scalar2[rx*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
+			work_i_phi_scalar1[(widx_scalar1+1)*nphi+phidx] = f_i_phi_scalar2[rz*nphi+phidx] * f_i_phi_tensor[rx*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 			work_i_phi_scalar1[(widx_scalar1+2)*nphi+phidx] = f_i_phi_scalar2[rx*nphi+phidx] * f_i_phi_tensor[ry*nphi+phidx];
@@ -2082,13 +2085,13 @@ void forward_sst_dp(const int *L_list,
 			
 
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_scalar2[widx_scalar2*nphi+phidx] = f_i_phi_scalar1[ry*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
+			work_i_phi_scalar2[widx_scalar2*nphi+phidx] = f_i_phi_scalar1[rz*nphi+phidx] * f_i_phi_tensor[ry*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 			work_i_phi_scalar2[(widx_scalar2+1)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_scalar2[(widx_scalar2+2)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_tensor[ry*nphi+phidx];
+			work_i_phi_scalar2[(widx_scalar2+2)*nphi+phidx] = f_i_phi_scalar1[ry*nphi+phidx] * f_i_phi_tensor[rx*nphi+phidx];
 			}
 			widx_scalar2 += 3;
 			
@@ -2123,7 +2126,7 @@ void forward_sst_dp(const int *L_list,
 			work_i_phi_tensor[widx_tensor*nphi+phidx] = f_i_phi_scalar1[ry*nphi+phidx] * f_i_phi_scalar2[rz*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_tensor[(widx_tensor+1)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_scalar2[rz*nphi+phidx];
+			work_i_phi_tensor[(widx_tensor+1)*nphi+phidx] = f_i_phi_scalar1[rz*nphi+phidx] * f_i_phi_scalar2[rx*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 			work_i_phi_tensor[(widx_tensor+2)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_scalar2[ry*nphi+phidx];
@@ -2160,7 +2163,7 @@ void forward_sst_dp(const int *L_list,
 
 			long long size_scalar = npol * ndeltaL_scalar * nL * nphi;
 
-			if (n_scalar1==n_scalar2){
+			if (n_scalar==n_scalar1 && n_scalar1==n_scalar2){
 				for (ptrdiff_t i = 0; i < size_scalar; i++) 
 				{
         			n_L_phi_scalar[i] = n_L_phi_scalar1[i] + n_L_phi_scalar2[i];
@@ -2238,6 +2241,8 @@ void forward_sst_dp(const int *L_list,
 			}
 		
 
+			// Tensor part only once per combination.
+			if (n_scalar==n_scalar1){
 			fftw_execute_dft(plan_c2c_tensor, n_L_phi_tensor, m_L_M_tensor);
 
 			for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_tensor; deltaLidx++){
@@ -2246,8 +2251,8 @@ void forward_sst_dp(const int *L_list,
 
 						for (ptrdiff_t pidx=0; pidx<npol; pidx++){
 
-							a_L_M_tensor[pidx*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-							* m_L_M_tensor[pidx*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] 
+							a_L_M_tensor[pidx*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx]
+							* m_L_M_tensor[pidx*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx]
 							* prefactors_tensor[pidx*ndeltaL_tensor*nL+deltaLidx*nL+Lidx]
 							* w3j_product_tensor[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
 
@@ -2255,6 +2260,7 @@ void forward_sst_dp(const int *L_list,
 
 					}
 				}
+			}
 			}
 
 	   	}

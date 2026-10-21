@@ -315,7 +315,7 @@ class KSW():
         n_tensor_list = [-2, -1, 0]
         n_scalar_list = [1, -1, 0]
 
-        L_list = np.asarray(L_list, dtype=self.cdtype)
+        L_list = np.asarray(L_list, dtype=self.dtype)
         nL = L_list.size
         nell = self.lmax + 1
         nufact = kappa_i_L_scalar1.shape[0]
