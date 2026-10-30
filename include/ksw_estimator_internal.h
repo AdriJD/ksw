@@ -225,7 +225,7 @@ void forward_dp(const double *f_i_ell, double complex *a_ell_m, const double *y_
  * n_tensor  : Magnetic quantum number that couples to S in w3j symbol for tensor A functional.
  * n_scalar  : Magnetic quantum number that couples to S in w3j symbol for scalar A functional. 
  * a_L_M_scalar/tensor : 
- * 			  dT/da_L_M_scalar/tensor, (npol, ndeltaL, nL, nphi) array for output of ring fft.
+ * 			  (npol, nell, 2*nell-1) complex array, dT/da_ell_m for all m, index m + nell - 1.
  * y_M_L     : (ntheta, nL, nL) Ylms in M-majors order for each ring.
  * w3j_product_scalar1/scalar2/tensor : 
  * 			   (ndeltaL_scalar/tensor, nL, 2*Lmax+1) array

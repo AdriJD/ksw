@@ -263,14 +263,13 @@ void forward_sst_sp(const int *L_list,
 			int ndeltaL_scalar = 2;                               // deltaL = -1, 1 for scalar
 			int ndeltaL_tensor = 5;                               // deltaL = -2, -1, 0, 1, 2 for tensor
 
-			//const int deltaL_list_scalar[] = {-1, 1};             //scalar
-			//const int deltaL_list_tensor[] = {-2, -1, 0, 1, 2};	  //tensor
+			const int deltaL_list_scalar[] = {-1, 1};             //scalar
+			const int deltaL_list_tensor[] = {-2, -1, 0, 1, 2};	  //tensor
 					
 			int widx_scalar1 = 0; // Index to work arrays.
 			int widx_scalar2 = 0; // Index to work arrays.
 			int widx_tensor = 0; // Index to work arrays.
 
-			int nM = nphi;
 			for (ptrdiff_t ridx=0; ridx<nrule; ridx++){
 			
 			long long rx = rule[ridx*3];
@@ -311,7 +310,7 @@ void forward_sst_sp(const int *L_list,
 			work_i_phi_scalar1[widx_scalar1*nphi+phidx] = f_i_phi_scalar2[ry*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_scalar1[(widx_scalar1+1)*nphi+phidx] = f_i_phi_scalar2[rx*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
+			work_i_phi_scalar1[(widx_scalar1+1)*nphi+phidx] = f_i_phi_scalar2[rz*nphi+phidx] * f_i_phi_tensor[rx*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 			work_i_phi_scalar1[(widx_scalar1+2)*nphi+phidx] = f_i_phi_scalar2[rx*nphi+phidx] * f_i_phi_tensor[ry*nphi+phidx];
@@ -346,13 +345,13 @@ void forward_sst_sp(const int *L_list,
 
 
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_scalar2[widx_scalar2*nphi+phidx] = f_i_phi_scalar1[ry*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
+			work_i_phi_scalar2[widx_scalar2*nphi+phidx] = f_i_phi_scalar1[rz*nphi+phidx] * f_i_phi_tensor[ry*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 			work_i_phi_scalar2[(widx_scalar2+1)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_tensor[rz*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_scalar2[(widx_scalar2+2)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_tensor[ry*nphi+phidx];
+			work_i_phi_scalar2[(widx_scalar2+2)*nphi+phidx] = f_i_phi_scalar1[ry*nphi+phidx] * f_i_phi_tensor[rx*nphi+phidx];
 			}
 			widx_scalar2 += 3;
 			
@@ -386,7 +385,7 @@ void forward_sst_sp(const int *L_list,
 			work_i_phi_tensor[widx_tensor*nphi+phidx] = f_i_phi_scalar1[ry*nphi+phidx] * f_i_phi_scalar2[rz*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
-			work_i_phi_tensor[(widx_tensor+1)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_scalar2[rz*nphi+phidx];
+			work_i_phi_tensor[(widx_tensor+1)*nphi+phidx] = f_i_phi_scalar1[rz*nphi+phidx] * f_i_phi_scalar2[rx*nphi+phidx];
 			}
 			for (ptrdiff_t phidx=0; phidx<nphi; phidx++){
 			work_i_phi_tensor[(widx_tensor+2)*nphi+phidx] = f_i_phi_scalar1[rx*nphi+phidx] * f_i_phi_scalar2[ry*nphi+phidx];
@@ -432,20 +431,12 @@ void forward_sst_sp(const int *L_list,
 
 					fftwf_execute_dft(plan_c2c_scalar, n_L_phi_scalar, m_L_M_scalar);
 
-					for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_scalar; deltaLidx++){
-						for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-							for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
-								for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+					compute_grad_alm_sp(L_list, deltaL_list_scalar,
+						nL, ndeltaL_scalar, npol, n_scalar,
+						m_L_M_scalar, y_M_L, w3j_product_scalar1,
+						prefactors_scalar1, a_L_M_scalar,
+						Lmax, nell, nphi);
 
-									a_L_M_scalar[pidx*ndeltaL_scalar*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-									* m_L_M_scalar[pidx*ndeltaL_scalar*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx]
-									* prefactors_scalar1[pidx*ndeltaL_scalar*nL+deltaLidx*nL+Lidx]
-									* w3j_product_scalar1[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
-				
-								}
-					}
-				} 
-			}
 
 			}
 			else if (n_scalar==n_scalar1 && n_scalar!=n_scalar2)
@@ -456,19 +447,11 @@ void forward_sst_sp(const int *L_list,
 				}
 					fftwf_execute_dft(plan_c2c_scalar, n_L_phi_scalar, m_L_M_scalar);
 
-					for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_scalar; deltaLidx++){
-						for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-							for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
-								for (ptrdiff_t pidx=0; pidx<npol; pidx++){
-
-									a_L_M_scalar[pidx*ndeltaL_scalar*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-									* m_L_M_scalar[pidx*ndeltaL_scalar*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] 
-									* prefactors_scalar1[pidx*ndeltaL_scalar*nL+deltaLidx*nL+Lidx]
-									* w3j_product_scalar1[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
-								}
-					}
-				} 
-			}
+					compute_grad_alm_sp(L_list, deltaL_list_scalar,
+						nL, ndeltaL_scalar, npol, n_scalar,
+						m_L_M_scalar, y_M_L, w3j_product_scalar1,
+						prefactors_scalar1, a_L_M_scalar,
+						Lmax, nell, nphi);
 
 				}
 			else if (n_scalar!=n_scalar1 && n_scalar==n_scalar2){
@@ -479,19 +462,12 @@ void forward_sst_sp(const int *L_list,
 
 						fftwf_execute_dft(plan_c2c_scalar, n_L_phi_scalar, m_L_M_scalar);
 
-						for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_scalar; deltaLidx++){
-							for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-								for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
-									for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+						compute_grad_alm_sp(L_list, deltaL_list_scalar,
+							nL, ndeltaL_scalar, npol, n_scalar,
+							m_L_M_scalar, y_M_L, w3j_product_scalar2,
+							prefactors_scalar2, a_L_M_scalar,
+							Lmax, nell, nphi);
 
-										a_L_M_scalar[pidx*ndeltaL_scalar*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-										* m_L_M_scalar[pidx*ndeltaL_scalar*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] 
-										* prefactors_scalar2[pidx*ndeltaL_scalar*nL+deltaLidx*nL+Lidx]
-										* w3j_product_scalar2[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
-									}
-						}
-					} 
-				}
 				}
 		
 
@@ -499,21 +475,12 @@ void forward_sst_sp(const int *L_list,
 			if (n_scalar==n_scalar1){
 			fftwf_execute_dft(plan_c2c_tensor, n_L_phi_tensor, m_L_M_tensor);
 
-			for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_tensor; deltaLidx++){
-				for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-					for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
+			compute_grad_alm_sp(L_list, deltaL_list_tensor,
+				nL, ndeltaL_tensor, npol, n_tensor,
+				m_L_M_tensor, y_M_L, w3j_product_tensor,
+				prefactors_tensor, a_L_M_tensor,
+				Lmax, nell, nphi);
 
-					for (ptrdiff_t pidx=0; pidx<npol; pidx++){
-
-					a_L_M_tensor[pidx*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx]
-					* m_L_M_tensor[pidx*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx]
-					* prefactors_tensor[pidx*ndeltaL_tensor*nL+deltaLidx*nL+Lidx]
-					* w3j_product_tensor[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
-
-					}
-				}
-			}
-		}
 			}
 }
 
@@ -679,7 +646,6 @@ void step_sst_sp(const int *L_list,
 			  const long long *rule, const float *weights, const float *ct_weights,
 			  const float w3j, int nrule, int ntheta){
 
-
 			int ndeltaL_scalar = 2;                               
 			int ndeltaL_tensor = 5;                               
 
@@ -758,13 +724,13 @@ void step_sst_sp(const int *L_list,
 			float complex *work_i_phi_scalar2 = fftwf_malloc(sizeof *work_i_phi_scalar2 * nw * nphi);    
 			float complex *work_i_phi_tensor = fftwf_malloc(sizeof *work_i_phi_tensor * nw * nphi);    
 
-			float complex *grad_t_zeta_priv = fftwf_malloc(sizeof *grad_t_zeta_priv * npol * ndeltaL_scalar * nL * nL);
-			float complex *grad_t_h_priv = fftwf_malloc(sizeof *grad_t_h_priv * npol * ndeltaL_tensor * nL * nL);
+			float complex *grad_t_zeta_priv = fftwf_malloc(sizeof *grad_t_zeta_priv * npol * nell * (2*nell-1));
+			float complex *grad_t_h_priv = fftwf_malloc(sizeof *grad_t_h_priv * npol * nell * (2*nell-1));
 
-			for (ptrdiff_t i=0; i<npol*ndeltaL_scalar*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 			grad_t_zeta_priv[i] = 0;
     		}
-			for (ptrdiff_t i=0; i<npol*ndeltaL_tensor*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 			grad_t_h_priv[i] = 0;
     		}
 
@@ -855,10 +821,10 @@ void step_sst_sp(const int *L_list,
 			#pragma omp critical
 
 			{
-			for (ptrdiff_t i=0; i<npol*ndeltaL_scalar*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 	    			grad_t_zeta[i] += grad_t_zeta_priv[i];
 			}	
-			for (ptrdiff_t i=0; i<npol*ndeltaL_tensor*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 	    			grad_t_h[i] += grad_t_h_priv[i];
 			}	
 			}
@@ -1521,6 +1487,104 @@ void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
     }
 }
 
+void compute_grad_alm_sp(const int *L_list, const int *deltaL_list,
+		     int nL, int ndeltaL, int npol, int n,
+			 const float complex *m_L_M,
+			 const float *y_M_L, const float *w3j_product,
+			 const float complex *prefactors, float complex *grad_alm,
+			 int Lmax, int nell, int nphi){
+
+    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+
+		for (ptrdiff_t idL=0; idL<ndeltaL; idL++){
+			int deltaL = deltaL_list[idL];
+			for (ptrdiff_t iL=0; iL<nL; iL++){
+				int L = L_list[iL];
+				if (L < 0 || L >= nell){
+					continue;
+				}
+
+				int ell = L + deltaL;
+				if (ell < 0 || ell >= nell){
+					continue;
+				}
+
+				ptrdiff_t base = pidx*ndeltaL*nL*nphi+idL*nL*nphi+iL*nphi;
+				float complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
+
+				for (int M=-L; M<=L; M++){
+					int m = - M - n;
+					if (abs(m) > ell){
+						continue;
+					}
+
+					float w3j = w3j_product[(idL * nL + iL) * (2 * Lmax + 1) + (M+Lmax)];
+					float y_val = get_ylm_entry_sp(y_M_L, nL, L, M);
+
+					float complex m_val;
+					if (M>=0){
+						m_val = m_L_M[base+M];
+					}
+					else{
+						m_val = m_L_M[base + (nphi + M)];
+					}
+
+					grad_alm[pidx*nell*(2*nell-1)+ell*(2*nell-1)+(m+nell-1)] += pref * w3j * y_val * m_val;
+				}
+			}
+		}
+	}
+}
+
+void compute_grad_alm_dp(const int *L_list, const int *deltaL_list,
+		     int nL, int ndeltaL, int npol, int n,
+			 const double complex *m_L_M,
+			 const double *y_M_L, const double *w3j_product,
+			 const double complex *prefactors, double complex *grad_alm,
+			 int Lmax, int nell, int nphi){
+
+    for (ptrdiff_t pidx=0; pidx<npol; pidx++){
+
+		for (ptrdiff_t idL=0; idL<ndeltaL; idL++){
+			int deltaL = deltaL_list[idL];
+			for (ptrdiff_t iL=0; iL<nL; iL++){
+				int L = L_list[iL];
+				if (L < 0 || L >= nell){
+					continue;
+				}
+
+				int ell = L + deltaL;
+				if (ell < 0 || ell >= nell){
+					continue;
+				}
+
+				ptrdiff_t base = pidx*ndeltaL*nL*nphi+idL*nL*nphi+iL*nphi;
+				double complex pref = prefactors[(pidx * ndeltaL + idL) * nL + iL];
+
+				for (int M=-L; M<=L; M++){
+					int m = - M - n;
+					if (abs(m) > ell){
+						continue;
+					}
+
+					double w3j = w3j_product[(idL * nL + iL) * (2 * Lmax + 1) + (M+Lmax)];
+					double y_val = get_ylm_entry_dp(y_M_L, nL, L, M);
+
+					double complex m_val;
+					if (M>=0){
+						m_val = m_L_M[base+M];
+					}
+					else{
+						m_val = m_L_M[base + (nphi + M)];
+					}
+
+					grad_alm[pidx*nell*(2*nell-1)+ell*(2*nell-1)+(m+nell-1)] += pref * w3j * y_val * m_val;
+				}
+			}
+		}
+	}
+}
+
 float t_cubic_on_ring_sp_sst(const long long *rule, const float *weights,
 			const float complex *f_i_phi_scalar1, const float complex *f_i_phi_scalar2,
 			const float complex *f_i_phi_tensor, int nrule, int nphi){
@@ -2002,14 +2066,13 @@ void forward_sst_dp(const int *L_list,
 			int ndeltaL_scalar = 2;                               // deltaL = -1, 1 for scalar
 			int ndeltaL_tensor = 5;                               // deltaL = -2, -1, 0, 1, 2 for tensor
 
-			//const int deltaL_list_scalar[] = {-1, 1};             //scalar
-			//const int deltaL_list_tensor[] = {-2, -1, 0, 1, 2};	  //tensor
+			const int deltaL_list_scalar[] = {-1, 1};             //scalar
+			const int deltaL_list_tensor[] = {-2, -1, 0, 1, 2};	  //tensor
 					
 			int widx_scalar1 = 0; // Index to work arrays.
 			int widx_scalar2 = 0; // Index to work arrays.
 			int widx_tensor = 0; // Index to work arrays.
 
-			int nM = nphi;
 			for (ptrdiff_t ridx=0; ridx<nrule; ridx++){
 			
 			long long rx = rule[ridx*3];
@@ -2170,26 +2233,13 @@ void forward_sst_dp(const int *L_list,
 				}
 					fftw_execute_dft(plan_c2c_scalar, n_L_phi_scalar, m_L_M_scalar);
 
-					for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_scalar; deltaLidx++){
-						for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-							for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
-
-
-								for (ptrdiff_t pidx=0; pidx<npol; pidx++){
-
-									a_L_M_scalar[pidx*ndeltaL_scalar*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-									* m_L_M_scalar[pidx*ndeltaL_scalar*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx]
-									* prefactors_scalar1[pidx*ndeltaL_scalar*nL+deltaLidx*nL+Lidx]
-									* w3j_product_scalar1[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
+					compute_grad_alm_dp(L_list, deltaL_list_scalar,
+						nL, ndeltaL_scalar, npol, n_scalar,
+						m_L_M_scalar, y_M_L, w3j_product_scalar1,
+						prefactors_scalar1, a_L_M_scalar,
+						Lmax, nell, nphi);
 				
-								}
-
-					}
-				} 
 			}
-
-
-				}
 
 			else if (n_scalar==n_scalar1 && n_scalar!=n_scalar2){
 				for (ptrdiff_t i = 0; i < size_scalar; i++) 
@@ -2198,22 +2248,11 @@ void forward_sst_dp(const int *L_list,
 				}
 					fftw_execute_dft(plan_c2c_scalar, n_L_phi_scalar, m_L_M_scalar);
 
-					for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_scalar; deltaLidx++){
-						for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-							for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
-
-								for (ptrdiff_t pidx=0; pidx<npol; pidx++){
-
-									a_L_M_scalar[pidx*ndeltaL_scalar*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-									* m_L_M_scalar[pidx*ndeltaL_scalar*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx]
-									* prefactors_scalar1[pidx*ndeltaL_scalar*nL+deltaLidx*nL+Lidx]
-									* w3j_product_scalar1[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
-				
-								}
-
-					}
-				} 
-			}
+					compute_grad_alm_dp(L_list, deltaL_list_scalar,
+						nL, ndeltaL_scalar, npol, n_scalar,
+						m_L_M_scalar, y_M_L, w3j_product_scalar1,
+						prefactors_scalar1, a_L_M_scalar,
+						Lmax, nell, nphi);
 
 			}
 			else if (n_scalar!=n_scalar1 && n_scalar==n_scalar2){
@@ -2224,20 +2263,12 @@ void forward_sst_dp(const int *L_list,
 
 						fftw_execute_dft(plan_c2c_scalar, n_L_phi_scalar, m_L_M_scalar);
 
-						for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_scalar; deltaLidx++){
-							for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-								for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
+						compute_grad_alm_dp(L_list, deltaL_list_scalar,
+							nL, ndeltaL_scalar, npol, n_scalar,
+							m_L_M_scalar, y_M_L, w3j_product_scalar2,
+							prefactors_scalar2, a_L_M_scalar,
+							Lmax, nell, nphi);
 
-									for (ptrdiff_t pidx=0; pidx<npol; pidx++){
-
-										a_L_M_scalar[pidx*ndeltaL_scalar*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx] 
-										* m_L_M_scalar[pidx*ndeltaL_scalar*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx] 
-										* prefactors_scalar2[pidx*ndeltaL_scalar*nL+deltaLidx*nL+Lidx]
-										* w3j_product_scalar2[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
-									}
-						}
-					} 
-				}
 			}
 		
 
@@ -2245,22 +2276,12 @@ void forward_sst_dp(const int *L_list,
 			if (n_scalar==n_scalar1){
 			fftw_execute_dft(plan_c2c_tensor, n_L_phi_tensor, m_L_M_tensor);
 
-			for (ptrdiff_t deltaLidx=0; deltaLidx<ndeltaL_tensor; deltaLidx++){
-				for (ptrdiff_t Lidx=0; Lidx<nL; Lidx++){
-					for (ptrdiff_t Midx=0; Midx<=Lidx; Midx++){
+			compute_grad_alm_dp(L_list, deltaL_list_tensor,
+				nL, ndeltaL_tensor, npol, n_tensor,
+				m_L_M_tensor, y_M_L, w3j_product_tensor,
+				prefactors_tensor, a_L_M_tensor,
+				Lmax, nell, nphi);
 
-						for (ptrdiff_t pidx=0; pidx<npol; pidx++){
-
-							a_L_M_tensor[pidx*ndeltaL_tensor*nL*nL+deltaLidx*nL*nL+Lidx*nL+Midx] += y_M_L[Midx*nL+Lidx]
-							* m_L_M_tensor[pidx*ndeltaL_tensor*nL*nM+deltaLidx*nL*nM+Lidx*nM+Midx]
-							* prefactors_tensor[pidx*ndeltaL_tensor*nL+deltaLidx*nL+Lidx]
-							* w3j_product_tensor[(deltaLidx * nL + Lidx) * (2 * Lmax + 1) + (Midx + Lmax)];
-
-						}
-
-					}
-				}
-			}
 			}
 
 	   	}
@@ -2359,13 +2380,13 @@ void step_sst_dp(const int *L_list,
 			double complex *work_i_phi_scalar2 = fftw_malloc(sizeof *work_i_phi_scalar2 * nw * nphi);    
 			double complex *work_i_phi_tensor = fftw_malloc(sizeof *work_i_phi_tensor * nw * nphi);    
 
-			double complex *grad_t_zeta_priv = fftw_malloc(sizeof *grad_t_zeta_priv * npol * ndeltaL_scalar * nL * nL);
-			double complex *grad_t_h_priv = fftw_malloc(sizeof *grad_t_h_priv * npol * ndeltaL_tensor * nL * nL);
+			double complex *grad_t_zeta_priv = fftw_malloc(sizeof *grad_t_zeta_priv * npol * nell * (2*nell-1));
+			double complex *grad_t_h_priv = fftw_malloc(sizeof *grad_t_h_priv * npol * nell * (2*nell-1));
 
-			for (ptrdiff_t i=0; i<npol*ndeltaL_scalar*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 			grad_t_zeta_priv[i] = 0;
     		}
-			for (ptrdiff_t i=0; i<npol*ndeltaL_tensor*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 			grad_t_h_priv[i] = 0;
     		}
 
@@ -2456,10 +2477,10 @@ void step_sst_dp(const int *L_list,
 			#pragma omp critical
 
 			{
-			for (ptrdiff_t i=0; i<npol*ndeltaL_scalar*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 	    			grad_t_zeta[i] += grad_t_zeta_priv[i];
 			}	
-			for (ptrdiff_t i=0; i<npol*ndeltaL_tensor*nL*nL; i++){
+			for (ptrdiff_t i=0; i<npol*nell*(2*nell-1); i++){
 	    			grad_t_h[i] += grad_t_h_priv[i];
 			}	
 			}

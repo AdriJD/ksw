@@ -456,13 +456,12 @@ def step_sst(L_list,
     if a_ell_m.shape != (npol, nell, nell):
         raise ValueError(f'a_ell_m.shape = {a_ell_m.shape}, expected {(npol, nell, nell)}')
 
-    if grad_t_zeta.shape != (npol, ndeltaL_scalar, nL, nL):
+    if grad_t_zeta.shape != (npol, nell, 2*nell-1):
         raise ValueError(
-            f'grad_t_zeta.shape = {grad_t_zeta.shape}, expected {(npol, ndeltaL_scalar, nL, nL)}')
-
-    if grad_t_h.shape != (npol, ndeltaL_tensor, nL, nL):
+            f'grad_t_zeta.shape = {grad_t_zeta.shape}, expected {(npol, nell, 2*nell-1)}')
+    if grad_t_h.shape != (npol, nell, 2*nell-1):
         raise ValueError(
-            f'grad_t_h.shape = {grad_t_h.shape}, expected {(npol, ndeltaL_tensor, nL, nL)}')
+            f'grad_t_h.shape = {grad_t_h.shape}, expected {(npol, nell, 2*nell-1)}')
 
     if L_list.dtype != np.int32:
         raise ValueError(

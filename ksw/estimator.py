@@ -315,7 +315,7 @@ class KSW():
         n_tensor_list = [-2, -1, 0]
         n_scalar_list = [1, -1, 0]
 
-        L_list = np.asarray(L_list, dtype=self.dtype)
+        L_list = np.asarray(L_list, dtype=np.int32)
         nL = L_list.size
         nell = self.lmax + 1
         nufact = kappa_i_L_scalar1.shape[0]
@@ -325,9 +325,9 @@ class KSW():
         deltaL_list_scalar = np.array([-1, 1])
         deltaL_list_tensor = np.array([-2, -1, 0, 1, 2])
 
-        grad_t_zeta_accum = np.zeros((self.npol, nL, nL), dtype=self.cdtype)
-        grad_t_h_accum = np.zeros((self.npol, nL, nL), dtype=self.cdtype)
-        grad_t = np.zeros((self.npol, nL, nL), dtype=self.cdtype)
+        grad_t_zeta_accum = np.zeros((self.npol, nell, 2*nell-1), dtype=self.cdtype)
+        grad_t_h_accum = np.zeros((self.npol, nell, 2*nell-1), dtype=self.cdtype)
+        
 
         for n_scalar in n_scalar_list:
             for com_idx in range(len(combins)):
@@ -342,9 +342,9 @@ class KSW():
 
                 _, w3j = wigner3j_int(1, 2, n_scalar2, n_tensor)
 
-                grad_t_zeta = np.zeros((self.npol, ndeltaL_scalar, nL, nL), dtype=self.cdtype)
-                grad_t_h = np.zeros((self.npol, ndeltaL_tensor, nL, nL), dtype=self.cdtype)
-        
+                grad_t_zeta = np.zeros((self.npol, nell, 2*nell-1), dtype=self.cdtype)
+                grad_t_h = np.zeros((self.npol, nell, 2*nell-1), dtype=self.cdtype)
+
                 for tidx_start in range(0, len(self.thetas), theta_batch):
                     thetas_batch = self.thetas[tidx_start:tidx_start+theta_batch]
                     ct_weights_batch = self.theta_weights[tidx_start:tidx_start+theta_batch].astype(self.dtype, copy=False)
@@ -361,12 +361,19 @@ class KSW():
                         rule, weights, ct_weights_batch,
                         w3j[0], Lmax, self.nphi)
 
-                grad_t_zeta = np.sum(grad_t_zeta, axis=1)
-                grad_t_h = np.sum(grad_t_h, axis=1)
-                    
+                if combins[com_idx] == (0,0,0):
+                    grad_t_zeta *= 0.5
+                    grad_t_h *= 0.5
+
                 grad_t_zeta_accum += grad_t_zeta
                 grad_t_h_accum += grad_t_h
         grad_t = grad_t_zeta_accum + grad_t_h_accum
+
+        # Full m (index m + lmax) -> HEALPix m >= 0
+        sign = (-1.0) ** np.arange(nell)
+        g_pos = grad_t[:, :, self.lmax:]        # m = 0, 1, ..., lmax
+        g_neg = grad_t[:, :, self.lmax::-1]     # m = 0, -1, ..., -lmax
+        grad_t = 0.5 * (np.conj(g_pos) + sign * g_neg)
 
         # Turn back into HEALPix shape.
         grad_t = utils.a_ell_m2alm(grad_t).astype(self.cdtype)

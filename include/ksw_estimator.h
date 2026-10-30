@@ -140,7 +140,7 @@ void step_dp(const double *ct_weights, const long long *rule, const double *weig
  * kappa_i_L_scalar1/scalar2/tensor : 
  * 			   (nufact, npol, ndeltaL_scalar/tensor, nL) array, kappa functionals.
  * grad_t_zeta/grad_t_h :
- * 			   (npol, ndeltaL_scalar/tensor, nL, nL) complex array.
+ * 			   (npol, nell, 2*nell-1) complex array, dT/da_ell_m for all m, index m + nell - 1.
  * rule      : (nrule, 3) array of indices into f_i_phi that give X_i Y_i Z_i.
  * weights   : (nrule, 3) array of weights for X_i Y_i Z_i.
  * ct_weight : Single quadruture weight (for cos(theta)) for this ring.
@@ -227,6 +227,42 @@ void compute_A_LM_dp(const int *L_list, const int *deltaL_list,
 		       const double complex *a_ell_m,
 		       const double *y_M_L, const double *w3j_product,
 		       const double complex *prefactors, double complex *out,
+		       int Lmax, int nell, int nphi);
+
+/*
+ * Inverse of compute_A_LM: add dT/dA_{LM}(deltaL) to dT/da_{ell m} with
+ * ell = L + deltaL and m = -M - n. Contributions from all deltaL are summed.
+ * The output is not zeroed, so it accumulates over rings and calls.
+ *
+ * Arguments
+ * ---------
+ * L_list      : (nL) array of L values.
+ * deltaL_list : (ndeltaL) array with offsets deltaL such that ell = L + deltaL.
+ * n           : Magnetic quantum number that couples to S.
+ * m_L_M       : (npol, ndeltaL, nL, nphi) complex array, dT/dA_{LM} after the ring FFT.
+ *                M >= 0 is stored at M, M < 0 at nphi + M.
+ * y_M_L       : (nL, nL) array with Y_{M, L} samples for one ring.
+ * w3j_product : (ndeltaL, nL, 2*Lmax+1) array with precomputed Wigner products.
+ * prefactors  : (npol, ndeltaL, nL) complex array containing gamma * phase factors.
+ * grad_alm    : (npol, nell, 2*nell-1) complex output array, dT/da_{ell m} for all m,
+ *                stored at index m + nell - 1.
+ * Lmax        : Maximum value of L.
+ * nell        : Number of multipoles (size of ell dimension).
+ * nphi        : Number of phi values (>= 3*Lmax+1).
+ */
+
+void compute_grad_alm_sp(const int *L_list, const int *deltaL_list,
+	           int nL, int ndeltaL, int npol, int n,
+		       const float complex *m_L_M,
+		       const float *y_M_L, const float *w3j_product,
+		       const float complex *prefactors, float complex *grad_alm,
+		       int Lmax, int nell, int nphi);
+
+void compute_grad_alm_dp(const int *L_list, const int *deltaL_list,
+	           int nL, int ndeltaL, int npol, int n,
+		       const double complex *m_L_M,
+		       const double *y_M_L, const double *w3j_product,
+		       const double complex *prefactors, double complex *grad_alm,
 		       int Lmax, int nell, int nphi);
 
 
