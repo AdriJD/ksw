@@ -89,6 +89,8 @@ class KSW():
         self.mc_gt_sq_sst = None
 
         self.gt_local = []
+
+        self.gt_sst_local = []
         
         self.lmax = lmax
         self.pol = pol
@@ -373,7 +375,7 @@ class KSW():
         sign = (-1.0) ** np.arange(nell)
         g_pos = grad_t[:, :, self.lmax:]        # m = 0, 1, ..., lmax
         g_neg = grad_t[:, :, self.lmax::-1]     # m = 0, -1, ..., -lmax
-        grad_t = 0.5 * (np.conj(g_pos) + sign * g_neg)
+        grad_t = 0.5 * (np.conj(g_pos) + sign * g_neg) # This relation is not very obvious and we got it from some deviations. So no need to be confused next time you see it. 
 
         # Turn back into HEALPix shape.
         grad_t = utils.a_ell_m2alm(grad_t).astype(self.cdtype)
@@ -539,6 +541,89 @@ class KSW():
         self.mc_idx_sst += mc_idx_sst
 
 
+    def step_batch_2pass_sst(self, alm_loader, alm_files, L_list, Lmax, comm=None, verbose=False, **kwargs):
+        '''
+        sst version
+        '''
+        if comm is None:
+            comm = utils.FakeMPIComm()
+    
+        # Monte Carlo quantities local to rank.
+        mc_idx_sst_loc = 0
+        mc_gt_sst_loc = None
+
+        # Split alm_file loop over ranks.
+        for alm_file in alm_files[comm.Get_rank():len(alm_files):comm.Get_size()]:
+
+            if verbose:
+                print(f'rank {comm.rank:3}: loading {alm_file}')
+            alm = alm_loader(alm_file)
+            if verbose:
+                print(f'rank {comm.rank:3}: done loading')
+            grad_t = self._step_sst(
+                            alm,
+                            L_list,
+                            Lmax,
+                            **kwargs
+                        )
+
+            if mc_gt_sst_loc is None:
+                mc_gt_sst_loc = grad_t
+            else:
+                mc_gt_sst_loc += grad_t
+
+            # The copy here is important, otherwise each iteration of the
+            # loop adds grad to the first element of the list.
+            self.gt_sst_local.append(grad_t.copy())
+            
+            mc_idx_sst_loc += 1
+
+        print(f'rank : {comm.rank:3} waiting in step_batch')
+        # To allow allreduce when number of ranks > alm files.
+        shape, dtype = utils.bcast_array_meta(mc_gt_sst_loc, comm, root=0)
+        if mc_gt_sst_loc is None: mc_gt_sst_loc = np.zeros(shape, dtype=dtype)
+        if mc_idx_sst_loc is None: mc_idx_sst_loc = 0
+
+        mc_gt = utils.allreduce_array(mc_gt_sst_loc, comm)
+        mc_idx = utils.allreduce(mc_idx_sst_loc, comm)
+        print(f'rank : {comm.rank:3} after reduce in step_batch')
+
+        # All ranks get to update the internal mc variable themselves.
+        if self.mc_gt_sst is None:
+            self.mc_gt_sst = mc_gt
+        else:   
+            self.__mc_gt_sst += mc_gt
+
+        self.mc_idx_sst += mc_idx
+
+    def compute_fisher_2pass_sst(self, comm):
+            '''
+            Compute the Fisher information from the grad T maps computed
+            on all ranks for sst version. 
+    
+            Returns
+            -------
+            fisher : float, None
+                Fisher information.
+            '''
+    
+            if self.mc_gt_sst is None:
+                return None
+    
+            fisher_local = 0.
+            for gidx, gt in enumerate(self.gt_sst_local):
+    
+                diff = gt - self.mc_gt_sst
+                diff_icov = self.icov(diff)
+                dot = utils.contract_almxblm(diff, np.conj(diff_icov))
+                print(f'{comm.rank=}, {gidx=}, fisher estimate={dot / 3}')
+                fisher_local += dot
+    
+            fisher = utils.allreduce(fisher_local, comm)
+            fisher /= (3 * self.mc_idx_sst)
+    
+            return fisher
+        
 
     def _step(self, alm, theta_batch=25):
         '''

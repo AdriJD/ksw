@@ -557,7 +557,12 @@ class Cosmology:
         start = 0
         for amp, ru in zip(amps, prim_rule):
 
-            nperm = self.num_permutations(ru)
+            # different from scalar case
+            if ru[0] == ru[1]:
+                nperm = 1
+            else:
+                nperm = 2
+
             amp_per_r = (amp * dr * nperm)
 
             signs = np.sign(amp_per_r)
