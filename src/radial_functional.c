@@ -14,7 +14,6 @@ void compute_radial_func(double const *f_k,
 			 int nr,
 			 int npol,
 			 int ncomp){
-
   int kidx;
   int ridx;
   int lidx;
@@ -34,7 +33,8 @@ void compute_radial_func(double const *f_k,
   kmax = k[nk-1];
   lmax = ells[nell-1];
 
-  // Allocate space for interpolated bessel function.
+  // Allocate space for interpolated bessel function.    
+  // check what is malloc in C and what this function does-dky
   bessel_k = _malloc_checked(sizeof(double) * nk);  
 
   // Compute trapezoidal quadrature weights.
@@ -108,7 +108,8 @@ void compute_radial_func(double const *f_k,
   // End loop over radii.
   }
   // Free weights and bessel array.  
-  free(w_k);
+  // free memory-dky
+  free(w_k);     
   free(bessel_k);
 }
 

@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import healpy as hp
+from scipy.integrate import trapezoid
 from mpi4py import MPI
 
 from ksw import utils
@@ -17,7 +18,7 @@ class TestUtils(unittest.TestCase):
 
         y = np.asarray([6, 3, 7, 3])
 
-        self.assertAlmostEqual(np.sum(y * dx), np.trapz(y, x))
+        self.assertAlmostEqual(np.sum(y * dx), trapezoid(y, x))
 
     def test_utils_get_trapz_weights_err(self):
 
